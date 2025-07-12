@@ -58,7 +58,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
           <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center mb-2">
               <Info className="text-blue-600 mr-2" size={20} />
-              <h3 className="text-lg font-semibold text-blue-900">Welcome to WiMarka Annotation Tool!</h3>
+              <h3 className="text-lg font-semibold text-blue-900">Welcome to Lakra Annotation Tool!</h3>
             </div>
             <p className="text-blue-800">
               Thank you for participating in our machine translation evaluation project. Please read these guidelines carefully before starting your annotation work.

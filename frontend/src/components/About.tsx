@@ -12,7 +12,7 @@ const About: React.FC = () => {
               <BookOpen className="h-12 w-12 text-primary-500" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">About WiMarka</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">About Lakra</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             A reference-free evaluation metric for machine translation of Philippine languages, 
             developed as part of academic research to advance natural language processing for Filipino languages.
@@ -29,7 +29,7 @@ const About: React.FC = () => {
         
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">
-            "WiMarka: A Reference-free Evaluation Metric for Machine Translation of Philippine Languages"
+            "Lakra: Annotation Tool for WiMarka - A Reference-free Evaluation Metric for Machine Translation of Philippine Languages"
           </h3>
           
           <div className="space-y-3 text-gray-700">
@@ -154,7 +154,7 @@ const About: React.FC = () => {
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
           <p className="text-gray-700 leading-relaxed">
             This research contributes to the advancement of natural language processing for Philippine languages, 
-            addressing the critical need for evaluation metrics in low-resource language scenarios. The WiMarka 
+            addressing the critical need for evaluation metrics in low-resource language scenarios. The Lakra 
             annotation tool serves as both a data collection platform and a practical implementation of reference-free 
             evaluation methodologies, supporting the broader goal of improving machine translation quality for Filipino languages.
           </p>

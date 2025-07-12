@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { sentencesAPI, annotationsAPI } from '../services/api';
 import type { Sentence, AnnotationCreate, AnnotationUpdate, TextHighlight } from '../types';
-import { ChevronRight, Check, AlertCircle, Clock, MessageCircle, Trash2, Plus, Highlighter } from 'lucide-react';
+import { ChevronRight, Check, AlertCircle, Clock, MessageCircle, Trash2, Plus, Highlighter, BookOpen } from 'lucide-react';
 import VoiceRecorder from './VoiceRecorder';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TextSegment extends Omit<TextHighlight, 'id' | 'annotation_id' | 'created_at'> {
   id: string; // temporary local ID for UI
@@ -31,6 +32,8 @@ interface SentenceAnnotation {
 
 const AnnotationInterface: React.FC = () => {
   const { sentenceId } = useParams<{ sentenceId?: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [annotations, setAnnotations] = useState<Map<number, SentenceAnnotation>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +56,56 @@ const AnnotationInterface: React.FC = () => {
   const [pendingSubmitSentenceId, setPendingSubmitSentenceId] = useState<number | null>(null);
   
   const textRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Check if user has completed onboarding test
+  if (user && user.onboarding_status !== 'completed') {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-8 text-center">
+          <div className="flex justify-center mb-4">
+            <BookOpen className="h-16 w-16 text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-amber-800 mb-4">
+            Qualification Test Required
+          </h1>
+          <p className="text-amber-700 mb-6 text-lg">
+            You need to complete the qualification test before you can start annotating sentences.
+          </p>
+          <div className="space-y-3 mb-6">
+            {user.onboarding_status === 'pending' && (
+              <p className="text-amber-600">
+                ⏳ You haven't started your qualification test yet.
+              </p>
+            )}
+            {user.onboarding_status === 'in_progress' && (
+              <p className="text-amber-600">
+                📝 Your qualification test is in progress. Please complete it to start annotating.
+              </p>
+            )}
+            {user.onboarding_status === 'failed' && (
+              <p className="text-red-600">
+                ❌ You didn't pass the qualification test. Please retake it to start annotating.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigate('/onboarding-test')}
+              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium"
+            >
+              {user.onboarding_status === 'failed' ? 'Retake Qualification Test' : 'Take Qualification Test'}
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const loadSentences = async () => {

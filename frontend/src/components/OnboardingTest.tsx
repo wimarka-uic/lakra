@@ -1,83 +1,227 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onboardingAPI } from '../services/api';
-import { Clock, Brain, Star, AlertTriangle, HelpCircle, ArrowRight } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { Clock, Brain, Star, AlertTriangle, HelpCircle, ArrowRight, Globe, BookOpen } from 'lucide-react';
 
-interface OnboardingQuestion {
+interface LanguageProficiencyQuestion {
   id: string;
-  source_text: string;
-  machine_translation: string;
-  source_language: string;
-  target_language: string;
-  correct_fluency_score: number;
-  correct_adequacy_score: number;
-  error_types: string[];
+  language: string;
+  type: 'grammar' | 'vocabulary' | 'translation' | 'cultural' | 'comprehension';
+  question: string;
+  options: string[];
+  correct_answer: number; // index of correct option
   explanation: string;
+  difficulty: 'basic' | 'intermediate' | 'advanced';
 }
 
 interface UserAnswer {
   question_id: string;
-  fluency_score: number;
-  adequacy_score: number;
-  identified_errors: string[];
-  comment: string;
+  selected_answer: number;
+  is_correct: boolean;
 }
 
 const OnboardingTest: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes
+  const [timeRemaining, setTimeRemaining] = useState(45 * 60); // 45 minutes
   const [showInstructions, setShowInstructions] = useState(true);
   const [testStarted, setTestStarted] = useState(false);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
 
-  // Sample onboarding questions (in a real app, these would come from the backend)
-  const questions: OnboardingQuestion[] = useMemo(() => [
-    {
-      id: '1',
-      source_text: 'The weather is beautiful today.',
-      machine_translation: 'Ang panahon ay maganda ngayon.',
-      source_language: 'English',
-      target_language: 'Tagalog',
-      correct_fluency_score: 5,
-      correct_adequacy_score: 5,
-      error_types: [],
-      explanation: 'This is an excellent translation with perfect fluency and adequacy. No errors present.'
-    },
-    {
-      id: '2',
-      source_text: 'I will go to the hospital tomorrow.',
-      machine_translation: 'Ako ay pupunta sa ospital bukas.',
-      source_language: 'English',
-      target_language: 'Tagalog',
-      correct_fluency_score: 4,
-      correct_adequacy_score: 5,
-      error_types: ['MI_ST'],
-      explanation: 'Good translation with complete meaning preserved. Minor stylistic issue - could be more natural as "Pupunta ako sa ospital bukas."'
-    },
-    {
-      id: '3',
-      source_text: 'She plays the piano very well.',
-      machine_translation: 'Siya ay naglalaro ng piano nang napakahusay.',
-      source_language: 'English',
-      target_language: 'Tagalog',
-      correct_fluency_score: 2,
-      correct_adequacy_score: 3,
-      error_types: ['MI_SE', 'MA_SE'],
-      explanation: 'Incorrect verb choice - "naglalaro" (playing games) instead of "tumutugtog" (playing instrument). This affects both fluency and adequacy.'
+  // Language proficiency questions based on user's languages
+  const questions: LanguageProficiencyQuestion[] = useMemo(() => {
+    const allQuestions: LanguageProficiencyQuestion[] = [];
+    
+    // Tagalog Questions
+    if (selectedLanguages.includes('tagalog')) {
+      allQuestions.push(
+        {
+          id: 'tagalog_1',
+          language: 'Tagalog',
+          type: 'grammar',
+          question: 'Which is the correct way to say "I am going to school" in Tagalog?',
+          options: [
+            'Ako ay pupunta sa eskwelahan',
+            'Pupunta ako sa eskwelahan',
+            'Sa eskwelahan ako pupunta',
+            'Lahat ng nabanggit'
+          ],
+          correct_answer: 3,
+          explanation: 'All three options are grammatically correct ways to express "I am going to school" in Tagalog, showing the flexibility of Filipino sentence structure.',
+          difficulty: 'basic'
+        },
+        {
+          id: 'tagalog_2',
+          language: 'Tagalog',
+          type: 'vocabulary',
+          question: 'What does "pakikipagkunware" mean in English?',
+          options: [
+            'Honesty',
+            'Pretending or acting',
+            'Helping others',
+            'Being lazy'
+          ],
+          correct_answer: 1,
+          explanation: '"Pakikipagkunware" refers to pretending, acting, or putting on a facade.',
+          difficulty: 'intermediate'
+        },
+        {
+          id: 'tagalog_3',
+          language: 'Tagalog',
+          type: 'cultural',
+          question: 'What is the traditional Filipino greeting that shows respect to elders?',
+          options: [
+            'Kamusta',
+            'Mano or pagmamano',
+            'Salamat',
+            'Kumain ka na?'
+          ],
+          correct_answer: 1,
+          explanation: 'Mano or pagmamano is the traditional Filipino gesture of respect where younger people take the hand of an elder and touch it to their forehead.',
+          difficulty: 'basic'
+        }
+      );
     }
-  ], []);
+
+    // Cebuano Questions
+    if (selectedLanguages.includes('cebuano')) {
+      allQuestions.push(
+        {
+          id: 'cebuano_1',
+          language: 'Cebuano',
+          type: 'vocabulary',
+          question: 'What does "maayong buntag" mean?',
+          options: [
+            'Good afternoon',
+            'Good evening',
+            'Good morning',
+            'Good night'
+          ],
+          correct_answer: 2,
+          explanation: '"Maayong buntag" is the Cebuano greeting for "good morning".',
+          difficulty: 'basic'
+        },
+        {
+          id: 'cebuano_2',
+          language: 'Cebuano',
+          type: 'grammar',
+          question: 'Which is the correct Cebuano translation of "I love you"?',
+          options: [
+            'Gihigugma ko ikaw',
+            'Gihigugma tika',
+            'Nahigugma ko nimo',
+            'Tanan og nabanggit'
+          ],
+          correct_answer: 3,
+          explanation: 'All three expressions are valid ways to say "I love you" in Cebuano, with slight variations in formality and regional usage.',
+          difficulty: 'intermediate'
+        }
+      );
+    }
+
+    // Ilocano Questions
+    if (selectedLanguages.includes('ilocano')) {
+      allQuestions.push(
+        {
+          id: 'ilocano_1',
+          language: 'Ilocano',
+          type: 'vocabulary',
+          question: 'What does "naimbag nga aldaw" mean?',
+          options: [
+            'Bad day',
+            'Good day',
+            'New day',
+            'Last day'
+          ],
+          correct_answer: 1,
+          explanation: '"Naimbag nga aldaw" means "good day" in Ilocano.',
+          difficulty: 'basic'
+        },
+        {
+          id: 'ilocano_2',
+          language: 'Ilocano',
+          type: 'cultural',
+          question: 'What is "bayanihan" in Ilocano culture?',
+          options: [
+            'A type of food',
+            'Community spirit and cooperation',
+            'A traditional dance',
+            'A religious ceremony'
+          ],
+          correct_answer: 1,
+          explanation: 'Bayanihan represents the Filipino spirit of community cooperation and helping one another.',
+          difficulty: 'intermediate'
+        }
+      );
+    }
+
+    // English Questions (for Filipino contexts)
+    if (selectedLanguages.includes('english')) {
+      allQuestions.push(
+        {
+          id: 'english_1',
+          language: 'English',
+          type: 'grammar',
+          question: 'Which sentence shows correct Philippine English usage?',
+          options: [
+            'I will open the aircon',
+            'I will turn on the air conditioner',
+            'Both are acceptable in Philippine English',
+            'Neither is correct'
+          ],
+          correct_answer: 2,
+          explanation: 'Both "aircon" (common in Philippine English) and "air conditioner" are acceptable, showing the localized variety of English used in the Philippines.',
+          difficulty: 'intermediate'
+        },
+        {
+          id: 'english_2',
+          language: 'English',
+          type: 'translation',
+          question: 'What is the best English translation of the Filipino concept "kilig"?',
+          options: [
+            'Happy',
+            'Excited',
+            'Butterflies in stomach/romantic excitement',
+            'Confused'
+          ],
+          correct_answer: 2,
+          explanation: '"Kilig" is a uniquely Filipino emotion describing the giddy, romantic excitement one feels, often translated as "butterflies in the stomach".',
+          difficulty: 'advanced'
+        }
+      );
+    }
+
+    // Add questions for other languages as needed
+    if (selectedLanguages.includes('hiligaynon')) {
+      allQuestions.push(
+        {
+          id: 'hiligaynon_1',
+          language: 'Hiligaynon',
+          type: 'vocabulary',
+          question: 'What does "maayong aga" mean in Hiligaynon?',
+          options: [
+            'Good evening',
+            'Good morning',
+            'Good afternoon',
+            'Good night'
+          ],
+          correct_answer: 1,
+          explanation: '"Maayong aga" is the Hiligaynon greeting for "good morning".',
+          difficulty: 'basic'
+        }
+      );
+    }
+
+    return allQuestions;
+  }, [selectedLanguages]);
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentAnswer = answers.find(a => a.question_id === currentQuestion?.id) || {
-    question_id: currentQuestion?.id || '',
-    fluency_score: 0,
-    adequacy_score: 0,
-    identified_errors: [],
-    comment: ''
-  };
+  const currentAnswer = answers.find(a => a.question_id === currentQuestion?.id);
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -86,12 +230,24 @@ const OnboardingTest: React.FC = () => {
   };
 
   const handleStartTest = () => {
-    setShowInstructions(false);
-    setTestStarted(true);
+    if (user?.languages && user.languages.length > 0) {
+      setSelectedLanguages(user.languages);
+      setShowInstructions(false);
+      setTestStarted(true);
+    } else {
+      alert('Please update your profile to select your languages before taking the proficiency quiz.');
+      navigate('/profile');
+    }
   };
 
-  const updateAnswer = (updates: Partial<UserAnswer>) => {
-    const newAnswer = { ...currentAnswer, ...updates };
+  const updateAnswer = (selectedAnswer: number) => {
+    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+    const newAnswer: UserAnswer = {
+      question_id: currentQuestion.id,
+      selected_answer: selectedAnswer,
+      is_correct: isCorrect
+    };
+    
     setAnswers(prev => {
       const filtered = prev.filter(a => a.question_id !== currentQuestion.id);
       return [...filtered, newAnswer];
@@ -116,37 +272,42 @@ const OnboardingTest: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Submit to backend (score calculation now handled server-side)
-      const result = await onboardingAPI.submitTest(1, answers); // Using test ID 1 for now
+      // Calculate score
+      const correctAnswers = answers.filter(a => a.is_correct).length;
+      const totalQuestions = questions.length;
+      const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
       
-      if (result.passed) {
+      // Submit to backend
+      const result = await onboardingAPI.submitTest(1, answers);
+      
+      if (result.passed || score >= 70) {
         setTimeout(() => {
-          alert(`🎉 Congratulations! You passed with a score of ${result.score.toFixed(1)}%! 
+          alert(`🎉 Congratulations! You passed the Language Proficiency Quiz with a score of ${score.toFixed(1)}%!
 
-Your annotation skills are excellent, and you're ready to start contributing to high-quality machine translation evaluation.
+Your language skills are excellent, and you demonstrate strong proficiency in your selected languages.
 
-Welcome to the WiMarka team! You can now access all annotation features.`);
+Welcome to the Lakra team! You can now access all annotation features.`);
           navigate('/dashboard');
         }, 1000);
       } else {
         setTimeout(() => {
-          alert(`📚 You scored ${result.score.toFixed(1)}%. 
+          alert(`📚 You scored ${score.toFixed(1)}% on the Language Proficiency Quiz.
 
-Don't worry - this is a great learning opportunity! You need at least 70% to pass, but many annotators improve significantly after reviewing our guidelines.
+Don't worry - language learning is a journey! You need at least 70% to pass, but this is a great opportunity to improve your skills.
 
-🔄 You can retake the test anytime after reviewing the annotation guidelines. We believe in your potential and are here to support your growth!
+🔄 You can retake the quiz anytime after reviewing language materials and practicing more.
 
-💡 Tip: Pay close attention to the difference between fluency (how natural the translation sounds) and adequacy (how well the meaning is preserved).`);
+💡 Tip: Focus on grammar rules, expand your vocabulary, and practice cultural understanding of your selected languages.`);
           navigate('/dashboard');
         }, 1000);
       }
     } catch (error) {
       console.error('Error submitting test:', error);
-      alert('Error submitting test. Please try again.');
+      alert('Error submitting quiz. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [answers, navigate]);
+  }, [answers, questions.length, navigate]);
 
   // Timer effect
   useEffect(() => {
@@ -165,6 +326,28 @@ Don't worry - this is a great learning opportunity! You need at least 70% to pas
     return () => clearInterval(timer);
   }, [testStarted, timeRemaining, handleSubmitTest]);
 
+  const getQuestionTypeIcon = (type: string) => {
+    switch (type) {
+      case 'grammar': return '📝';
+      case 'vocabulary': return '📚';
+      case 'translation': return '🔄';
+      case 'cultural': return '🏛️';
+      case 'comprehension': return '🧠';
+      default: return '❓';
+    }
+  };
+
+  const getQuestionTypeLabel = (type: string) => {
+    switch (type) {
+      case 'grammar': return 'Grammar';
+      case 'vocabulary': return 'Vocabulary';
+      case 'translation': return 'Translation';
+      case 'cultural': return 'Cultural Knowledge';
+      case 'comprehension': return 'Reading Comprehension';
+      default: return 'General';
+    }
+  };
+
   if (showInstructions) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -173,50 +356,51 @@ Don't worry - this is a great learning opportunity! You need at least 70% to pas
             <div className="text-center mb-8">
               <div className="flex justify-center mb-4">
                 <div className="rounded-full bg-blue-100 p-3">
-                  <Brain className="h-12 w-12 text-blue-600" />
+                  <Globe className="h-12 w-12 text-blue-600" />
                 </div>
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Welcome to Your Annotation Qualification Test! 🎯
+                Language Proficiency Quiz 🌏
               </h1>
               <p className="text-lg text-gray-600">
-                Let's make sure you're ready to create high-quality annotations
+                Demonstrate your language skills and cultural knowledge
               </p>
               
               <div className="mt-4 flex items-center justify-center space-x-6 text-sm text-gray-500">
                 <div className="flex items-center">
                   <span className="w-3 h-3 bg-green-400 rounded-full mr-2"></span>
-                  <span>Friendly & Supportive</span>
+                  <span>Multiple Languages</span>
                 </div>
                 <div className="flex items-center">
                   <span className="w-3 h-3 bg-blue-400 rounded-full mr-2"></span>
-                  <span>Skills Assessment</span>
+                  <span>Cultural Context</span>
                 </div>
                 <div className="flex items-center">
                   <span className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></span>
-                  <span>Learning Opportunity</span>
+                  <span>Practical Skills</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
               <div className="flex items-start">
-                <HelpCircle className="h-6 w-6 text-blue-600 mt-1 mr-3 flex-shrink-0" />
+                <BookOpen className="h-6 w-6 text-blue-600 mt-1 mr-3 flex-shrink-0" />
                 <div>
                   <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                    What This Test Is About
+                    About This Quiz
                   </h3>
                   <p className="text-blue-800 mb-3">
-                    This friendly assessment helps us understand your translation evaluation skills. 
-                    You'll review a few machine translations and provide quality scores - just like 
-                    you'll do in your regular annotation work.
+                    This proficiency quiz tests your knowledge of the languages you've selected in your profile. 
+                    You'll answer questions about grammar, vocabulary, translation, and cultural understanding.
                   </p>
-                  <p className="text-blue-700 text-sm mb-2">
-                    Don't worry - this isn't about being perfect! It's about ensuring we can provide 
-                    you with the best support and that our data quality remains high.
-                  </p>
+                                     <p className="text-blue-700 text-sm mb-2">
+                     Your selected languages: <strong>{user?.languages && user.languages.length > 0 
+                       ? [...new Set(user.languages)].map(lang => 
+                           lang.charAt(0).toUpperCase() + lang.slice(1)).join(', ')
+                       : 'None selected'}</strong>
+                   </p>
                   <p className="text-blue-600 text-xs italic">
-                    💡 Think of this as a practice session where you can learn our annotation style!
+                    💡 This quiz helps us understand your language proficiency for annotation tasks!
                   </p>
                 </div>
               </div>
@@ -226,25 +410,26 @@ Don't worry - this is a great learning opportunity! You need at least 70% to pas
               <div className="bg-green-50 rounded-lg p-6">
                 <div className="flex items-center mb-3">
                   <Clock className="h-5 w-5 text-green-600 mr-2" />
-                  <h4 className="font-semibold text-green-900">Time & Questions</h4>
+                  <h4 className="font-semibold text-green-900">Time & Format</h4>
                 </div>
                 <ul className="text-green-800 space-y-1 text-sm">
-                  <li>• 30 minutes total time</li>
-                  <li>• 3 sample translations to evaluate</li>
-                  <li>• Take your time - quality over speed</li>
+                  <li>• 45 minutes total time</li>
+                  <li>• Multiple choice questions</li>
+                  <li>• Questions based on your languages</li>
+                  <li>• Take your time to think carefully</li>
                 </ul>
               </div>
 
               <div className="bg-yellow-50 rounded-lg p-6">
                 <div className="flex items-center mb-3">
-                  <Star className="h-5 w-5 text-yellow-600 mr-2" />
-                  <h4 className="font-semibold text-yellow-900">What You'll Do</h4>
+                  <Brain className="h-5 w-5 text-yellow-600 mr-2" />
+                  <h4 className="font-semibold text-yellow-900">Question Types</h4>
                 </div>
                 <ul className="text-yellow-800 space-y-1 text-sm">
-                  <li>• Rate fluency (1-5 scale)</li>
-                  <li>• Rate adequacy (1-5 scale)</li>
-                  <li>• Identify error types if present</li>
-                  <li>• Add brief comments</li>
+                  <li>• 📝 Grammar & Syntax</li>
+                  <li>• 📚 Vocabulary Knowledge</li>
+                  <li>• 🔄 Translation Skills</li>
+                  <li>• 🏛️ Cultural Understanding</li>
                 </ul>
               </div>
             </div>
@@ -255,28 +440,43 @@ Don't worry - this is a great learning opportunity! You need at least 70% to pas
                 <div className="text-amber-800">
                   <p className="font-medium mb-1">Passing Score: 70%</p>
                   <p className="text-sm mb-2">
-                    If you don't pass on your first try, no worries! You can retake the test after 
-                    reviewing our annotation guidelines. We're here to help you succeed.
+                    This quiz validates your language proficiency for annotation work. 
+                    If you don't pass initially, you can retake it after studying more.
                   </p>
                   <p className="text-xs italic">
-                    Remember: This test helps us understand your current skills so we can provide better support! 🤝
+                    Remember: This helps us ensure quality annotations and provide appropriate language tasks! 🎯
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="text-center">
-              <button
-                onClick={handleStartTest}
-                className="inline-flex items-center px-8 py-3 border border-transparent text-lg font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-              >
-                I'm Ready - Start Test
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </button>
-              <p className="mt-3 text-sm text-gray-500">
-                By starting the test, the 30-minute timer will begin
-              </p>
-            </div>
+            {user?.languages && user.languages.length > 0 ? (
+              <div className="text-center">
+                <button
+                  onClick={handleStartTest}
+                  className="inline-flex items-center px-8 py-3 border border-transparent text-lg font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                >
+                  Start Language Quiz
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </button>
+                <p className="mt-3 text-sm text-gray-500">
+                  By starting the quiz, the 45-minute timer will begin
+                </p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <p className="text-red-800 font-medium">No languages selected</p>
+                  <p className="text-red-700 text-sm">Please update your profile to select your languages first.</p>
+                </div>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="inline-flex items-center px-6 py-2 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+                >
+                  Update Profile
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -284,7 +484,20 @@ Don't worry - this is a great learning opportunity! You need at least 70% to pas
   }
 
   if (!currentQuestion) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Globe className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">No questions available for your selected languages.</p>
+          <button
+            onClick={() => navigate('/profile')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Update Language Selection
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -294,7 +507,7 @@ Don't worry - this is a great learning opportunity! You need at least 70% to pas
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <h1 className="text-xl font-semibold text-gray-900">
-              Annotation Qualification Test
+              Language Proficiency Quiz
             </h1>
             <div className="text-sm text-gray-500">
               Question {currentQuestionIndex + 1} of {questions.length}
@@ -303,8 +516,8 @@ Don't worry - this is a great learning opportunity! You need at least 70% to pas
           
           <div className="flex items-center space-x-4">
             <div className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              timeRemaining > 300 ? 'bg-green-100 text-green-800' : 
-              timeRemaining > 60 ? 'bg-yellow-100 text-yellow-800' : 
+              timeRemaining > 900 ? 'bg-green-100 text-green-800' : 
+              timeRemaining > 300 ? 'bg-yellow-100 text-yellow-800' : 
               'bg-red-100 text-red-800'
             }`}>
               <Clock className="h-4 w-4 mr-1" />
@@ -321,173 +534,79 @@ Don't worry - this is a great learning opportunity! You need at least 70% to pas
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto py-8 px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Translation Panel */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Translation to Evaluate
-              </h3>
-              
-              <div className="space-y-4">
+      <div className="max-w-4xl mx-auto py-8 px-4">
+        <div className="bg-white rounded-lg shadow p-8">
+          {/* Question Header */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">{getQuestionTypeIcon(currentQuestion.type)}</span>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Source Text ({currentQuestion.source_language})
-                  </label>
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                    <p className="text-gray-900">{currentQuestion.source_text}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Machine Translation ({currentQuestion.target_language})
-                  </label>
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-gray-900">{currentQuestion.machine_translation}</p>
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {currentQuestion.language} - {getQuestionTypeLabel(currentQuestion.type)}
+                  </h3>
+                  <p className="text-sm text-gray-500 capitalize">
+                    Difficulty: {currentQuestion.difficulty}
+                  </p>
                 </div>
               </div>
+            </div>
+            
+            <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-lg text-gray-900 font-medium">
+                {currentQuestion.question}
+              </p>
             </div>
           </div>
 
-          {/* Evaluation Panel */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Your Evaluation
-              </h3>
-
-              <div className="space-y-6">
-                {/* Fluency Score */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fluency Score (1-5) *
-                  </label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    How natural and well-formed is the translation?
-                  </p>
-                  <div className="flex space-x-2">
-                    {[1, 2, 3, 4, 5].map(score => (
-                      <button
-                        key={score}
-                        onClick={() => updateAnswer({ fluency_score: score })}
-                        className={`w-12 h-12 rounded-lg border-2 font-semibold ${
-                          currentAnswer.fluency_score === score
-                            ? 'border-blue-500 bg-blue-500 text-white'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        {score}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Adequacy Score */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Adequacy Score (1-5) *
-                  </label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    How well does the translation convey the meaning of the source?
-                  </p>
-                  <div className="flex space-x-2">
-                    {[1, 2, 3, 4, 5].map(score => (
-                      <button
-                        key={score}
-                        onClick={() => updateAnswer({ adequacy_score: score })}
-                        className={`w-12 h-12 rounded-lg border-2 font-semibold ${
-                          currentAnswer.adequacy_score === score
-                            ? 'border-green-500 bg-green-500 text-white'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        {score}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Error Types */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Error Types (if any)
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: 'MI_ST', label: 'Minor Style', color: 'yellow' },
-                      { id: 'MI_SE', label: 'Minor Semantic', color: 'orange' },
-                      { id: 'MA_ST', label: 'Major Style', color: 'red' },
-                      { id: 'MA_SE', label: 'Major Semantic', color: 'red' }
-                    ].map(error => (
-                      <button
-                        key={error.id}
-                        onClick={() => {
-                          const errors = currentAnswer.identified_errors.includes(error.id)
-                            ? currentAnswer.identified_errors.filter(e => e !== error.id)
-                            : [...currentAnswer.identified_errors, error.id];
-                          updateAnswer({ identified_errors: errors });
-                        }}
-                        className={`p-2 text-xs rounded border-2 ${
-                          currentAnswer.identified_errors.includes(error.id)
-                            ? `border-${error.color}-500 bg-${error.color}-100 text-${error.color}-800`
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        {error.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Comment */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Comments (optional)
-                  </label>
-                  <textarea
-                    value={currentAnswer.comment}
-                    onChange={(e) => updateAnswer({ comment: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    rows={3}
-                    placeholder="Any additional observations or reasoning..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation */}
-            <div className="flex justify-between">
+          {/* Answer Options */}
+          <div className="space-y-3 mb-8">
+            {currentQuestion.options.map((option, index) => (
               <button
-                onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                key={index}
+                onClick={() => updateAnswer(index)}
+                className={`w-full p-4 text-left border-2 rounded-lg transition-colors ${
+                  currentAnswer?.selected_answer === index
+                    ? 'border-blue-500 bg-blue-50 text-blue-900'
+                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                }`}
               >
-                Previous
+                <div className="flex items-center">
+                  <span className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center text-sm font-medium ${
+                    currentAnswer?.selected_answer === index
+                      ? 'border-blue-500 bg-blue-500 text-white'
+                      : 'border-gray-300'
+                  }`}>
+                    {String.fromCharCode(65 + index)}
+                  </span>
+                  <span className="text-gray-900">{option}</span>
+                </div>
               </button>
+            ))}
+          </div>
 
-              <div className="flex space-x-3">
-                {currentQuestionIndex < questions.length - 1 ? (
-                  <button
-                    onClick={handleNext}
-                    disabled={!currentAnswer.fluency_score || !currentAnswer.adequacy_score}
-                    className="px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next Question
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSubmitTest}
-                    disabled={!currentAnswer.fluency_score || !currentAnswer.adequacy_score || isSubmitting}
-                    className="px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? 'Submitting...' : 'Submit Test'}
-                  </button>
-                )}
-              </div>
+          {/* Navigation */}
+          <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+            <button
+              onClick={handlePrevious}
+              disabled={currentQuestionIndex === 0}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            <div className="text-sm text-gray-500">
+              {answers.length} of {questions.length} answered
             </div>
+
+            <button
+              onClick={handleNext}
+              disabled={!currentAnswer || isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Submitting...' : 
+               currentQuestionIndex === questions.length - 1 ? 'Submit Quiz' : 'Next'}
+            </button>
           </div>
         </div>
       </div>

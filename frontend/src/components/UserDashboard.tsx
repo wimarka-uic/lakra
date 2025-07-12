@@ -17,6 +17,7 @@ import {
   ChevronRight,
   RefreshCcw
 } from 'lucide-react';
+import GuidelinesModal from './GuidelinesModal';
 
 interface UserStats {
   totalAnnotations: number;
@@ -38,13 +39,40 @@ interface OnboardingStep {
 }
 
 const UserDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, markGuidelinesSeen } = useAuth();
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [availableSentences, setAvailableSentences] = useState(0);
   const [showWelcome, setShowWelcome] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showGuidelines, setShowGuidelines] = useState(false);
+
+  // Guidelines modal handlers
+  const handleShowGuidelines = () => {
+    setShowGuidelines(true);
+  };
+
+  const handleGuidelinesClose = () => {
+    setShowGuidelines(false);
+  };
+
+  const handleGuidelinesAccept = async () => {
+    try {
+      await markGuidelinesSeen();
+      setShowGuidelines(false);
+      // Update the onboarding steps to reflect that guidelines have been seen
+      setOnboardingSteps(prev => prev.map(step => 
+        step.id === 'read_guidelines' 
+          ? { ...step, completed: true }
+          : step
+      ));
+    } catch (error) {
+      console.error('Error marking guidelines as seen:', error);
+      // Still close the modal even if the API call fails
+      setShowGuidelines(false);
+    }
+  };
 
   // User onboarding journey steps
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([
@@ -63,7 +91,7 @@ const UserDashboard: React.FC = () => {
       description: 'Understand the annotation guidelines before starting your work',
       icon: BookOpen,
       buttonText: 'View Guidelines',
-      buttonLink: '#',
+      buttonLink: 'guidelines', // Special identifier for guidelines
       completed: user?.guidelines_seen || false
     },
     {
@@ -252,9 +280,16 @@ const UserDashboard: React.FC = () => {
               <p className="text-sm leading-5 font-medium text-primary-800">
                 Welcome back, {user?.first_name}! 👋
               </p>
-              <p className="mt-1 text-sm leading-5 text-primary-700">
-                You have {availableSentences} new {availableSentences === 1 ? 'sentence' : 'sentences'} to annotate.
-              </p>
+              {user?.onboarding_status === 'completed' && (
+                <p className="mt-1 text-sm leading-5 text-primary-700">
+                  You have {availableSentences} new {availableSentences === 1 ? 'sentence' : 'sentences'} to annotate.
+                </p>
+              )}
+              {user?.onboarding_status !== 'completed' && (
+                <p className="mt-1 text-sm leading-5 text-primary-700">
+                  Complete your qualification test to start annotating.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -425,13 +460,23 @@ const UserDashboard: React.FC = () => {
                             {step.completed && ' ✓'}
                           </h3>
                           {!step.completed && (
-                            <Link 
-                              to={step.buttonLink} 
-                              className="inline-flex items-center text-xs font-medium text-primary-600 hover:text-primary-500"
-                            >
-                              {step.buttonText}
-                              <ChevronRight className="ml-1 h-3 w-3" />
-                            </Link>
+                            step.buttonLink === 'guidelines' ? (
+                              <button
+                                onClick={handleShowGuidelines}
+                                className="inline-flex items-center text-xs font-medium text-primary-600 hover:text-primary-500"
+                              >
+                                {step.buttonText}
+                                <ChevronRight className="ml-1 h-3 w-3" />
+                              </button>
+                            ) : (
+                              <Link 
+                                to={step.buttonLink} 
+                                className="inline-flex items-center text-xs font-medium text-primary-600 hover:text-primary-500"
+                              >
+                                {step.buttonText}
+                                <ChevronRight className="ml-1 h-3 w-3" />
+                              </Link>
+                            )
                           )}
                         </div>
                         <p className={`
@@ -517,6 +562,13 @@ const UserDashboard: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Guidelines Modal */}
+      <GuidelinesModal
+        isOpen={showGuidelines}
+        onClose={handleGuidelinesClose}
+        onAccept={handleGuidelinesAccept}
+      />
     </div>
   );
 };

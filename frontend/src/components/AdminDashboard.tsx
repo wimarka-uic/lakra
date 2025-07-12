@@ -505,7 +505,7 @@ const AdminDashboard: React.FC = () => {
           <div className="space-y-6">
             {/* Welcome Section */}
             <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg p-8 text-white">
-              <h2 className="text-3xl font-bold mb-2">Welcome to WiMarka - Admin Panel</h2>
+              <h2 className="text-3xl font-bold mb-2">Welcome to Lakra - Admin Panel</h2>
               <p className="text-primary-100 text-lg">
                 Manage your translation system, monitor user activity, and oversee content management.
               </p>

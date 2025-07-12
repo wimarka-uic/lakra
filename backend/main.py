@@ -55,7 +55,7 @@ from schemas import (
     OnboardingTestQuestion
 )
 
-app = FastAPI(title="WiMarka - Annotation Tool", version="1.0.0")
+app = FastAPI(title="Lakra - Annotation Tool for WiMarka", version="1.0.0")
 
 # CORS middleware
 app.add_middleware(

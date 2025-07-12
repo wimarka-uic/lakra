@@ -49,7 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onShowGuidelines }) => {
             <div className="flex items-center space-x-3 lg:space-x-6">
               <Link to="/" className="flex items-center space-x-2">
                 <FileText className="h-8 w-8 text-primary-500" />
-                <span className="text-base sm:text-lg font-bold text-gray-900 whitespace-nowrap">WiMarka - Annotation Tool</span>
+                <span className="text-base sm:text-lg font-bold text-gray-900 whitespace-nowrap">Lakra - Annotation Tool</span>
               </Link>
               
               <div className="hidden md:flex space-x-1 lg:space-x-2">
@@ -108,7 +108,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onShowGuidelines }) => {
               <Link
                 to="/about"
                 className="group flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-                title="About WiMarka"
+                title="About Lakra"
               >
                 <Info className="h-4 w-4 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110" />
                 <span className="transition-all duration-200">About</span>

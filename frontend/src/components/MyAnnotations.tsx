@@ -1,16 +1,70 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { annotationsAPI } from '../services/api';
 import type { Annotation, TextHighlight, AnnotationUpdate } from '../types';
-import { BarChart3, Calendar, Clock, Star, MessageCircle, Edit, AlertTriangle, Plus, Trash2, ChevronRight } from 'lucide-react';
+import { BarChart3, Calendar, Clock, Star, MessageCircle, Edit, AlertTriangle, Plus, Trash2, ChevronRight, BookOpen } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TextSegment extends Omit<TextHighlight, 'id' | 'annotation_id' | 'created_at'> {
   id: string; // temporary local ID for UI
 }
 
 const MyAnnotations: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed'>('all');
+
+  // Check if user has completed onboarding test
+  if (user && user.onboarding_status !== 'completed') {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-8 text-center">
+          <div className="flex justify-center mb-4">
+            <BookOpen className="h-16 w-16 text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-amber-800 mb-4">
+            Qualification Test Required
+          </h1>
+          <p className="text-amber-700 mb-6 text-lg">
+            You need to complete the qualification test before you can access your annotations.
+          </p>
+          <div className="space-y-3 mb-6">
+            {user.onboarding_status === 'pending' && (
+              <p className="text-amber-600">
+                ⏳ You haven't started your qualification test yet.
+              </p>
+            )}
+            {user.onboarding_status === 'in_progress' && (
+              <p className="text-amber-600">
+                📝 Your qualification test is in progress. Please complete it to access your annotations.
+              </p>
+            )}
+            {user.onboarding_status === 'failed' && (
+              <p className="text-red-600">
+                ❌ You didn't pass the qualification test. Please retake it to access your annotations.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigate('/onboarding-test')}
+              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium"
+            >
+              {user.onboarding_status === 'failed' ? 'Retake Qualification Test' : 'Take Qualification Test'}
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   // Edit mode states
   const [editingAnnotation, setEditingAnnotation] = useState<number | null>(null);
