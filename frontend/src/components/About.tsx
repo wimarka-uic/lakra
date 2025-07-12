@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Users, Award, GraduationCap } from 'lucide-react';
+import { BookOpen, Users, Award } from 'lucide-react';
 
 const About: React.FC = () => {
   return (
@@ -14,30 +14,9 @@ const About: React.FC = () => {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">About Lakra</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            A reference-free evaluation metric for machine translation of Philippine languages, 
+            Annotation Tool for WiMarka - A reference-free evaluation metric for machine translation of Philippine languages, 
             developed as part of academic research to advance natural language processing for Filipino languages.
           </p>
-        </div>
-      </div>
-
-      {/* Thesis Information */}
-      <div className="bg-white rounded-lg shadow-sm border p-8">
-        <div className="flex items-center mb-6">
-          <GraduationCap className="h-8 w-8 text-primary-500 mr-3" />
-          <h2 className="text-2xl font-bold text-gray-900">Academic Research</h2>
-        </div>
-        
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">
-            "Lakra: Annotation Tool for WiMarka - A Reference-free Evaluation Metric for Machine Translation of Philippine Languages"
-          </h3>
-          
-          <div className="space-y-3 text-gray-700">
-            <p className="italic">A Computer Science Thesis</p>
-            <p>Presented to the Faculty of the College of Computer Studies</p>
-            <p className="font-medium">University of the Immaculate Conception</p>
-            <p>Fr. Selga St., Davao City</p>
-          </div>
         </div>
       </div>
 
@@ -164,7 +143,7 @@ const About: React.FC = () => {
       {/* Footer */}
       <div className="bg-gray-50 rounded-lg p-6 text-center">
         <p className="text-gray-600">
-          © 202 University of the Immaculate Conception - College of Computer Studies
+          © 2025 University of the Immaculate Conception - College of Computer Studies
         </p>
         <p className="text-sm text-gray-500 mt-2">
           This tool is part of ongoing academic research in machine translation evaluation for Philippine languages.
