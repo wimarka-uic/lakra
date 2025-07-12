@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, AlertCircle, Mail, Lock, LogIn, CheckCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Mail, Lock, LogIn } from 'lucide-react';
+import Logo from './Logo';
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -65,13 +66,9 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg transform transition-all hover:shadow-xl">
         <div>
-          <div className="flex justify-center">
-            <div className="bg-primary-50 p-3 rounded-full">
-              <FileText className="h-12 w-12 text-primary-500" />
-            </div>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to Lakra
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 flex items-center justify-center gap-3">
+            Sign in to
+            <Logo size="medium" className="inline-block" />
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             The smart annotation tool for WiMarka

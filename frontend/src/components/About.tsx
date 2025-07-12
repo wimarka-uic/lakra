@@ -1,5 +1,6 @@
 import React from 'react';
-import { BookOpen, Users, Award } from 'lucide-react';
+import { Users, Award } from 'lucide-react';
+import Logo from './Logo';
 
 const About: React.FC = () => {
   return (
@@ -8,11 +9,10 @@ const About: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border p-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="bg-primary-50 p-4 rounded-full">
-              <BookOpen className="h-12 w-12 text-primary-500" />
+            <div className="p-4 rounded-full">
+              <Logo size="large" className="h-24 w-auto" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">About Lakra</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Annotation Tool for WiMarka - A reference-free evaluation metric for machine translation of Philippine languages, 
             developed as part of academic research to advance natural language processing for Filipino languages.

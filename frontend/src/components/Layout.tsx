@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, User, BarChart3, FileText, Settings, HelpCircle, Home, CheckSquare, Info } from 'lucide-react';
+import Logo from './Logo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -48,8 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onShowGuidelines }) => {
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-3 lg:space-x-6">
               <Link to="/" className="flex items-center space-x-2">
-                <FileText className="h-8 w-8 text-primary-500" />
-                <span className="text-base sm:text-lg font-bold text-gray-900 whitespace-nowrap">Lakra - Annotation Tool</span>
+                <Logo size="medium" />
               </Link>
               
               <div className="hidden md:flex space-x-1 lg:space-x-2">
