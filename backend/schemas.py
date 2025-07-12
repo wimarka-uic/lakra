@@ -361,3 +361,84 @@ class OnboardingTestResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+# Language Proficiency Question schemas
+class LanguageProficiencyQuestionBase(BaseModel):
+    language: str
+    type: str  # 'grammar', 'vocabulary', 'translation', 'cultural', 'comprehension'
+    question: str
+    options: List[str]  # Array of options
+    correct_answer: int  # Index of correct option (0-based)
+    explanation: str
+    difficulty: str  # 'basic', 'intermediate', 'advanced'
+
+class LanguageProficiencyQuestionCreate(LanguageProficiencyQuestionBase):
+    is_active: Optional[bool] = True
+
+class LanguageProficiencyQuestionUpdate(BaseModel):
+    language: Optional[str] = None
+    type: Optional[str] = None
+    question: Optional[str] = None
+    options: Optional[List[str]] = None
+    correct_answer: Optional[int] = None
+    explanation: Optional[str] = None
+    difficulty: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class LanguageProficiencyQuestionResponse(LanguageProficiencyQuestionBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+
+# For the frontend test (without correct answer and explanation)
+class LanguageProficiencyQuestionPublic(BaseModel):
+    id: int
+    language: str
+    type: str
+    question: str
+    options: List[str]
+    difficulty: str
+
+    model_config = {
+        "from_attributes": True
+    }
+
+# User Question Answer schemas
+class UserQuestionAnswerBase(BaseModel):
+    question_id: int
+    selected_answer: int
+
+class UserQuestionAnswerCreate(UserQuestionAnswerBase):
+    test_session_id: Optional[str] = None
+
+class UserQuestionAnswerResponse(UserQuestionAnswerBase):
+    id: int
+    user_id: int
+    is_correct: bool
+    answered_at: datetime
+    test_session_id: Optional[str] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+
+# Test submission schema
+class OnboardingTestSubmission(BaseModel):
+    test_session_id: str
+    answers: List[UserQuestionAnswerCreate]
+    languages: List[str]  # Languages being tested
+
+# Test results schema
+class OnboardingTestResults(BaseModel):
+    total_questions: int
+    correct_answers: int
+    score: float  # Percentage (0-100)
+    passed: bool  # True if score >= 70
+    questions_by_language: dict  # Results breakdown by language
+    session_id: str

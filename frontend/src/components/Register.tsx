@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, AlertCircle, Check, Loader2, UserCheck, Users } from 'lucide-react';
+import { languageProficiencyAPI } from '../services/api';
+import { FileText, AlertCircle, Check, Loader2, UserCheck, Users, Clock, Brain, ArrowRight, Globe, BookOpen } from 'lucide-react';
+import type { LanguageProficiencyQuestion } from '../types';
+
+interface UserAnswer {
+  question_id: number;
+  selected_answer: number;
+  is_correct: boolean;
+}
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -17,13 +25,189 @@ const Register: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1); // 1: User Type, 2: Personal Info, 3: Account Details, 4: Onboarding (for annotators)
+  const [currentStep, setCurrentStep] = useState(1); // 1: User Type, 2: Personal Info, 3: Account Details, 4: Onboarding Test (for annotators)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  
+  // Onboarding test state
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [onboardingAnswers, setOnboardingAnswers] = useState<UserAnswer[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState(45 * 60); // 45 minutes
+  const [testStarted, setTestStarted] = useState(false);
+  const [isSubmittingTest, setIsSubmittingTest] = useState(false);
+  const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [testSessionId, setTestSessionId] = useState('');
 
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // Generate unique test session ID
+  const generateSessionId = () => {
+    return `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  // Fetch questions when languages change and we're on step 4
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      if (currentStep === 4 && formData.languages.length > 0 && questions.length === 0 && !loadingQuestions) {
+        setLoadingQuestions(true);
+        try {
+          console.log('Fetching questions for languages:', formData.languages);
+          const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(formData.languages);
+          console.log('Fetched questions:', fetchedQuestions);
+          setQuestions(fetchedQuestions);
+          // Generate session ID when starting test
+          if (!testSessionId) {
+            const sessionId = generateSessionId();
+            setTestSessionId(sessionId);
+            console.log('Generated session ID:', sessionId);
+          }
+        } catch (error) {
+          console.error('Error fetching questions:', error);
+          setError('Failed to load test questions. Please try again.');
+        } finally {
+          setLoadingQuestions(false);
+        }
+      }
+    };
+
+    fetchQuestions();
+  }, [currentStep, formData.languages, questions.length, testSessionId, loadingQuestions]);
+
+  // Language proficiency questions - now fetched from API
+  const currentQuestion = questions[currentQuestionIndex];
+  const currentAnswer = onboardingAnswers.find(a => a.question_id === currentQuestion?.id);
+
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const updateOnboardingAnswer = (selectedAnswer: number) => {
+    if (!currentQuestion) return;
+    
+    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+    const newAnswer: UserAnswer = {
+      question_id: currentQuestion.id,
+      selected_answer: selectedAnswer,
+      is_correct: isCorrect
+    };
+    
+    setOnboardingAnswers(prev => {
+      const filtered = prev.filter(a => a.question_id !== currentQuestion.id);
+      return [...filtered, newAnswer];
+    });
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
+      handleSubmitOnboardingTest();
+    }
+  };
+
+  const handlePreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
+    }
+  };
+
+  const handleSubmitOnboardingTest = useCallback(async () => {
+    setIsSubmittingTest(true);
+    
+    try {
+      // Submit answers to API first
+      const userAnswers = onboardingAnswers.map(answer => ({
+        question_id: answer.question_id,
+        selected_answer: answer.selected_answer,
+        test_session_id: testSessionId
+      }));
+
+      const result = await languageProficiencyAPI.submitAnswers(userAnswers, testSessionId, formData.languages);
+      
+      if (result.passed) {
+        // Test passed, now complete the registration
+        const registerData = {
+          email: formData.email,
+          username: formData.username,
+          password: formData.password,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          preferred_language: formData.preferred_language,
+          languages: formData.languages,
+          is_evaluator: false, // annotator
+          user_type: formData.user_type
+        };
+        
+        await register(registerData);
+        setRegistrationSuccess(true);
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+      } else {
+        setError(`You scored ${result.score.toFixed(1)}% on the proficiency test. You need at least 70% to pass. Don't worry - you can retake the test after reviewing the materials. Please go back and try again when you're ready.`);
+        setCurrentStep(3); // Go back to account creation step
+        setTestStarted(false); // Reset test state
+        setCurrentQuestionIndex(0); // Reset question index
+        setOnboardingAnswers([]); // Clear previous answers
+        setQuestions([]); // Clear questions to fetch fresh ones
+        setTimeRemaining(45 * 60); // Reset timer
+        setTestSessionId(''); // Reset session ID
+      }
+    } catch (error) {
+      console.error('Error submitting test:', error);
+      setError('Error submitting proficiency test. Please try again.');
+    } finally {
+      setIsSubmittingTest(false);
+    }
+  }, [onboardingAnswers, testSessionId, navigate, register, formData]);
+
+  // Timer effect for onboarding test
+  useEffect(() => {
+    let interval: number;
+    if (testStarted && currentStep === 4 && timeRemaining > 0) {
+      interval = window.setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            handleSubmitOnboardingTest();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) {
+        window.clearInterval(interval);
+      }
+    };
+  }, [testStarted, currentStep, timeRemaining, handleSubmitOnboardingTest]);
+
+  const getQuestionTypeIcon = (type: string) => {
+    switch (type) {
+      case 'grammar': return '📝';
+      case 'vocabulary': return '📚';
+      case 'translation': return '🔄';
+      case 'cultural': return '🏛️';
+      case 'comprehension': return '🧠';
+      default: return '❓';
+    }
+  };
+
+  const getQuestionTypeLabel = (type: string) => {
+    switch (type) {
+      case 'grammar': return 'Grammar';
+      case 'vocabulary': return 'Vocabulary';
+      case 'translation': return 'Translation';
+      case 'cultural': return 'Cultural Knowledge';
+      case 'comprehension': return 'Reading Comprehension';
+      default: return 'General';
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -136,50 +320,57 @@ const Register: React.FC = () => {
       return;
     }
 
-    if (!validateForm()) {
-      setError('Please correct the errors before submitting');
+    if (currentStep === 3) {
+      if (!validateForm()) {
+        setError('Please correct the errors before submitting');
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        // Check if user is annotator and needs onboarding BEFORE registering
+        const needsOnboardingTest = formData.user_type === 'annotator';
+        
+        if (needsOnboardingTest) {
+          // For annotators, move to onboarding test step
+          setCurrentStep(4);
+          setTestStarted(true);
+        } else {
+          // For evaluators, complete registration normally
+          const registerData = {
+            email: formData.email,
+            username: formData.username,
+            password: formData.password,
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            preferred_language: formData.preferred_language,
+            languages: formData.languages,
+            is_evaluator: formData.user_type === 'evaluator',
+            user_type: formData.user_type
+          };
+          
+          await register(registerData);
+          setRegistrationSuccess(true);
+          setTimeout(() => navigate('/'), 1500);
+        }
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          setError(error.message || 'Registration failed. Please try again.');
+        } else if (typeof error === 'object' && error !== null && 'response' in error) {
+          // Handle API error responses
+          const apiError = error as { response?: { data?: { detail?: string } } };
+          setError(apiError.response?.data?.detail || 'Registration failed. Please try again.');
+        } else {
+          setError('Registration failed. Please try again.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      // Remove the confirmPassword field as it's not needed for the API
-      const registerData = {
-        email: formData.email,
-        username: formData.username,
-        password: formData.password,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        preferred_language: formData.preferred_language,
-        languages: formData.languages,
-        is_evaluator: formData.user_type === 'evaluator'
-      };
-      await register(registerData);
-      
-      // Check if user is annotator and needs onboarding
-      if (formData.user_type === 'annotator') {
-        setNeedsOnboarding(true);
-        setRegistrationSuccess(true);
-        // Don't navigate immediately - show onboarding prompt
-      } else {
-        setRegistrationSuccess(true);
-        // Redirect after a short delay to show success message
-        setTimeout(() => navigate('/'), 1500);
-      }
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        setError(error.message || 'Registration failed. Please try again.');
-      } else if (typeof error === 'object' && error !== null && 'response' in error) {
-        // Handle API error responses
-        const apiError = error as { response?: { data?: { detail?: string } } };
-        setError(apiError.response?.data?.detail || 'Registration failed. Please try again.');
-      } else {
-        setError('Registration failed. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    // Step 4 is handled by onboarding test navigation
   };
 
   // Function to get error message for a field
@@ -228,9 +419,14 @@ const Register: React.FC = () => {
               <div 
                 className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary-500 transition-all"
                 style={{ 
-                  width: currentStep === 1 ? '33.33%' : 
-                         currentStep === 2 ? '66.67%' : 
-                         '100%' 
+                  width: formData.user_type === 'annotator' ? 
+                    (currentStep === 1 ? '25%' : 
+                     currentStep === 2 ? '50%' : 
+                     currentStep === 3 ? '75%' : 
+                     '100%') :
+                    (currentStep === 1 ? '33.33%' : 
+                     currentStep === 2 ? '66.67%' : 
+                     '100%')
                 }}
               ></div>
             </div>
@@ -239,7 +435,7 @@ const Register: React.FC = () => {
               <span className={currentStep >= 2 ? "font-semibold text-primary-600" : ""}>Personal Info</span>
               <span className={currentStep >= 3 ? "font-semibold text-primary-600" : ""}>Account Details</span>
               {formData.user_type === 'annotator' && (
-                <span className={currentStep >= 4 ? "font-semibold text-primary-600" : ""}>Qualification</span>
+                <span className={currentStep >= 4 ? "font-semibold text-primary-600" : ""}>Proficiency Test</span>
               )}
             </div>
           </div>
@@ -257,57 +453,10 @@ const Register: React.FC = () => {
                 <span className="font-semibold">{formData.user_type}</span>.
               </p>
               
-              {needsOnboarding ? (                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 w-full">
-                    <div className="flex items-start">
-                      <div className="rounded-full bg-blue-100 p-2 mr-3">
-                        <FileText className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div className="text-left">
-                        <h4 className="font-semibold text-blue-900 mb-1">
-                          🎯 One More Step - Qualification Test
-                        </h4>
-                        <p className="text-sm text-blue-800 mb-3">
-                          To ensure high-quality annotations, we'd like you to complete a brief 
-                          qualification test. It's friendly and designed to help you succeed!
-                        </p>
-                        <div className="bg-blue-25 rounded-md p-3 mb-3">
-                          <div className="flex items-center text-blue-700 text-xs mb-2">
-                            <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                            <span>Takes ~15 minutes</span>
-                            <span className="w-2 h-2 bg-blue-400 rounded-full mx-2"></span>
-                            <span>Friendly & supportive</span>
-                            <span className="w-2 h-2 bg-yellow-400 rounded-full mx-2"></span>
-                            <span>Learning opportunity</span>
-                          </div>
-                          <p className="text-xs text-blue-600 italic">
-                            💡 This helps us understand your current skills so we can provide better support!
-                          </p>
-                        </div>
-                        <div className="flex space-x-3">
-                          <button
-                            onClick={() => navigate('/onboarding-test')}
-                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-                          >
-                            Start Qualification Test
-                          </button>
-                          <button
-                            onClick={() => navigate('/')}
-                            className="px-4 py-2 border border-blue-300 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-50 transition-colors"
-                          >
-                            Do It Later
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-              ) : (
-                <>
-                  <p className="text-gray-500 text-sm">Redirecting to login page...</p>
-                  <div className="mt-4 w-24 h-1 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 animate-pulse"></div>
-                  </div>
-                </>
-              )}
+              <p className="text-gray-500 text-sm">Redirecting to login page...</p>
+              <div className="mt-4 w-24 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 animate-pulse"></div>
+              </div>
             </div>
           </div>
         ) : (
@@ -355,8 +504,8 @@ const Register: React.FC = () => {
                           }`}>
                             Review and annotate machine translations for quality and accuracy.
                             <br />
-                            <span className="text-xs italic mt-1 block">
-                              ✨ Includes a friendly qualification test to ensure annotation quality and help you succeed!
+                            <span className="text-xs italic mt-1 block font-medium">
+                              ✨ Includes a friendly language proficiency test to ensure high-quality annotations!
                             </span>
                           </p>
                         </div>
@@ -618,8 +767,282 @@ const Register: React.FC = () => {
               </div>
             )}
 
+            {currentStep === 4 && formData.user_type === 'annotator' && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Info Message */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <FileText className="h-5 w-5 text-blue-400 mt-0.5" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-blue-900 mb-1">Almost there! 🎯</p>
+                      <p className="text-sm text-blue-800">
+                        Complete this language proficiency test to finish your registration. 
+                        Your account will be created automatically once you pass with 70% or higher.
+                        This test helps ensure quality annotations and sets you up for success!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {loadingQuestions ? (
+                  // Loading state while fetching questions
+                  <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="animate-spin h-8 w-8 text-primary-600 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Preparing your test...</h3>
+                      <p className="text-sm text-gray-600">
+                        Loading questions for {formData.languages.map(lang => 
+                          lang.charAt(0).toUpperCase() + lang.slice(1)
+                        ).join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                ) : questions.length === 0 ? (
+                  // No questions available
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+                    <div className="flex flex-col items-center">
+                      <AlertCircle className="h-8 w-8 text-yellow-600 mb-4" />
+                      <h3 className="text-lg font-medium text-yellow-900 mb-2">No Test Questions Available</h3>
+                      <p className="text-sm text-yellow-800 mb-4">
+                        There are currently no test questions available for your selected languages: {' '}
+                        {formData.languages.map(lang => 
+                          lang.charAt(0).toUpperCase() + lang.slice(1)
+                        ).join(', ')}
+                      </p>
+                      <p className="text-xs text-yellow-700">
+                        Your registration will be completed without the proficiency test. You can take the test later from your dashboard.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          // Complete registration without test
+                          const registerData = {
+                            email: formData.email,
+                            username: formData.username,
+                            password: formData.password,
+                            first_name: formData.first_name,
+                            last_name: formData.last_name,
+                            preferred_language: formData.preferred_language,
+                            languages: formData.languages,
+                            is_evaluator: false,
+                            user_type: formData.user_type
+                          };
+                          
+                          try {
+                            await register(registerData);
+                            setRegistrationSuccess(true);
+                            setTimeout(() => navigate('/'), 2000);
+                          } catch {
+                            setError('Registration failed. Please try again.');
+                          }
+                        }}
+                        className="mt-4 px-6 py-2 bg-yellow-600 text-white rounded-md text-sm font-medium hover:bg-yellow-700"
+                      >
+                        Complete Registration
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // Test interface
+                  <>
+                    {/* Test Header */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <div className="rounded-full bg-blue-100 p-3 mr-4">
+                        <Brain className="h-8 w-8 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-blue-900">Language Proficiency Test</h3>
+                        <p className="text-sm text-blue-700">
+                          Testing your knowledge in {formData.languages.map(lang => 
+                            lang.charAt(0).toUpperCase() + lang.slice(1)
+                          ).join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center text-lg font-bold text-blue-900 mb-1">
+                        <Clock className="h-5 w-5 mr-2" />
+                        {formatTime(timeRemaining)}
+                      </div>
+                      <p className="text-xs text-blue-600">Time remaining</p>
+                    </div>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <div className="bg-blue-200 rounded-full h-2 mb-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    Question {currentQuestionIndex + 1} of {questions.length}
+                  </p>
+                </div>
+
+                {/* Question Card */}
+                {currentQuestion && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <div className="flex items-start mb-4">
+                      <div className="flex-shrink-0 mr-4">
+                        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                          <span className="text-lg">{getQuestionTypeIcon(currentQuestion.type)}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                            {currentQuestion.language}
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {getQuestionTypeLabel(currentQuestion.type)}
+                          </span>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            currentQuestion.difficulty === 'basic' ? 'bg-green-100 text-green-800' :
+                            currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {currentQuestion.difficulty}
+                          </span>
+                        </div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-4">
+                          {currentQuestion.question}
+                        </h4>
+                      </div>
+                    </div>
+
+                    {/* Answer Options */}
+                    <div className="space-y-3">
+                      {currentQuestion.options.map((option, index) => (
+                        <div
+                          key={index}
+                          onClick={() => updateOnboardingAnswer(index)}
+                          className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                            currentAnswer?.selected_answer === index
+                              ? 'border-primary-500 bg-primary-50 shadow-sm'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
+                              currentAnswer?.selected_answer === index
+                                ? 'border-primary-500 bg-primary-500'
+                                : 'border-gray-300'
+                            }`}>
+                              {currentAnswer?.selected_answer === index && (
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                              )}
+                            </div>
+                            <span className={`text-sm ${
+                              currentAnswer?.selected_answer === index ? 'text-primary-900 font-medium' : 'text-gray-700'
+                            }`}>
+                              {option}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Show explanation if answer is selected */}
+                    {currentAnswer && (
+                      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 mr-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                              currentAnswer.is_correct ? 'bg-green-100' : 'bg-orange-100'
+                            }`}>
+                              {currentAnswer.is_correct ? (
+                                <Check className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4 text-orange-600" />
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <p className={`text-sm font-medium mb-1 ${
+                              currentAnswer.is_correct ? 'text-green-900' : 'text-orange-900'
+                            }`}>
+                              {currentAnswer.is_correct ? '✅ Correct!' : '❌ Incorrect'}
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              {currentQuestion.explanation}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="flex justify-between">
+                  <button
+                    type="button"
+                    onClick={handlePreviousQuestion}
+                    disabled={currentQuestionIndex === 0}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Globe className="h-4 w-4 mr-1" />
+                    {onboardingAnswers.filter(a => a.is_correct).length} / {onboardingAnswers.length} correct
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleNextQuestion}
+                    disabled={!currentAnswer}
+                    className="px-6 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  >
+                    {currentQuestionIndex === questions.length - 1 ? (
+                      isSubmittingTest ? (
+                        <>
+                          <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          Submit Test
+                          <Check className="ml-2 h-4 w-4" />
+                        </>
+                      )
+                    ) : (
+                      <>
+                        Next
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Test Instructions */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <BookOpen className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 mb-1">Test Instructions</p>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        <li>• Answer all questions to the best of your ability</li>
+                        <li>• You need 70% or higher to pass</li>
+                        <li>• Take your time, but keep an eye on the timer</li>
+                        <li>• You can go back to previous questions to review</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-4">
-              {currentStep > 1 && (
+              {currentStep > 1 && currentStep !== 4 && (
                 <button
                   type="button"
                   onClick={() => setCurrentStep(currentStep - 1)}
@@ -628,25 +1051,27 @@ const Register: React.FC = () => {
                   Back
                 </button>
               )}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 flex justify-center items-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" /> 
-                    <span className="animate-pulse">
-                      {currentStep === 1 ? 'Processing...' : currentStep === 2 ? 'Saving personal info...' : 'Creating account...'}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    {currentStep === 1 ? 'Continue to Personal Info' : currentStep === 2 ? 'Continue to Account Setup' : 'Create Account'}
-                    {currentStep === 3 && <Check className="ml-2 h-4 w-4" />}
-                  </>
-                )}
-              </button>
+              {currentStep !== 4 && (
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 flex justify-center items-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" /> 
+                      <span className="animate-pulse">
+                        {currentStep === 1 ? 'Processing...' : currentStep === 2 ? 'Saving personal info...' : 'Creating account...'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {currentStep === 1 ? 'Continue to Personal Info' : currentStep === 2 ? 'Continue to Account Setup' : 'Create Account'}
+                      {currentStep === 3 && <Check className="ml-2 h-4 w-4" />}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </form>
         )}

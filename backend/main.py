@@ -12,7 +12,7 @@ from pathlib import Path
 
 from evaluator import DistilBERTMTEvaluator, evaluate_mt_quality
 
-from database import get_db, create_tables, User, Sentence, Annotation, TextHighlight, UserLanguage, Evaluation, MTQualityAssessment, OnboardingTest
+from database import get_db, create_tables, User, Sentence, Annotation, TextHighlight, UserLanguage, Evaluation, MTQualityAssessment, OnboardingTest, LanguageProficiencyQuestion, UserQuestionAnswer
 from auth import (
     authenticate_user, 
     create_access_token, 
@@ -52,7 +52,11 @@ from schemas import (
     OnboardingTestCreate,
     OnboardingTestSubmission,
     OnboardingTestResponse,
-    OnboardingTestQuestion
+    OnboardingTestQuestion,
+    LanguageProficiencyQuestionCreate,
+    LanguageProficiencyQuestionUpdate,
+    LanguageProficiencyQuestionResponse,
+    OnboardingTestResults
 )
 
 app = FastAPI(title="Lakra - Annotation Tool for WiMarka", version="1.0.0")
@@ -1750,6 +1754,156 @@ def get_onboarding_test(
         raise HTTPException(status_code=404, detail="Test not found")
     
     return OnboardingTestResponse.from_orm(test)
+
+# Language Proficiency Questions endpoints
+@app.get("/api/language-proficiency-questions", response_model=List[LanguageProficiencyQuestionResponse])
+def get_language_proficiency_questions(
+    languages: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get language proficiency questions, optionally filtered by languages"""
+    query = db.query(LanguageProficiencyQuestion)
+    
+    if languages:
+        language_list = [lang.strip() for lang in languages.split(',')]
+        query = query.filter(LanguageProficiencyQuestion.language.in_(language_list))
+    
+    questions = query.order_by(LanguageProficiencyQuestion.language, LanguageProficiencyQuestion.order).all()
+    return [LanguageProficiencyQuestionResponse.from_orm(q) for q in questions]
+
+@app.post("/api/language-proficiency-questions/submit")
+def submit_language_proficiency_answers(
+    submission: OnboardingTestSubmission,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Submit language proficiency test answers"""
+    correct_count = 0
+    total_questions = len(submission.answers)
+    
+    # Store each answer and calculate score
+    for answer in submission.answers:
+        # Get the question to check correct answer
+        question = db.query(LanguageProficiencyQuestion).filter(
+            LanguageProficiencyQuestion.id == answer.question_id
+        ).first()
+        
+        if question:
+            is_correct = answer.selected_answer == question.correct_answer
+            if is_correct:
+                correct_count += 1
+            
+            # Store the user's answer
+            user_answer = UserQuestionAnswer(
+                user_id=current_user.id,
+                question_id=answer.question_id,
+                selected_answer=answer.selected_answer,
+                is_correct=is_correct,
+                test_session_id=submission.test_session_id
+            )
+            db.add(user_answer)
+    
+    db.commit()
+    
+    # Calculate score
+    score = (correct_count / total_questions * 100) if total_questions > 0 else 0
+    passed = score >= 70.0
+    
+    # Create results breakdown by language
+    questions_by_language = {}
+    for language in submission.languages:
+        lang_questions = db.query(LanguageProficiencyQuestion).filter(
+            LanguageProficiencyQuestion.language == language
+        ).all()
+        lang_question_ids = [q.id for q in lang_questions]
+        
+        lang_answers = [a for a in submission.answers if a.question_id in lang_question_ids]
+        lang_correct = sum(1 for a in lang_answers 
+                          if db.query(LanguageProficiencyQuestion).filter(
+                              LanguageProficiencyQuestion.id == a.question_id,
+                              LanguageProficiencyQuestion.correct_answer == a.selected_answer
+                          ).first())
+        
+        questions_by_language[language] = {
+            "total": len(lang_answers),
+            "correct": lang_correct,
+            "score": (lang_correct / len(lang_answers) * 100) if len(lang_answers) > 0 else 0
+        }
+    
+    return OnboardingTestResults(
+        total_questions=total_questions,
+        correct_answers=correct_count,
+        score=score,
+        passed=passed,
+        questions_by_language=questions_by_language,
+        session_id=submission.test_session_id
+    )
+
+# Admin endpoints for language proficiency questions
+@app.get("/api/admin/language-proficiency-questions", response_model=List[LanguageProficiencyQuestionResponse])
+def admin_get_all_questions(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Admin: Get all language proficiency questions"""
+    questions = db.query(LanguageProficiencyQuestion).order_by(
+        LanguageProficiencyQuestion.language, 
+        LanguageProficiencyQuestion.order
+    ).all()
+    return [LanguageProficiencyQuestionResponse.from_orm(q) for q in questions]
+
+@app.post("/api/admin/language-proficiency-questions", response_model=LanguageProficiencyQuestionResponse)
+def admin_create_question(
+    question: LanguageProficiencyQuestionCreate,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Admin: Create a new language proficiency question"""
+    db_question = LanguageProficiencyQuestion(**question.dict())
+    db.add(db_question)
+    db.commit()
+    db.refresh(db_question)
+    return LanguageProficiencyQuestionResponse.from_orm(db_question)
+
+@app.put("/api/admin/language-proficiency-questions/{question_id}", response_model=LanguageProficiencyQuestionResponse)
+def admin_update_question(
+    question_id: int,
+    question: LanguageProficiencyQuestionUpdate,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Admin: Update a language proficiency question"""
+    db_question = db.query(LanguageProficiencyQuestion).filter(
+        LanguageProficiencyQuestion.id == question_id
+    ).first()
+    
+    if not db_question:
+        raise HTTPException(status_code=404, detail="Question not found")
+    
+    for field, value in question.dict(exclude_unset=True).items():
+        setattr(db_question, field, value)
+    
+    db.commit()
+    db.refresh(db_question)
+    return LanguageProficiencyQuestionResponse.from_orm(db_question)
+
+@app.delete("/api/admin/language-proficiency-questions/{question_id}")
+def admin_delete_question(
+    question_id: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Admin: Delete a language proficiency question"""
+    db_question = db.query(LanguageProficiencyQuestion).filter(
+        LanguageProficiencyQuestion.id == question_id
+    ).first()
+    
+    if not db_question:
+        raise HTTPException(status_code=404, detail="Question not found")
+    
+    db.delete(db_question)
+    db.commit()
+    return {"message": "Question deleted successfully"}
 
 if __name__ == "__main__":
     import uvicorn

@@ -83,6 +83,7 @@ export interface RegisterData {
   preferred_language: string;
   languages: string[];
   is_evaluator?: boolean;
+  user_type?: string;
 }
 
 export interface AnnotationCreate {
@@ -270,10 +271,12 @@ export interface OnboardingTestCreate {
 }
 
 export interface OnboardingTestResult {
-  score: number;
-  passed: boolean;
-  status: string;
-  message: string;
+  total_questions: number;
+  correct_answers: number;
+  score: number; // Percentage (0-100)
+  passed: boolean; // True if score >= 70
+  questions_by_language: Record<string, any>; // Results breakdown by language
+  session_id: string;
 }
 
 // Evaluation interfaces
@@ -361,4 +364,30 @@ export interface CorrectionSuggestion {
   suggested_text: string;
   explanation: string;
   confidence?: number;
+}
+
+// Language Proficiency Question types
+export interface LanguageProficiencyQuestion {
+  id: number;
+  language: string;
+  type: 'grammar' | 'vocabulary' | 'translation' | 'cultural' | 'comprehension';
+  question: string;
+  options: string[];
+  correct_answer: number; // index of correct option
+  explanation: string;
+  difficulty: 'basic' | 'intermediate' | 'advanced';
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: number;
+}
+
+export interface UserQuestionAnswer {
+  id?: number;
+  user_id?: number;
+  question_id: number;
+  selected_answer: number;
+  is_correct?: boolean;
+  answered_at?: string;
+  test_session_id?: string;
 }

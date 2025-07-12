@@ -213,6 +213,41 @@ class OnboardingTest(Base):
     # Relationships
     user = relationship("User", back_populates="onboarding_tests")
 
+class LanguageProficiencyQuestion(Base):
+    __tablename__ = "language_proficiency_questions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    language = Column(String, nullable=False, index=True)
+    type = Column(String, nullable=False, index=True)  # 'grammar', 'vocabulary', 'translation', 'cultural', 'comprehension'
+    question = Column(Text, nullable=False)
+    options = Column(JSON, nullable=False)  # Array of options as JSON
+    correct_answer = Column(Integer, nullable=False)  # Index of correct option (0-based)
+    explanation = Column(Text, nullable=False)
+    difficulty = Column(String, nullable=False, index=True)  # 'basic', 'intermediate', 'advanced'
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
+    # Relationships
+    creator = relationship("User", foreign_keys=[created_by])
+    user_answers = relationship("UserQuestionAnswer", back_populates="question")
+
+class UserQuestionAnswer(Base):
+    __tablename__ = "user_question_answers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(Integer, ForeignKey("language_proficiency_questions.id"), nullable=False, index=True)
+    selected_answer = Column(Integer, nullable=False)  # Index of selected option
+    is_correct = Column(Boolean, nullable=False)
+    answered_at = Column(DateTime, default=datetime.utcnow)
+    test_session_id = Column(String, nullable=True, index=True)  # To group answers from the same test session
+    
+    # Relationships
+    user = relationship("User")
+    question = relationship("LanguageProficiencyQuestion", back_populates="user_answers")
+
 def create_tables():
     Base.metadata.create_all(bind=engine)
 

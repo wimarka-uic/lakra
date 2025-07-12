@@ -19,6 +19,8 @@ import type {
   OnboardingTest,
   OnboardingTestAnswer,
   OnboardingTestResult,
+  LanguageProficiencyQuestion,
+  UserQuestionAnswer,
 } from '../types';
 
 const API_BASE_URL = 'http://localhost:8000/api';
@@ -321,6 +323,48 @@ export const onboardingAPI = {
   getTest: async (testId: number): Promise<OnboardingTest> => {
     const response = await api.get(`/onboarding-tests/${testId}`);
     return response.data;
+  },
+};
+
+// Language Proficiency Questions API
+export const languageProficiencyAPI = {
+  getQuestionsByLanguages: async (languages: string[]): Promise<LanguageProficiencyQuestion[]> => {
+    const languagesParam = languages.join(',');
+    const response = await api.get(`/language-proficiency-questions?languages=${encodeURIComponent(languagesParam)}`);
+    return response.data;
+  },
+
+  submitAnswers: async (answers: UserQuestionAnswer[], sessionId: string, languages: string[]): Promise<OnboardingTestResult> => {
+    const response = await api.post('/language-proficiency-questions/submit', {
+      test_session_id: sessionId,
+      answers: answers.map(answer => ({
+        question_id: answer.question_id,
+        selected_answer: answer.selected_answer,
+        test_session_id: sessionId
+      })),
+      languages: languages
+    });
+    return response.data;
+  },
+
+  // Admin endpoints for managing questions
+  getAllQuestions: async (): Promise<LanguageProficiencyQuestion[]> => {
+    const response = await api.get('/admin/language-proficiency-questions');
+    return response.data;
+  },
+
+  createQuestion: async (question: Omit<LanguageProficiencyQuestion, 'id' | 'created_at' | 'updated_at' | 'created_by'>): Promise<LanguageProficiencyQuestion> => {
+    const response = await api.post('/admin/language-proficiency-questions', question);
+    return response.data;
+  },
+
+  updateQuestion: async (id: number, question: Partial<LanguageProficiencyQuestion>): Promise<LanguageProficiencyQuestion> => {
+    const response = await api.put(`/admin/language-proficiency-questions/${id}`, question);
+    return response.data;
+  },
+
+  deleteQuestion: async (id: number): Promise<void> => {
+    await api.delete(`/admin/language-proficiency-questions/${id}`);
   },
 };
 
