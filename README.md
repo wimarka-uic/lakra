@@ -1,7 +1,7 @@
 # Lakra - Annotation Tool for WiMarka
 
 <div align="center">
-  <img src="frontend/public/larka.svg" alt="Lakra Logo" width="120" height="120">
+  <img src="https://raw.githubusercontent.com/wimarka-uic/lakra/d0abd137499cd39740394f8b5179790e50b3fa56/frontend/public/lakra.svg" alt="Lakra Logo" width="120" height="120">
 </div>
 
 A comprehensive annotation and evaluation system for Machine Translation (MT) quality assessment, designed specifically for the WiMarka project. Built with FastAPI, SQLite, React, TypeScript, and TailwindCSS.
