@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { languageProficiencyAPI } from '../services/api';
-import { FileText, AlertCircle, Check, Loader2, UserCheck, Users, Clock, Brain, ArrowRight, Globe, BookOpen } from 'lucide-react';
+import { FileText, AlertCircle, Check, Loader2, UserCheck, Users, Clock, Brain, ArrowRight, Globe } from 'lucide-react';
 import type { LanguageProficiencyQuestion } from '../types';
+import Logo from './Logo';
 
 interface UserAnswer {
   question_id: number;
@@ -38,6 +39,9 @@ const Register: React.FC = () => {
   const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [testSessionId, setTestSessionId] = useState('');
+  
+  // Use ref to track if questions have been loaded for current languages
+  const questionsLoadedRef = useRef<string>('');
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -50,13 +54,22 @@ const Register: React.FC = () => {
   // Fetch questions when languages change and we're on step 4
   useEffect(() => {
     const fetchQuestions = async () => {
-      if (currentStep === 4 && formData.languages.length > 0 && questions.length === 0 && !loadingQuestions) {
+      const languageKey = formData.languages.sort().join(',');
+      
+      if (currentStep === 4 && 
+          formData.languages.length > 0 && 
+          !loadingQuestions && 
+          questionsLoadedRef.current !== languageKey) {
+        
         setLoadingQuestions(true);
+        questionsLoadedRef.current = languageKey;
+        
         try {
           console.log('Fetching questions for languages:', formData.languages);
           const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(formData.languages);
           console.log('Fetched questions:', fetchedQuestions);
           setQuestions(fetchedQuestions);
+          
           // Generate session ID when starting test
           if (!testSessionId) {
             const sessionId = generateSessionId();
@@ -66,6 +79,7 @@ const Register: React.FC = () => {
         } catch (error) {
           console.error('Error fetching questions:', error);
           setError('Failed to load test questions. Please try again.');
+          questionsLoadedRef.current = ''; // Reset on error to allow retry
         } finally {
           setLoadingQuestions(false);
         }
@@ -73,7 +87,19 @@ const Register: React.FC = () => {
     };
 
     fetchQuestions();
-  }, [currentStep, formData.languages, questions.length, testSessionId, loadingQuestions]);
+  }, [currentStep, formData.languages, testSessionId]);
+
+  // Reset questions when step changes or languages change
+  useEffect(() => {
+    if (currentStep !== 4) {
+      // Only reset if we're not going back to step 4 (i.e., if moving to step 1, 2, or 3)
+      if (currentStep < 4) {
+        setQuestions([]);
+        questionsLoadedRef.current = '';
+        setTestSessionId('');
+      }
+    }
+  }, [currentStep]);
 
   // Language proficiency questions - now fetched from API
   const currentQuestion = questions[currentQuestionIndex];
@@ -153,13 +179,19 @@ const Register: React.FC = () => {
         setTestStarted(false); // Reset test state
         setCurrentQuestionIndex(0); // Reset question index
         setOnboardingAnswers([]); // Clear previous answers
-        setQuestions([]); // Clear questions to fetch fresh ones
         setTimeRemaining(45 * 60); // Reset timer
-        setTestSessionId(''); // Reset session ID
+        // Reset questions loading state so they can be fetched again
+        questionsLoadedRef.current = '';
+        setQuestions([]);
+        setTestSessionId('');
       }
     } catch (error) {
       console.error('Error submitting test:', error);
       setError('Error submitting proficiency test. Please try again.');
+      // Reset state on error so user can retry
+      questionsLoadedRef.current = '';
+      setQuestions([]);
+      setTestSessionId('');
     } finally {
       setIsSubmittingTest(false);
     }
@@ -336,6 +368,10 @@ const Register: React.FC = () => {
           // For annotators, move to onboarding test step
           setCurrentStep(4);
           setTestStarted(true);
+          // Reset any previous test state
+          setCurrentQuestionIndex(0);
+          setOnboardingAnswers([]);
+          setTimeRemaining(45 * 60);
         } else {
           // For evaluators, complete registration normally
           const registerData = {
@@ -396,7 +432,7 @@ const Register: React.FC = () => {
       <div className="max-w-md w-full space-y-6 sm:space-y-8">
         <div>
           <div className="flex justify-center">
-            <FileText className="h-12 w-12 text-primary-500" />
+            <Logo className="h-24 w-24 text-primary-500" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
@@ -503,10 +539,6 @@ const Register: React.FC = () => {
                             formData.user_type === 'annotator' ? 'text-primary-700' : 'text-gray-500'
                           }`}>
                             Review and annotate machine translations for quality and accuracy.
-                            <br />
-                            <span className="text-xs italic mt-1 block font-medium">
-                              ✨ Includes a friendly language proficiency test to ensure high-quality annotations!
-                            </span>
                           </p>
                         </div>
                         {formData.user_type === 'annotator' && (
@@ -930,52 +962,52 @@ const Register: React.FC = () => {
                           <div className="flex items-center">
                             <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
                               currentAnswer?.selected_answer === index
-                                ? 'border-primary-500 bg-primary-500'
-                                : 'border-gray-300'
-                            }`}>
-                              {currentAnswer?.selected_answer === index && (
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                              )}
-                            </div>
-                            <span className={`text-sm ${
-                              currentAnswer?.selected_answer === index ? 'text-primary-900 font-medium' : 'text-gray-700'
-                            }`}>
-                              {option}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                                                                  ? 'border-primary-500 bg-primary-500'
+                                  : 'border-gray-300'
+                             }`}>
+                               {currentAnswer?.selected_answer === index && (
+                                 <div className="w-2 h-2 bg-white rounded-full"></div>
+                               )}
+                             </div>
+                             <span className={`text-sm ${
+                               currentAnswer?.selected_answer === index ? 'text-primary-900 font-medium' : 'text-gray-700'
+                             }`}>
+                               {option}
+                             </span>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
 
-                    {/* Show explanation if answer is selected */}
-                    {currentAnswer && (
-                      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0 mr-3">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                              currentAnswer.is_correct ? 'bg-green-100' : 'bg-orange-100'
-                            }`}>
-                              {currentAnswer.is_correct ? (
-                                <Check className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <AlertCircle className="h-4 w-4 text-orange-600" />
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <p className={`text-sm font-medium mb-1 ${
-                              currentAnswer.is_correct ? 'text-green-900' : 'text-orange-900'
-                            }`}>
-                              {currentAnswer.is_correct ? '✅ Correct!' : '❌ Incorrect'}
-                            </p>
-                            <p className="text-sm text-gray-700">
-                              {currentQuestion.explanation}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                     {/* Show explanation if answer is selected */}
+                     {currentAnswer && (
+                       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                         <div className="flex items-start">
+                           <div className="flex-shrink-0 mr-3">
+                             <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                               currentAnswer.is_correct ? 'bg-green-100' : 'bg-orange-100'
+                             }`}>
+                               {currentAnswer.is_correct ? (
+                                 <Check className="h-4 w-4 text-green-600" />
+                               ) : (
+                                 <AlertCircle className="h-4 w-4 text-orange-600" />
+                               )}
+                             </div>
+                           </div>
+                           <div>
+                             <p className={`text-sm font-medium mb-1 ${
+                               currentAnswer.is_correct ? 'text-green-900' : 'text-orange-900'
+                             }`}>
+                               {currentAnswer.is_correct ? '✅ Correct!' : '❌ Incorrect'}
+                             </p>
+                             <p className="text-sm text-gray-700">
+                               {currentQuestion.explanation}
+                             </p>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                   </div>
                 )}
 
                 {/* Navigation Buttons */}
@@ -1024,7 +1056,7 @@ const Register: React.FC = () => {
                 {/* Test Instructions */}
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start">
-                    <BookOpen className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+                    <Logo className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
                     <div>
                       <p className="text-sm font-medium text-gray-900 mb-1">Test Instructions</p>
                       <ul className="text-xs text-gray-600 space-y-1">

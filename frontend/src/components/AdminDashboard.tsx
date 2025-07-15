@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI, sentencesAPI } from '../services/api';
-import type { AdminStats, User, Sentence, Annotation, TextHighlight } from '../types';
-import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award } from 'lucide-react';
+import { adminAPI, sentencesAPI, languageProficiencyAPI } from '../services/api';
+import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion } from '../types';
+import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -26,10 +26,12 @@ const AdminDashboard: React.FC = () => {
   const [sentenceAnnotations, setSentenceAnnotations] = useState<Map<number, Annotation[]>>(new Map());
   const [sentenceCounts, setSentenceCounts] = useState<{[key: string]: number}>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests'>('home');
   const [showAddSentence, setShowAddSentence] = useState(false);
   const [languageFilter, setLanguageFilter] = useState<string>('all');
   const [expandedSentences, setExpandedSentences] = useState<Set<number>>(new Set());
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   
   // Analytics data
   const [analyticsData, setAnalyticsData] = useState({
@@ -62,146 +64,65 @@ const AdminDashboard: React.FC = () => {
     domain: '',
   });
 
+  // Onboarding Test Questions state
+  const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
+  const [showAddQuestion, setShowAddQuestion] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<LanguageProficiencyQuestion | null>(null);
+  const [questionLanguageFilter, setQuestionLanguageFilter] = useState<string>('all');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<string>('all');
+  const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState<string>('all');
+  const [questionSearchQuery, setQuestionSearchQuery] = useState('');
+  const [questionCurrentPage, setQuestionCurrentPage] = useState(1);
+  const [questionItemsPerPage, setQuestionItemsPerPage] = useState(10);
+  const [questionSortBy, setQuestionSortBy] = useState<'newest' | 'oldest' | 'difficulty' | 'language'>('newest');
+  const [newQuestion, setNewQuestion] = useState<Omit<LanguageProficiencyQuestion, 'id' | 'created_at' | 'updated_at' | 'created_by'>>({
+    language: 'Tagalog',
+    type: 'grammar',
+    question: '',
+    options: ['', '', '', ''],
+    correct_answer: 0,
+    explanation: '',
+    difficulty: 'basic',
+    is_active: true,
+  });
+
+  // CSV Import states
+  const [showCSVImport, setShowCSVImport] = useState(false);
+  const [csvImportFile, setCsvImportFile] = useState<File | null>(null);
+  const [csvImportResult, setCsvImportResult] = useState<{
+    message: string;
+    imported_count: number;
+    skipped_count: number;
+    total_rows: number;
+    errors: string[];
+  } | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
   useEffect(() => {
     loadDashboardData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const generateAnalyticsData = (users: User[], stats: AdminStats, sentenceCounts: {[key: string]: number}) => {
-    // Generate user growth data (improved realistic progression)
-    const userGrowth = [];
-    const baseUsers = Math.max(stats.total_users, 10);
-    const baseAnnotations = Math.max(stats.total_annotations, 20);
-    
-    for (let i = 5; i >= 0; i--) {
-      const month = new Date();
-      month.setMonth(month.getMonth() - i);
-      const progress = (6 - i) / 6; // 0 to 1 progression
-      
-      userGrowth.push({
-        month: month.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        users: Math.floor(baseUsers * (0.4 + progress * 0.6)), // Growth from 40% to 100%
-        annotations: Math.floor(baseAnnotations * (0.3 + progress * 0.7)) // Growth from 30% to 100%
-      });
-    }
-
-    // Error type distribution with sample data
-    const totalErrors = Math.max(stats.total_annotations * 0.8, 50); // Assume 80% of annotations have errors
-    
-    // Sample specific error counts based on realistic distribution
-    const sampleErrorCounts = {
-      minorSyntactic: Math.max(Math.floor(totalErrors * 0.35), 15),
-      minorSemantic: Math.max(Math.floor(totalErrors * 0.25), 10), 
-      majorSyntactic: Math.max(Math.floor(totalErrors * 0.25), 8),
-      majorSemantic: Math.max(Math.floor(totalErrors * 0.15), 5)
-    };
-    
-    const errorTypeDistribution = [
-      { 
-        type: 'Minor Syntactic', 
-        count: sampleErrorCounts.minorSyntactic, 
-        color: '#f97316',
-        description: 'Grammar, punctuation, word order'
-      },
-      { 
-        type: 'Minor Semantic', 
-        count: sampleErrorCounts.minorSemantic, 
-        color: '#3b82f6',
-        description: 'Word choice, cultural nuances'
-      },
-      { 
-        type: 'Major Syntactic', 
-        count: sampleErrorCounts.majorSyntactic, 
-        color: '#ef4444',
-        description: 'Sentence structure, missing words'
-      },
-      { 
-        type: 'Major Semantic', 
-        count: sampleErrorCounts.majorSemantic, 
-        color: '#8b5cf6',
-        description: 'Meaning distortion, context errors'
+  // Handle escape key to close modals
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (showAddQuestion) {
+          setShowAddQuestion(false);
+        }
+        if (showAddSentence) {
+          setShowAddSentence(false);
+        }
+        if (showCSVImport) {
+          setShowCSVImport(false);
+        }
       }
-    ];
-
-    // Language activity data (improved with better mock annotations)
-    let languageActivity = Object.entries(sentenceCounts)
-      .filter(([key]) => key !== 'all' && key !== '')
-      .slice(0, 8) // Limit to top 8 languages for better chart readability
-      .map(([language, sentences]) => ({
-        language: language.charAt(0).toUpperCase() + language.slice(1), // Proper case
-        sentences: sentences,
-        annotations: Math.max(1, Math.floor(sentences * (0.8 + Math.random() * 0.6))) // 80-140% of sentences
-      }))
-      .sort((a, b) => b.sentences - a.sentences); // Sort by sentence count
-    
-    // Add sample data if no real data exists
-    if (languageActivity.length === 0) {
-      languageActivity = [
-        { language: 'Tagalog', sentences: 45, annotations: 38 },
-        { language: 'Cebuano', sentences: 32, annotations: 28 },
-        { language: 'Ilocano', sentences: 28, annotations: 22 },
-        { language: 'Hiligaynon', sentences: 18, annotations: 15 },
-        { language: 'Bikol', sentences: 12, annotations: 10 }
-      ];
-    }
-
-    // Daily activity (last 7 days with more realistic data)
-    const dailyActivity = [];
-    const baseActivity = Math.max(stats.total_annotations / 30, 5); // Average daily annotations
-    
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dayOfWeek = date.getDay();
-      
-      // Weekend factor (less activity on weekends)
-      const weekendFactor = (dayOfWeek === 0 || dayOfWeek === 6) ? 0.3 : 1;
-      // Random variation ±30%
-      const randomFactor = 0.7 + Math.random() * 0.6;
-      
-      dailyActivity.push({
-        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        annotations: Math.max(1, Math.floor(baseActivity * weekendFactor * randomFactor)),
-        evaluations: Math.max(1, Math.floor(baseActivity * 0.6 * weekendFactor * randomFactor))
-      });
-    }
-
-    // User role distribution
-    const adminCount = users.filter(u => u.is_admin).length;
-    const evaluatorCount = users.filter(u => u.is_evaluator && !u.is_admin).length;
-    const userCount = users.filter(u => !u.is_admin && !u.is_evaluator).length;
-    
-    let userRoleDistribution = [
-      { role: 'Admins', count: adminCount, color: '#8b5cf6' },
-      { role: 'Evaluators', count: evaluatorCount, color: '#10b981' },
-      { role: 'Annotators', count: userCount, color: '#6b7280' }
-    ];
-
-    // Add sample data if no users exist
-    if (users.length === 0) {
-      userRoleDistribution = [
-        { role: 'Admins', count: 2, color: '#8b5cf6' },
-        { role: 'Evaluators', count: 5, color: '#10b981' },
-        { role: 'Annotators', count: 15, color: '#6b7280' }
-      ];
-    }
-
-    // Quality metrics (more realistic values based on actual data)
-    const qualityMetrics = {
-      averageQuality: stats.total_annotations > 0 ? +(3.8 + Math.random() * 0.8).toFixed(1) : 4.2,
-      averageFluency: stats.total_annotations > 0 ? +(3.7 + Math.random() * 0.7).toFixed(1) : 4.0,
-      averageAdequacy: stats.total_annotations > 0 ? +(3.9 + Math.random() * 0.9).toFixed(1) : 4.3,
-      completionRate: stats.total_annotations > 0 ? (stats.completed_annotations / stats.total_annotations) * 100 : 0
     };
 
-    setAnalyticsData({
-      userGrowth,
-      errorTypeDistribution,
-      languageActivity,
-      dailyActivity,
-      userRoleDistribution,
-      qualityMetrics
-    });
-  };
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [showAddQuestion, showAddSentence, showCSVImport]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -215,12 +136,72 @@ const AdminDashboard: React.FC = () => {
       setUsers(usersData);
       setSentenceCounts(countsData);
       
-      // Generate analytics data
-      generateAnalyticsData(usersData, statsData, countsData);
+      // Load real analytics data
+      await loadAnalyticsData();
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAnalyticsData = async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const [
+        userGrowth,
+        errorDistribution,
+        languageActivity,
+        dailyActivity,
+        userRoleDistribution,
+        qualityMetrics
+      ] = await Promise.all([
+        adminAPI.getUserGrowthAnalytics(6).catch(() => []),
+        adminAPI.getErrorDistributionAnalytics().catch(() => []),
+        adminAPI.getLanguageActivityAnalytics().catch(() => []),
+        adminAPI.getDailyActivityAnalytics(7).catch(() => []),
+        adminAPI.getUserRoleDistributionAnalytics().catch(() => []),
+        adminAPI.getQualityMetricsAnalytics().catch(() => ({
+          averageQuality: 0,
+          averageFluency: 0,
+          averageAdequacy: 0,
+          completionRate: 0
+        })),
+      ]);
+
+      setAnalyticsData({
+        userGrowth: Array.isArray(userGrowth) ? userGrowth : [],
+        errorTypeDistribution: Array.isArray(errorDistribution) ? errorDistribution : [],
+        languageActivity: Array.isArray(languageActivity) ? languageActivity : [],
+        dailyActivity: Array.isArray(dailyActivity) ? dailyActivity : [],
+        userRoleDistribution: Array.isArray(userRoleDistribution) ? userRoleDistribution : [],
+        qualityMetrics: {
+          averageQuality: qualityMetrics?.averageQuality || 0,
+          averageFluency: qualityMetrics?.averageFluency || 0,
+          averageAdequacy: qualityMetrics?.averageAdequacy || 0,
+          completionRate: qualityMetrics?.completionRate || 0
+        }
+      });
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+      setAnalyticsError('Failed to load analytics data. Please try again.');
+      // Fallback to empty data if analytics fail
+      setAnalyticsData({
+        userGrowth: [],
+        errorTypeDistribution: [],
+        languageActivity: [],
+        dailyActivity: [],
+        userRoleDistribution: [],
+        qualityMetrics: {
+          averageQuality: 0,
+          averageFluency: 0,
+          averageAdequacy: 0,
+          completionRate: 0
+        }
+      });
+    } finally {
+      setAnalyticsLoading(false);
     }
   };
 
@@ -275,6 +256,68 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleCSVImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!csvImportFile) return;
+    
+    setIsImporting(true);
+    try {
+      const result = await sentencesAPI.importSentencesFromCSV(csvImportFile);
+      setCsvImportResult(result);
+      
+      // Refresh data if import was successful
+      if (result.imported_count > 0) {
+        await loadDashboardData();
+        if (activeTab === 'sentences') {
+          await loadSentences();
+        }
+      }
+    } catch (error) {
+      console.error('Error importing CSV:', error);
+      setCsvImportResult({
+        message: 'Import failed',
+        imported_count: 0,
+        skipped_count: 0,
+        total_rows: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error occurred']
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'text/csv') {
+      setCsvImportFile(file);
+      setCsvImportResult(null);
+    } else if (file) {
+      alert('Please select a valid CSV file');
+      e.target.value = '';
+    }
+  };
+
+  const downloadCSVTemplate = () => {
+    const csvContent = `source_text,machine_translation,source_language,target_language,domain
+"Hello world","Kumusta mundo","en","tagalog","general"
+"How are you?","Kumusta ka?","en","tagalog","conversation"
+"Where is the hospital?","Nasaan ang ospital?","en","tagalog","medical"
+"Good morning","Maayong buntag","en","cebuano","greetings"
+"Where is the market?","Asa ang merkado?","en","cebuano","directions"
+"Thank you very much","Agyamanak unay","en","ilocano","polite"
+"The food is delicious","Naimas ti kanen","en","ilocano","food"`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sentences_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleToggleEvaluatorRole = async (userId: number) => {
     try {
       const updatedUser = await adminAPI.toggleEvaluatorRole(userId);
@@ -292,21 +335,31 @@ const AdminDashboard: React.FC = () => {
   // Define colors for different error types - updated to match AnnotationInterface
   const getErrorTypeStyle = (type: string) => {
     switch (type) {
-      case 'MI_ST': return 'bg-orange-100 border-b-2 border-orange-400 text-orange-800';
-      case 'MI_SE': return 'bg-blue-100 border-b-2 border-blue-400 text-blue-800';
-      case 'MA_ST': return 'bg-red-100 border-b-2 border-red-500 text-red-800';
-      case 'MA_SE': return 'bg-purple-100 border-b-2 border-purple-500 text-purple-800';
-      default: return 'bg-gray-100 border-b-2 border-gray-400 text-gray-800';
+      case 'MI_ST': 
+        return 'bg-orange-100 border-b-2 border-orange-400 text-orange-800';
+      case 'MI_SE': 
+        return 'bg-blue-100 border-b-2 border-blue-400 text-blue-800';
+      case 'MA_ST': 
+        return 'bg-red-100 border-b-2 border-red-500 text-red-800';
+      case 'MA_SE': 
+        return 'bg-purple-100 border-b-2 border-purple-500 text-purple-800';
+      default: 
+        return 'bg-gray-100 border-b-2 border-gray-400 text-gray-800';
     }
   };
   
   const getErrorTypeLabel = (type: string) => {
     switch (type) {
-      case 'MI_ST': return 'Minor Syntactic Error';
-      case 'MI_SE': return 'Minor Semantic Error';
-      case 'MA_ST': return 'Major Syntactic Error';
-      case 'MA_SE': return 'Major Semantic Error';
-      default: return 'Unknown Error Type';
+      case 'MI_ST': 
+        return 'Minor Syntactic Error';
+      case 'MI_SE': 
+        return 'Minor Semantic Error';
+      case 'MA_ST': 
+        return 'Major Syntactic Error';
+      case 'MA_SE': 
+        return 'Major Semantic Error';
+      default: 
+        return 'Unknown Error Type';
     }
   };
 
@@ -454,6 +507,219 @@ const AdminDashboard: React.FC = () => {
     setCurrentPage(1);
   }, [searchQuery, sortBy, languageFilter]);
 
+  const loadQuestions = React.useCallback(async () => {
+    try {
+      const questionsData = await languageProficiencyAPI.getAllQuestions();
+      setQuestions(questionsData);
+    } catch (error) {
+      console.error('Error loading questions:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'onboarding-tests') {
+      loadQuestions();
+    }
+  }, [activeTab, loadQuestions]);
+
+  const handleAddQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await languageProficiencyAPI.createQuestion(newQuestion);
+      setNewQuestion({
+        language: 'Tagalog',
+        type: 'grammar',
+        question: '',
+        options: ['', '', '', ''],
+        correct_answer: 0,
+        explanation: '',
+        difficulty: 'basic',
+        is_active: true,
+      });
+      setShowAddQuestion(false);
+      await loadQuestions();
+    } catch (error) {
+      console.error('Error adding question:', error);
+    }
+  };
+
+  const handleUpdateQuestion = async (question: LanguageProficiencyQuestion) => {
+    try {
+      await languageProficiencyAPI.updateQuestion(question.id, question);
+      setEditingQuestion(null);
+      await loadQuestions();
+    } catch (error) {
+      console.error('Error updating question:', error);
+    }
+  };
+
+  const handleDeleteQuestion = async (questionId: number) => {
+    if (window.confirm('Are you sure you want to delete this question?')) {
+      try {
+        await languageProficiencyAPI.deleteQuestion(questionId);
+        await loadQuestions();
+      } catch (error) {
+        console.error('Error deleting question:', error);
+      }
+    }
+  };
+
+  const updateNewQuestionOption = (index: number, value: string) => {
+    setNewQuestion(prev => ({
+      ...prev,
+      options: prev.options.map((option, i) => i === index ? value : option)
+    }));
+  };
+
+  const updateEditingQuestionOption = (index: number, value: string) => {
+    if (editingQuestion) {
+      setEditingQuestion(prev => prev ? ({
+        ...prev,
+        options: prev.options.map((option, i) => i === index ? value : option)
+      }) : null);
+    }
+  };
+
+  // Filter, sort, and paginate questions
+  const filteredAndSortedQuestions = React.useMemo(() => {
+    let filtered = questions;
+
+    // Apply filters
+    if (questionLanguageFilter !== 'all') {
+      filtered = filtered.filter(q => q.language.toLowerCase() === questionLanguageFilter.toLowerCase());
+    }
+
+    if (questionTypeFilter !== 'all') {
+      filtered = filtered.filter(q => q.type === questionTypeFilter);
+    }
+
+    if (questionDifficultyFilter !== 'all') {
+      filtered = filtered.filter(q => q.difficulty === questionDifficultyFilter);
+    }
+
+    // Apply search filter
+    if (questionSearchQuery.trim()) {
+      const query = questionSearchQuery.toLowerCase();
+      filtered = filtered.filter(q => 
+        q.question.toLowerCase().includes(query) ||
+        q.explanation.toLowerCase().includes(query) ||
+        q.options.some(option => option.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      switch (questionSortBy) {
+        case 'newest':
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        case 'oldest':
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        case 'difficulty': {
+          const difficultyOrder = { 'basic': 1, 'intermediate': 2, 'advanced': 3 };
+          return difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
+        }
+        case 'language':
+          return a.language.localeCompare(b.language);
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [questions, questionLanguageFilter, questionTypeFilter, questionDifficultyFilter, questionSearchQuery, questionSortBy]);
+
+  // Paginate questions
+  const paginatedQuestions = React.useMemo(() => {
+    const startIndex = (questionCurrentPage - 1) * questionItemsPerPage;
+    const endIndex = startIndex + questionItemsPerPage;
+    return filteredAndSortedQuestions.slice(startIndex, endIndex);
+  }, [filteredAndSortedQuestions, questionCurrentPage, questionItemsPerPage]);
+
+  const questionsTotalPages = Math.ceil(filteredAndSortedQuestions.length / questionItemsPerPage);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setQuestionCurrentPage(1);
+  }, [questionSearchQuery, questionSortBy, questionLanguageFilter, questionTypeFilter, questionDifficultyFilter]);
+
+  // Get question type color
+  const getQuestionTypeColor = (type: string) => {
+    switch (type) {
+      case 'grammar': 
+        return 'bg-blue-100 text-blue-800';
+      case 'vocabulary': 
+        return 'bg-green-100 text-green-800';
+      case 'translation': 
+        return 'bg-purple-100 text-purple-800';
+      case 'cultural': 
+        return 'bg-orange-100 text-orange-800';
+      case 'comprehension': 
+        return 'bg-red-100 text-red-800';
+      default: 
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Get difficulty color
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'basic': 
+        return 'bg-green-100 text-green-800';
+      case 'intermediate': 
+        return 'bg-yellow-100 text-yellow-800';
+      case 'advanced': 
+        return 'bg-red-100 text-red-800';
+      default: 
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Handle browser extension interference
+  useEffect(() => {
+    // Prevent extension overlays from interfering with our modals
+    const handleExtensionInterference = () => {
+      // Remove any extension-created overlays that might interfere
+      const extensionOverlays = document.querySelectorAll('[class*="autofill"], [class*="password"], [class*="extension"]');
+      extensionOverlays.forEach(overlay => {
+        if (overlay instanceof HTMLElement) {
+          overlay.style.zIndex = '1';
+          overlay.style.pointerEvents = 'none';
+        }
+      });
+    };
+
+    // Run on mount and when modals are shown
+    handleExtensionInterference();
+    
+    // Set up observer to watch for extension interference
+    const observer = new MutationObserver(handleExtensionInterference);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, [showAddSentence, showCSVImport]);
+
+  // Error boundary for extension-related errors
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      // Check if error is related to browser extensions
+      if (event.error && event.error.message && 
+          (event.error.message.includes('insertBefore') || 
+           event.error.message.includes('autofill') ||
+           event.error.message.includes('bootstrap'))) {
+        console.warn('Browser extension interference detected, attempting to recover...');
+        event.preventDefault();
+        
+        // Force a re-render to recover from extension interference
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -483,13 +749,14 @@ const AdminDashboard: React.FC = () => {
               { key: 'overview', label: 'Overview', icon: BarChart3 },
               { key: 'users', label: 'Users', icon: Users },
               { key: 'sentences', label: 'Sentences', icon: FileText },
+              { key: 'onboarding-tests', label: 'Onboarding Tests', icon: BookOpen },
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as 'home' | 'overview' | 'users' | 'sentences')}
+                onClick={() => setActiveTab(tab.key as 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests')}
                 className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.key
-                    ? 'border-primary-500 text-primary-600'
+                    ? 'border-beauty-bush-500 text-beauty-bush-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -504,9 +771,9 @@ const AdminDashboard: React.FC = () => {
         {activeTab === 'home' && (
           <div className="space-y-6">
             {/* Welcome Section */}
-            <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg p-8 text-white">
+            <div className="bg-gradient-to-r from-beauty-bush-500 to-beauty-bush-600 rounded-lg p-8 text-white">
               <h2 className="text-3xl font-bold mb-2">Welcome to Lakra - Admin Panel</h2>
-              <p className="text-primary-100 text-lg">
+              <p className="text-beauty-bush-100 text-lg">
                 Manage your translation system, monitor user activity, and oversee content management.
               </p>
             </div>
@@ -516,8 +783,8 @@ const AdminDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-white rounded-lg border shadow-sm p-4">
                   <div className="flex items-center">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Users className="h-5 w-5 text-blue-600" />
+                    <div className="p-2 bg-beauty-bush-100 rounded-lg">
+                      <Users className="h-5 w-5 text-beauty-bush-600" />
                     </div>
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-600">Total Users</p>
@@ -558,7 +825,7 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setActiveTab('users')}
                   className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <Users className="h-8 w-8 text-blue-500 mr-3" />
+                  <Users className="h-8 w-8 text-beauty-bush-500 mr-3" />
                   <div className="text-left">
                     <p className="font-medium text-gray-900">Manage Users</p>
                     <p className="text-sm text-gray-500">View and manage user accounts</p>
@@ -629,21 +896,51 @@ const AdminDashboard: React.FC = () => {
         {/* Overview Tab - Bento Box Style */}
         {activeTab === 'overview' && stats && (
           <div className="space-y-6">
+            {/* Analytics Header with Refresh */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <h2 className="text-xl font-bold text-gray-900">Analytics Dashboard</h2>
+                {analyticsLoading && (
+                  <div className="flex items-center space-x-2 text-sm text-beauty-bush-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-beauty-bush-600"></div>
+                    <span>Loading analytics...</span>
+                  </div>
+                )}
+                {analyticsError && (
+                  <div className="flex items-center space-x-2 text-sm text-red-600">
+                    <span>⚠️ {analyticsError}</span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={loadAnalyticsData}
+                disabled={analyticsLoading}
+                className="flex items-center space-x-2 px-4 py-2 bg-beauty-bush-600 text-white rounded-lg hover:bg-beauty-bush-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {analyticsLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <BarChart3 className="h-4 w-4" />
+                )}
+                <span>{analyticsLoading ? 'Refreshing...' : 'Refresh Analytics'}</span>
+              </button>
+            </div>
+            
             {/* Bento Grid Layout */}
             <div className="grid grid-cols-12 gap-4 h-auto">
               
               {/* Top Row - Quick Stats */}
               <div className="col-span-12 md:col-span-3">
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white h-32">
-                  <div className="flex items-center justify-between h-full">
-                    <div>
-                      <p className="text-blue-100 text-sm font-medium">Total Users</p>
-                      <p className="text-3xl font-bold">{stats.total_users}</p>
-                      <p className="text-blue-200 text-xs">{stats.active_users} active</p>
-                    </div>
-                    <Users className="h-8 w-8 text-blue-200" />
+                              <div className="bg-gradient-to-br from-beauty-bush-500 to-beauty-bush-600 rounded-2xl p-6 text-white h-32">
+                <div className="flex items-center justify-between h-full">
+                  <div>
+                    <p className="text-beauty-bush-100 text-sm font-medium">Total Users</p>
+                    <p className="text-3xl font-bold">{stats.total_users}</p>
+                    <p className="text-beauty-bush-200 text-xs">{stats.active_users} active</p>
                   </div>
+                  <Users className="h-8 w-8 text-beauty-bush-200" />
                 </div>
+              </div>
               </div>
 
               <div className="col-span-12 md:col-span-3">
@@ -701,48 +998,64 @@ const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <AreaChart data={analyticsData.userGrowth}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="month" 
-                        tick={{fontSize: 12}} 
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis 
-                        tick={{fontSize: 12}} 
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                        }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="users" 
-                        stroke="#8b5cf6" 
-                        fill="#8b5cf6" 
-                        fillOpacity={0.6}
-                        name="Users"
-                        strokeWidth={2}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="annotations" 
-                        stroke="#10b981" 
-                        fill="#10b981" 
-                        fillOpacity={0.6}
-                        name="Annotations"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {analyticsLoading ? (
+                    <div className="flex items-center justify-center h-64 text-gray-500">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        <p className="text-sm">Loading growth data...</p>
+                      </div>
+                    </div>
+                  ) : analyticsData.userGrowth.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <AreaChart data={analyticsData.userGrowth}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="month" 
+                          tick={{fontSize: 12}} 
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          tick={{fontSize: 12}} 
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="users" 
+                          stroke="#8b5cf6" 
+                          fill="#8b5cf6" 
+                          fillOpacity={0.6}
+                          name="Users"
+                          strokeWidth={2}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="annotations" 
+                          stroke="#10b981" 
+                          fill="#10b981" 
+                          fillOpacity={0.6}
+                          name="Annotations"
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-64 text-gray-500">
+                      <div className="text-center">
+                        <BarChart3 className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No growth data available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -750,87 +1063,70 @@ const AdminDashboard: React.FC = () => {
               <div className="col-span-12 lg:col-span-4">
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-96">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">Quality Metrics</h3>
-                  <div className="space-y-6">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-gray-600">Overall Quality</span>
-                        <span className="text-lg font-bold text-gray-900">{analyticsData.qualityMetrics.averageQuality}/5</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div 
-                          className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300"
-                          style={{width: `${(analyticsData.qualityMetrics.averageQuality / 5) * 100}%`}}
-                        ></div>
+                  {analyticsLoading ? (
+                    <div className="flex items-center justify-center h-64 text-gray-500">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        <p className="text-sm">Loading quality data...</p>
                       </div>
                     </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-gray-600">Fluency</span>
-                        <span className="text-lg font-bold text-gray-900">{analyticsData.qualityMetrics.averageFluency}/5</span>
+                  ) : (
+                    <div className="space-y-6">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-gray-600">Overall Quality</span>
+                          <span className="text-lg font-bold text-gray-900">{analyticsData.qualityMetrics.averageQuality}/5</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div 
+                            className="bg-gradient-to-r from-beauty-bush-500 to-beauty-bush-600 h-3 rounded-full transition-all duration-300"
+                            style={{width: `${Math.min((analyticsData.qualityMetrics.averageQuality / 5) * 100, 100)}%`}}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div 
-                          className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-300"
-                          style={{width: `${(analyticsData.qualityMetrics.averageFluency / 5) * 100}%`}}
-                        ></div>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-gray-600">Fluency</span>
+                          <span className="text-lg font-bold text-gray-900">{analyticsData.qualityMetrics.averageFluency}/5</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div 
+                            className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-300"
+                            style={{width: `${Math.min((analyticsData.qualityMetrics.averageFluency / 5) * 100, 100)}%`}}
+                          ></div>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-gray-600">Adequacy</span>
-                        <span className="text-lg font-bold text-gray-900">{analyticsData.qualityMetrics.averageAdequacy}/5</span>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-gray-600">Adequacy</span>
+                          <span className="text-lg font-bold text-gray-900">{analyticsData.qualityMetrics.averageAdequacy}/5</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div 
+                            className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-300"
+                            style={{width: `${Math.min((analyticsData.qualityMetrics.averageAdequacy / 5) * 100, 100)}%`}}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div 
-                          className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-300"
-                          style={{width: `${(analyticsData.qualityMetrics.averageAdequacy / 5) * 100}%`}}
-                        ></div>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-gray-600">Completion Rate</span>
+                          <span className="text-lg font-bold text-gray-900">{Math.round(analyticsData.qualityMetrics.completionRate)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div 
+                            className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-300"
+                            style={{width: `${Math.min(analyticsData.qualityMetrics.completionRate, 100)}%`}}
+                          ></div>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-gray-600">Completion Rate</span>
-                        <span className="text-lg font-bold text-gray-900">{Math.round(analyticsData.qualityMetrics.completionRate)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div 
-                          className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-300"
-                          style={{width: `${analyticsData.qualityMetrics.completionRate}%`}}
-                        ></div>
-                      </div>
-                    </div>
 
-                    {/* System Health Indicators */}
-                    <div className="pt-4 border-t border-gray-200">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-3">System Health</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                            <span className="text-xs text-gray-600">Status</span>
-                          </div>
-                          <span className="text-xs font-medium text-green-600">Healthy</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                            <span className="text-xs text-gray-600">Response</span>
-                          </div>
-                          <span className="text-xs font-medium text-gray-900">125ms</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
-                            <span className="text-xs text-gray-600">Sessions</span>
-                          </div>
-                          <span className="text-xs font-medium text-gray-900">{Math.ceil(stats.active_users * 0.7)}</span>
-                        </div>
-                      </div>
+
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -838,7 +1134,14 @@ const AdminDashboard: React.FC = () => {
               <div className="col-span-12 lg:col-span-6">
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-80">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Error Distribution</h3>
-                  {analyticsData.errorTypeDistribution.length > 0 ? (
+                  {analyticsLoading ? (
+                    <div className="flex items-center justify-center h-64 text-gray-500">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        <p className="text-sm">Loading error data...</p>
+                      </div>
+                    </div>
+                  ) : analyticsData.errorTypeDistribution.length > 0 ? (
                     <div className="flex items-start h-64">
                       <div className="flex-1 h-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -909,7 +1212,14 @@ const AdminDashboard: React.FC = () => {
               <div className="col-span-12 lg:col-span-6">
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-80">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Language Activity</h3>
-                  {analyticsData.languageActivity.length > 0 ? (
+                  {analyticsLoading ? (
+                    <div className="flex items-center justify-center h-240 text-gray-500">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        <p className="text-sm">Loading language data...</p>
+                      </div>
+                    </div>
+                  ) : analyticsData.languageActivity.length > 0 ? (
                     <ResponsiveContainer width="100%" height={240}>
                       <BarChart data={analyticsData.languageActivity} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -940,7 +1250,7 @@ const AdminDashboard: React.FC = () => {
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-240 text-gray-500">
+                    <div className="flex items-center justify-center h-64 text-gray-500">
                       <div className="text-center">
                         <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                         <p className="text-sm">No language data available</p>
@@ -954,90 +1264,99 @@ const AdminDashboard: React.FC = () => {
               <div className="col-span-12 lg:col-span-8">
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-64">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Activity Trend</h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={analyticsData.dailyActivity}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{fontSize: 12}} 
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis 
-                        tick={{fontSize: 12}} 
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                        }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="annotations" 
-                        stroke="#8b5cf6" 
-                        strokeWidth={3}
-                        dot={{fill: '#8b5cf6', strokeWidth: 2, r: 4}}
-                        activeDot={{r: 6, fill: '#8b5cf6'}}
-                        name="Annotations"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="evaluations" 
-                        stroke="#f59e0b" 
-                        strokeWidth={3}
-                        dot={{fill: '#f59e0b', strokeWidth: 2, r: 4}}
-                        activeDot={{r: 6, fill: '#f59e0b'}}
-                        name="Evaluations"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {analyticsLoading ? (
+                    <div className="flex items-center justify-center h-64 text-gray-500">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        <p className="text-sm">Loading activity data...</p>
+                      </div>
+                    </div>
+                  ) : analyticsData.dailyActivity.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <LineChart data={analyticsData.dailyActivity}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{fontSize: 12}} 
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          tick={{fontSize: 12}} 
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="annotations" 
+                          stroke="#8b5cf6" 
+                          strokeWidth={3}
+                          dot={{fill: '#8b5cf6', strokeWidth: 2, r: 4}}
+                          activeDot={{r: 6, fill: '#8b5cf6'}}
+                          name="Annotations"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="evaluations" 
+                          stroke="#f59e0b" 
+                          strokeWidth={3}
+                          dot={{fill: '#f59e0b', strokeWidth: 2, r: 4}}
+                          activeDot={{r: 6, fill: '#f59e0b'}}
+                          name="Evaluations"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-64 text-gray-500">
+                      <div className="text-center">
+                        <BarChart3 className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No activity data available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* User Role Distribution */}
               <div className="col-span-12 lg:col-span-4">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-64">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">User Roles</h3>
-                  {analyticsData.userRoleDistribution.length > 0 && analyticsData.userRoleDistribution.some(role => role.count > 0) ? (
-                    <div className="h-44">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={analyticsData.userRoleDistribution.filter(role => role.count > 0)}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={40}
-                            outerRadius={70}
-                            paddingAngle={2}
-                            dataKey="count"
-                            label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            labelLine={false}
-                          >
-                            {analyticsData.userRoleDistribution
-                              .filter(role => role.count > 0)
-                              .map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{
-                              backgroundColor: 'white',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                            formatter={(value, name) => [`${value} users`, name]}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-64 flex flex-col">
+                  <h3 className="text-lg font-semibold text-gray-900">User Roles</h3>
+                  {analyticsLoading ? (
+                    <div className="flex items-center justify-center flex-1 text-gray-500">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        <p className="text-sm">Loading user data...</p>
+                      </div>
+                    </div>
+                  ) : analyticsData.userRoleDistribution.length > 0 && analyticsData.userRoleDistribution.some(role => role.count > 0) ? (
+                    <div className="flex-1 flex flex-col justify-center pt-4">
+                      <div className="space-y-3">
+                        {analyticsData.userRoleDistribution
+                          .filter(role => role.count > 0)
+                          .map((role) => (
+                            <div key={role.role} className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div
+                                  className="w-4 h-4 rounded-full"
+                                  style={{ backgroundColor: role.color }}
+                                ></div>
+                                <span className="text-sm font-medium text-gray-700">{role.role}</span>
+                              </div>
+                              <span className="text-sm font-bold text-gray-900">{role.count}</span>
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-44 text-gray-500">
+                    <div className="flex items-center justify-center flex-1 text-gray-500">
                       <div className="text-center">
                         <Users className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                         <p className="text-sm">No user data available</p>
@@ -1153,19 +1472,164 @@ const AdminDashboard: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900">Manage Sentences</h3>
                 <p className="text-sm text-gray-600 mt-1">View and manage sentences with advanced error tagging annotations</p>
               </div>
-              <button
-                onClick={() => setShowAddSentence(true)}
-                className="btn-primary flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Sentence</span>
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowCSVImport(true)}
+                  className="btn-secondary flex items-center space-x-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Import CSV</span>
+                </button>
+                <button
+                  onClick={() => setShowAddSentence(true)}
+                  className="btn-primary flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Sentence</span>
+                </button>
+              </div>
             </div>
 
+            {/* CSV Import Modal */}
+            {showCSVImport && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setShowCSVImport(false);
+                    setCsvImportFile(null);
+                    setCsvImportResult(null);
+                  }
+                }}
+                style={{ zIndex: 9999 }}
+              >
+                <div 
+                  className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ zIndex: 10000 }}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">Import Sentences from CSV</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCSVImport(false);
+                        setCsvImportFile(null);
+                        setCsvImportResult(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  {/* CSV Format Guide */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-2">CSV Format Requirements</h4>
+                    <div className="text-sm text-blue-800 space-y-2">
+                      <p><strong>Required columns:</strong> source_text, machine_translation, source_language, target_language</p>
+                      <p><strong>Optional columns:</strong> domain</p>
+                      <p><strong>Supported source languages:</strong> en (English only)</p>
+                      <p><strong>Supported target languages:</strong> tagalog (Filipino), cebuano, ilocano</p>
+                    </div>
+                    <button
+                      onClick={downloadCSVTemplate}
+                      className="mt-3 inline-flex items-center px-3 py-1 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 cursor-pointer"
+                      type="button"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download Template
+                    </button>
+                  </div>
+
+                  {/* File Upload */}
+                  <form onSubmit={handleCSVImport} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select CSV File
+                      </label>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleFileChange}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                        required
+                        style={{ zIndex: 'auto' }}
+                      />
+                      {csvImportFile && (
+                        <p className="mt-2 text-sm text-gray-600">
+                          Selected: {csvImportFile.name} ({(csvImportFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Import Results */}
+                    {csvImportResult && (
+                      <div className={`p-4 rounded-lg border ${
+                        csvImportResult.imported_count > 0 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                      }`}>
+                        <h4 className="text-sm font-semibold mb-2">
+                          {csvImportResult.imported_count > 0 ? 'Import Completed' : 'Import Failed'}
+                        </h4>
+                        <div className="text-sm space-y-1">
+                          <p><strong>Imported:</strong> {csvImportResult.imported_count} sentences</p>
+                          <p><strong>Skipped:</strong> {csvImportResult.skipped_count} rows</p>
+                          <p><strong>Total processed:</strong> {csvImportResult.total_rows} rows</p>
+                          {csvImportResult.errors.length > 0 && (
+                            <div>
+                              <p className="font-medium text-red-700 mt-2">Errors:</p>
+                              <ul className="list-disc list-inside text-red-600 text-xs space-y-1 mt-1">
+                                {csvImportResult.errors.map((error, index) => (
+                                  <li key={index}>{error}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCSVImport(false);
+                          setCsvImportFile(null);
+                          setCsvImportResult(null);
+                        }}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={!csvImportFile || isImporting}
+                        className="btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isImporting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <span>Importing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            <span>Import Sentences</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
             {/* Error Type Classification Legend */}
-            <div className="bg-gradient-to-r from-gray-50 to-blue-50 border border-gray-200 rounded-lg p-4">
+            <div className="bg-gradient-to-r from-gray-50 to-beauty-bush-50 border border-gray-200 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-3">
-                <MessageCircle className="h-5 w-5 text-blue-600" />
+                <MessageCircle className="h-5 w-5 text-beauty-bush-600" />
                 <h4 className="text-sm font-semibold text-gray-900">Error Classification System</h4>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1229,8 +1693,8 @@ const AdminDashboard: React.FC = () => {
 
                     return (
                       <>
-                        <div className="text-center p-3 bg-blue-50 rounded border">
-                          <div className="text-lg font-bold text-blue-600">{totalAnnotations}</div>
+                        <div className="text-center p-3 bg-beauty-bush-50 rounded border">
+                          <div className="text-lg font-bold text-beauty-bush-600">{totalAnnotations}</div>
                           <div className="text-xs text-gray-600">Total Annotations</div>
                         </div>
                         <div className="text-center p-3 bg-purple-50 rounded border">
@@ -1263,7 +1727,7 @@ const AdminDashboard: React.FC = () => {
                     placeholder="Search sentences, domains, or content..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   />
                 </div>
 
@@ -1275,17 +1739,12 @@ const AdminDashboard: React.FC = () => {
                     <select
                       value={languageFilter}
                       onChange={(e) => setLanguageFilter(e.target.value)}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                     >
                       <option value="all">All Languages</option>
-                      <option value="tagalog">Tagalog</option>
+                      <option value="tagalog">Tagalog (Filipino)</option>
                       <option value="cebuano">Cebuano</option>
                       <option value="ilocano">Ilocano</option>
-                      <option value="hiligaynon">Hiligaynon</option>
-                      <option value="bikol">Bikol</option>
-                      <option value="waray">Waray</option>
-                      <option value="kapampangan">Kapampangan</option>
-                      <option value="pangasinan">Pangasinan</option>
                     </select>
                   </div>
 
@@ -1293,7 +1752,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'most_annotated' | 'least_annotated')}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
@@ -1305,7 +1764,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={itemsPerPage}
                     onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value={5}>5 per page</option>
                     <option value={10}>10 per page</option>
@@ -1319,7 +1778,7 @@ const AdminDashboard: React.FC = () => {
                       onClick={() => setViewMode('compact')}
                       className={`px-3 py-2 text-sm flex items-center space-x-1 ${
                         viewMode === 'compact' 
-                          ? 'bg-blue-500 text-white' 
+                          ? 'bg-beauty-bush-500 text-white' 
                           : 'bg-white text-gray-700 hover:bg-gray-50'
                       }`}
                     >
@@ -1330,7 +1789,7 @@ const AdminDashboard: React.FC = () => {
                       onClick={() => setViewMode('detailed')}
                       className={`px-3 py-2 text-sm flex items-center space-x-1 ${
                         viewMode === 'detailed' 
-                          ? 'bg-blue-500 text-white' 
+                          ? 'bg-beauty-bush-500 text-white' 
                           : 'bg-white text-gray-700 hover:bg-gray-50'
                       }`}
                     >
@@ -1351,20 +1810,29 @@ const AdminDashboard: React.FC = () => {
                     </span>
                   )}
                 </span>
-                <button
-                  onClick={() => setShowAddSentence(true)}
-                  className="btn-primary flex items-center space-x-2 text-sm"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Sentence</span>
-                </button>
               </div>
             </div>
 
             {showAddSentence && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Sentence</h3>
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 extension-safe-modal"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setShowAddSentence(false);
+                  }
+                }}
+              >
+                <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto extension-safe-form">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">Add New Sentence</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddSentence(false)}
+                      className="text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
                   
                   <form onSubmit={handleAddSentence} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -1375,13 +1843,10 @@ const AdminDashboard: React.FC = () => {
                         <select
                           value={newSentence.source_language}
                           onChange={(e) => setNewSentence({...newSentence, source_language: e.target.value})}
-                          className="input-field"
+                          className="input-field autocomplete-off"
                           required
                         >
                           <option value="en">English</option>
-                          <option value="fr">French</option>
-                          <option value="es">Spanish</option>
-                          <option value="de">German</option>
                         </select>
                       </div>
                       
@@ -1392,17 +1857,12 @@ const AdminDashboard: React.FC = () => {
                         <select
                           value={newSentence.target_language}
                           onChange={(e) => setNewSentence({...newSentence, target_language: e.target.value})}
-                          className="input-field"
+                          className="input-field autocomplete-off"
                           required
                         >
-                          <option value="tagalog">Tagalog</option>
+                          <option value="tagalog">Tagalog (Filipino)</option>
                           <option value="cebuano">Cebuano</option>
                           <option value="ilocano">Ilocano</option>
-                          <option value="hiligaynon">Hiligaynon</option>
-                          <option value="bikol">Bikol</option>
-                          <option value="waray">Waray</option>
-                          <option value="kapampangan">Kapampangan</option>
-                          <option value="pangasinan">Pangasinan</option>
                         </select>
                       </div>
                     </div>
@@ -1414,7 +1874,7 @@ const AdminDashboard: React.FC = () => {
                       <textarea
                         value={newSentence.source_text}
                         onChange={(e) => setNewSentence({...newSentence, source_text: e.target.value})}
-                        className="textarea-field"
+                        className="textarea-field autocomplete-off"
                         required
                         placeholder="Enter the source text..."
                       />
@@ -1427,7 +1887,7 @@ const AdminDashboard: React.FC = () => {
                       <textarea
                         value={newSentence.machine_translation}
                         onChange={(e) => setNewSentence({...newSentence, machine_translation: e.target.value})}
-                        className="textarea-field"
+                        className="textarea-field autocomplete-off"
                         required
                         placeholder="Enter the machine translation..."
                       />
@@ -1440,7 +1900,7 @@ const AdminDashboard: React.FC = () => {
                       <textarea
                         value={newSentence.tagalog_source_text}
                         onChange={(e) => setNewSentence({...newSentence, tagalog_source_text: e.target.value})}
-                        className="textarea-field"
+                        className="textarea-field autocomplete-off"
                         placeholder="Enter the Tagalog source text if available..."
                       />
                     </div>
@@ -1453,7 +1913,7 @@ const AdminDashboard: React.FC = () => {
                         type="text"
                         value={newSentence.domain}
                         onChange={(e) => setNewSentence({...newSentence, domain: e.target.value})}
-                        className="input-field"
+                        className="input-field autocomplete-off"
                         placeholder="e.g., Technology, Education, Healthcare..."
                       />
                     </div>
@@ -1490,7 +1950,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-500">Showing:</span>
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 border border-primary-200">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-beauty-bush-100 text-beauty-bush-800 border border-beauty-bush-200">
                       {languageFilter === 'all' ? 'All Languages' : languageFilter.toUpperCase()}
                     </span>
                   </div>
@@ -1499,7 +1959,7 @@ const AdminDashboard: React.FC = () => {
                 {/* Error Type Legend */}
                 <div className="mt-4 p-4 bg-white rounded-lg border-2 border-gray-200">
                   <h5 className="text-sm font-bold text-gray-700 mb-3 flex items-center">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                                      <span className="w-2 h-2 bg-beauty-bush-500 rounded-full mr-2"></span>
                     Error Type Legend
                   </h5>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
@@ -1535,13 +1995,13 @@ const AdminDashboard: React.FC = () => {
                         <div className="p-4">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                <span className="text-sm font-bold text-blue-700">#{sentence.id}</span>
+                              <div className="w-8 h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-bold text-beauty-bush-700">#{sentence.id}</span>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <span className="text-xs px-2 py-1 bg-blue-500 text-white rounded font-medium">
-                                  {sentence.source_language.toUpperCase()} → {sentence.target_language.toUpperCase()}
-                                </span>
+                                                    <span className="text-xs px-2 py-1 bg-beauty-bush-500 text-white rounded font-medium">
+                      {sentence.source_language.toUpperCase()} → {sentence.target_language.toUpperCase()}
+                    </span>
                                 {sentence.domain && (
                                   <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
                                     {sentence.domain}
@@ -1565,7 +2025,7 @@ const AdminDashboard: React.FC = () => {
                               )}
                               <button
                                 onClick={() => toggleSentenceExpansion(sentence.id)}
-                                className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                className="flex items-center space-x-1 text-sm text-beauty-bush-600 hover:text-beauty-bush-800 font-medium"
                               >
                                 <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
                                 <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -1591,8 +2051,8 @@ const AdminDashboard: React.FC = () => {
                           {(viewMode === 'detailed' || isExpanded) && (
                             <div className="space-y-4 border-t pt-4">
                               {/* Source Text */}
-                              <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
-                                <h5 className="text-xs font-medium text-blue-900 mb-2 uppercase tracking-wide">
+                              <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-3 rounded-r-lg">
+                                <h5 className="text-xs font-medium text-beauty-bush-900 mb-2 uppercase tracking-wide">
                                   Source Text ({sentence.source_language.toUpperCase()})
                                 </h5>
                                 <p className="text-sm text-gray-900 leading-relaxed">{sentence.source_text}</p>
@@ -1642,12 +2102,12 @@ const AdminDashboard: React.FC = () => {
                                   
                                   {/* Quick Stats */}
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                                    <div className="text-center p-2 bg-blue-50 rounded">
-                                      <div className="text-xs text-gray-600">Completed</div>
-                                      <div className="text-sm font-bold text-blue-600">
-                                        {annotations.filter(a => a.annotation_status === 'completed').length}
-                                      </div>
-                                    </div>
+                                                              <div className="text-center p-2 bg-beauty-bush-50 rounded">
+                            <div className="text-xs text-gray-600">Completed</div>
+                            <div className="text-sm font-bold text-beauty-bush-600">
+                              {annotations.filter(a => a.annotation_status === 'completed').length}
+                            </div>
+                          </div>
                                     <div className="text-center p-2 bg-yellow-50 rounded">
                                       <div className="text-xs text-gray-600">In Progress</div>
                                       <div className="text-sm font-bold text-yellow-600">
@@ -1741,7 +2201,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                     <button
                       onClick={() => setShowAddSentence(true)}
-                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-beauty-bush-600 hover:bg-beauty-bush-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beauty-bush-500 transition-colors"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add New Sentence
@@ -1791,7 +2251,7 @@ const AdminDashboard: React.FC = () => {
                               onClick={() => setCurrentPage(i)}
                               className={`px-3 py-2 text-sm font-medium rounded-md ${
                                 i === currentPage
-                                  ? 'bg-blue-600 text-white'
+                                  ? 'bg-beauty-bush-600 text-white'
                                   : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
                               }`}
                             >
@@ -1806,6 +2266,636 @@ const AdminDashboard: React.FC = () => {
                     <button
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
+                      className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Onboarding Tests Tab */}
+        {activeTab === 'onboarding-tests' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Manage Onboarding Test Questions</h3>
+                <p className="text-sm text-gray-600 mt-1">Create and manage language proficiency questions for user onboarding</p>
+              </div>
+              <button
+                onClick={() => setShowAddQuestion(true)}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Question</span>
+              </button>
+            </div>
+
+            {/* Question Statistics */}
+            {questions.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-beauty-bush-100 rounded-lg">
+                      <BookOpen className="h-5 w-5 text-beauty-bush-600" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Total Questions</p>
+                      <p className="text-xl font-bold text-gray-900">{questions.length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Eye className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Active Questions</p>
+                      <p className="text-xl font-bold text-gray-900">{questions.filter(q => q.is_active).length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Filter className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Languages</p>
+                      <p className="text-xl font-bold text-gray-900">{[...new Set(questions.map(q => q.language))].length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Award className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Question Types</p>
+                      <p className="text-xl font-bold text-gray-900">{[...new Set(questions.map(q => q.type))].length}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Search and Filter Controls */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                {/* Search Bar */}
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search questions, explanations, or options..."
+                    value={questionSearchQuery}
+                    onChange={(e) => setQuestionSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+
+                {/* Controls Row */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Language Filter */}
+                  <select
+                    value={questionLanguageFilter}
+                    onChange={(e) => setQuestionLanguageFilter(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Languages</option>
+                    <option value="tagalog">Tagalog (Filipino)</option>
+                    <option value="cebuano">Cebuano</option>
+                    <option value="ilocano">Ilocano</option>
+                  </select>
+
+                  {/* Type Filter */}
+                  <select
+                    value={questionTypeFilter}
+                    onChange={(e) => setQuestionTypeFilter(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="grammar">Grammar</option>
+                    <option value="vocabulary">Vocabulary</option>
+                    <option value="translation">Translation</option>
+                    <option value="cultural">Cultural</option>
+                    <option value="comprehension">Comprehension</option>
+                  </select>
+
+                  {/* Difficulty Filter */}
+                  <select
+                    value={questionDifficultyFilter}
+                    onChange={(e) => setQuestionDifficultyFilter(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Difficulties</option>
+                    <option value="basic">Basic</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+
+                  {/* Sort By */}
+                  <select
+                    value={questionSortBy}
+                    onChange={(e) => setQuestionSortBy(e.target.value as 'newest' | 'oldest' | 'difficulty' | 'language')}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="difficulty">By Difficulty</option>
+                    <option value="language">By Language</option>
+                  </select>
+
+                  {/* Items Per Page */}
+                  <select
+                    value={questionItemsPerPage}
+                    onChange={(e) => setQuestionItemsPerPage(Number(e.target.value))}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value={5}>5 per page</option>
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                    <option value={50}>50 per page</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Results Summary */}
+              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-3">
+                <span>
+                  Showing {paginatedQuestions.length} of {filteredAndSortedQuestions.length} questions
+                  {questionSearchQuery && (
+                    <span className="ml-2">
+                      for "<span className="font-medium text-gray-900">{questionSearchQuery}</span>"
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* Add Question Modal */}
+            {showAddQuestion && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setShowAddQuestion(false);
+                  }
+                }}
+              >
+                <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">Add New Question</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddQuestion(false)}
+                      className="text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  
+                  <form onSubmit={handleAddQuestion} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Language
+                        </label>
+                        <select
+                          value={newQuestion.language}
+                          onChange={(e) => setNewQuestion({...newQuestion, language: e.target.value})}
+                          className="input-field"
+                          required
+                        >
+                          <option value="Tagalog">Tagalog (Filipino)</option>
+                          <option value="Cebuano">Cebuano</option>
+                          <option value="Ilocano">Ilocano</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Question Type
+                        </label>
+                        <select
+                          value={newQuestion.type}
+                          onChange={(e) => setNewQuestion({...newQuestion, type: e.target.value as 'grammar' | 'vocabulary' | 'translation' | 'cultural' | 'comprehension'})}
+                          className="input-field"
+                          required
+                        >
+                          <option value="grammar">Grammar</option>
+                          <option value="vocabulary">Vocabulary</option>
+                          <option value="translation">Translation</option>
+                          <option value="cultural">Cultural</option>
+                          <option value="comprehension">Comprehension</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Difficulty
+                        </label>
+                        <select
+                          value={newQuestion.difficulty}
+                          onChange={(e) => setNewQuestion({...newQuestion, difficulty: e.target.value as 'basic' | 'intermediate' | 'advanced'})}
+                          className="input-field"
+                          required
+                        >
+                          <option value="basic">Basic</option>
+                          <option value="intermediate">Intermediate</option>
+                          <option value="advanced">Advanced</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Question
+                      </label>
+                      <textarea
+                        value={newQuestion.question}
+                        onChange={(e) => setNewQuestion({...newQuestion, question: e.target.value})}
+                        className="textarea-field"
+                        rows={3}
+                        required
+                        placeholder="Enter the question text..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Answer Options
+                      </label>
+                      <div className="space-y-2">
+                        {newQuestion.options.map((option, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name="correct_answer"
+                              checked={newQuestion.correct_answer === index}
+                              onChange={() => setNewQuestion({...newQuestion, correct_answer: index})}
+                              className="radio-field"
+                            />
+                            <span className="text-sm font-medium text-gray-700 w-8">{String.fromCharCode(65 + index)}.</span>
+                            <input
+                              type="text"
+                              value={option}
+                              onChange={(e) => updateNewQuestionOption(index, e.target.value)}
+                              className="input-field flex-1"
+                              placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                              required
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">Select the correct answer by clicking the radio button</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Explanation
+                      </label>
+                      <textarea
+                        value={newQuestion.explanation}
+                        onChange={(e) => setNewQuestion({...newQuestion, explanation: e.target.value})}
+                        className="textarea-field"
+                        rows={3}
+                        required
+                        placeholder="Explain why this is the correct answer..."
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={newQuestion.is_active}
+                        onChange={(e) => setNewQuestion({...newQuestion, is_active: e.target.checked})}
+                        className="checkbox-field"
+                      />
+                      <label htmlFor="is_active" className="text-sm text-gray-700 cursor-pointer">
+                        Question is active
+                      </label>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddQuestion(false)}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                      >
+                        Add Question
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Questions List */}
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              {paginatedQuestions.length > 0 ? (
+                <div className="divide-y divide-gray-200">
+                  {paginatedQuestions.map((question) => (
+                    <div key={question.id} className="p-6 hover:bg-gray-50">
+                      {editingQuestion?.id === question.id ? (
+                        // Edit Mode
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
+                              <select
+                                value={editingQuestion.language}
+                                onChange={(e) => setEditingQuestion({...editingQuestion, language: e.target.value})}
+                                className="input-field"
+                              >
+                                <option value="Tagalog">Tagalog (Filipino)</option>
+                                <option value="Cebuano">Cebuano</option>
+                                <option value="Ilocano">Ilocano</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                              <select
+                                value={editingQuestion.type}
+                                onChange={(e) => setEditingQuestion({...editingQuestion, type: e.target.value as 'grammar' | 'vocabulary' | 'translation' | 'cultural' | 'comprehension'})}
+                                className="input-field"
+                              >
+                                <option value="grammar">Grammar</option>
+                                <option value="vocabulary">Vocabulary</option>
+                                <option value="translation">Translation</option>
+                                <option value="cultural">Cultural</option>
+                                <option value="comprehension">Comprehension</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                              <select
+                                value={editingQuestion.difficulty}
+                                onChange={(e) => setEditingQuestion({...editingQuestion, difficulty: e.target.value as 'basic' | 'intermediate' | 'advanced'})}
+                                className="input-field"
+                              >
+                                <option value="basic">Basic</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                              </select>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Question</label>
+                            <textarea
+                              value={editingQuestion.question}
+                              onChange={(e) => setEditingQuestion({...editingQuestion, question: e.target.value})}
+                              className="textarea-field"
+                              rows={3}
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Answer Options</label>
+                            <div className="space-y-2">
+                              {editingQuestion.options.map((option, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <input
+                                    type="radio"
+                                    name="edit_correct_answer"
+                                    checked={editingQuestion.correct_answer === index}
+                                    onChange={() => setEditingQuestion({...editingQuestion, correct_answer: index})}
+                                    className="radio-field"
+                                  />
+                                  <span className="text-sm font-medium text-gray-700 w-8">{String.fromCharCode(65 + index)}.</span>
+                                  <input
+                                    type="text"
+                                    value={option}
+                                    onChange={(e) => updateEditingQuestionOption(index, e.target.value)}
+                                    className="input-field flex-1"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Explanation</label>
+                            <textarea
+                              value={editingQuestion.explanation}
+                              onChange={(e) => setEditingQuestion({...editingQuestion, explanation: e.target.value})}
+                              className="textarea-field"
+                              rows={3}
+                            />
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`edit_is_active_${question.id}`}
+                              checked={editingQuestion.is_active}
+                              onChange={(e) => setEditingQuestion({...editingQuestion, is_active: e.target.checked})}
+                              className="checkbox-field"
+                            />
+                            <label htmlFor={`edit_is_active_${question.id}`} className="text-sm text-gray-700 cursor-pointer">
+                              Question is active
+                            </label>
+                          </div>
+                          
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => setEditingQuestion(null)}
+                              className="btn-secondary flex items-center space-x-1"
+                            >
+                              <X className="h-4 w-4" />
+                              <span>Cancel</span>
+                            </button>
+                            <button
+                              onClick={() => handleUpdateQuestion(editingQuestion)}
+                              className="btn-primary flex items-center space-x-1"
+                            >
+                              <Save className="h-4 w-4" />
+                              <span>Save</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // View Mode
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-bold text-beauty-bush-700">#{question.id}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs px-2 py-1 bg-beauty-bush-500 text-white rounded font-medium">
+                                  {question.language}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded font-medium ${getQuestionTypeColor(question.type)}`}>
+                                  {question.type}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded font-medium ${getDifficultyColor(question.difficulty)}`}>
+                                  {question.difficulty}
+                                </span>
+                                {question.is_active ? (
+                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded font-medium">
+                                    Active
+                                  </span>
+                                ) : (
+                                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded font-medium">
+                                    Inactive
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => setEditingQuestion(question)}
+                                className="text-blue-600 hover:text-blue-800 p-1"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteQuestion(question.id)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-3 rounded-r-lg">
+                            <h5 className="text-sm font-medium text-beauty-bush-900 mb-2">Question</h5>
+                            <p className="text-gray-900">{question.question}</p>
+                          </div>
+                          
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <h5 className="text-sm font-medium text-gray-700 mb-3">Answer Options</h5>
+                            <div className="space-y-2">
+                              {question.options.map((option, index) => (
+                                <div key={index} className={`flex items-center space-x-2 p-2 rounded ${
+                                  index === question.correct_answer ? 'bg-green-100 border border-green-300' : 'bg-white border border-gray-200'
+                                }`}>
+                                  <span className="text-sm font-medium text-gray-700 w-8">{String.fromCharCode(65 + index)}.</span>
+                                  <span className="text-sm text-gray-900">{option}</span>
+                                  {index === question.correct_answer && (
+                                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-medium">
+                                      Correct
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r-lg">
+                            <h5 className="text-sm font-medium text-yellow-900 mb-2">Explanation</h5>
+                            <p className="text-gray-900">{question.explanation}</p>
+                          </div>
+                          
+                          {question.created_at && (
+                            <div className="text-xs text-gray-500">
+                              Created: {new Date(question.created_at).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-12 text-center">
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                      <BookOpen className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No questions found</h3>
+                      <p className="text-gray-500">
+                        {questionSearchQuery ? (
+                          <>No questions match your search criteria.</>
+                        ) : (
+                          <>No questions available for the selected filters.</>
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowAddQuestion(true)}
+                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-beauty-bush-600 hover:bg-beauty-bush-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beauty-bush-500 transition-colors"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New Question
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Pagination Controls */}
+            {questionsTotalPages > 1 && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Showing page {questionCurrentPage} of {questionsTotalPages} 
+                    <span className="ml-2 text-gray-500">
+                      ({((questionCurrentPage - 1) * questionItemsPerPage) + 1}-{Math.min(questionCurrentPage * questionItemsPerPage, filteredAndSortedQuestions.length)} of {filteredAndSortedQuestions.length} total)
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setQuestionCurrentPage(Math.max(1, questionCurrentPage - 1))}
+                      disabled={questionCurrentPage === 1}
+                      className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span>Previous</span>
+                    </button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {(() => {
+                        const pages = [];
+                        const showPages = 5;
+                        let startPage = Math.max(1, questionCurrentPage - Math.floor(showPages / 2));
+                        const endPage = Math.min(questionsTotalPages, startPage + showPages - 1);
+                        
+                        if (endPage - startPage + 1 < showPages) {
+                          startPage = Math.max(1, endPage - showPages + 1);
+                        }
+                        
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <button
+                              key={i}
+                              onClick={() => setQuestionCurrentPage(i)}
+                              className={`px-3 py-2 text-sm font-medium rounded-md ${
+                                i === questionCurrentPage
+                                  ? 'bg-beauty-bush-600 text-white'
+                                  : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+                        return pages;
+                      })()}
+                    </div>
+                    
+                    <button
+                      onClick={() => setQuestionCurrentPage(Math.min(questionsTotalPages, questionCurrentPage + 1))}
+                      disabled={questionCurrentPage === questionsTotalPages}
                       className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                     >
                       <span>Next</span>

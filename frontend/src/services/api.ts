@@ -126,6 +126,24 @@ export const sentencesAPI = {
     const response = await api.post('/admin/sentences/bulk', sentencesData);
     return response.data;
   },
+
+  importSentencesFromCSV: async (file: File): Promise<{
+    message: string;
+    imported_count: number;
+    skipped_count: number;
+    total_rows: number;
+    errors: string[];
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await api.post('/admin/sentences/import-csv', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
 
 // Annotations API
@@ -203,6 +221,42 @@ export const adminAPI = {
 
   toggleEvaluatorRole: async (userId: number): Promise<User> => {
     const response = await api.put(`/admin/users/${userId}/toggle-evaluator`);
+    return response.data;
+  },
+
+  // Analytics endpoints
+  getUserGrowthAnalytics: async (months: number = 6): Promise<Array<{month: string, users: number, annotations: number}>> => {
+    const response = await api.get(`/admin/analytics/user-growth?months=${months}`);
+    return response.data;
+  },
+
+  getErrorDistributionAnalytics: async (): Promise<Array<{type: string, count: number, color: string, description: string}>> => {
+    const response = await api.get('/admin/analytics/error-distribution');
+    return response.data;
+  },
+
+  getLanguageActivityAnalytics: async (): Promise<Array<{language: string, sentences: number, annotations: number}>> => {
+    const response = await api.get('/admin/analytics/language-activity');
+    return response.data;
+  },
+
+  getDailyActivityAnalytics: async (days: number = 7): Promise<Array<{date: string, annotations: number, evaluations: number}>> => {
+    const response = await api.get(`/admin/analytics/daily-activity?days=${days}`);
+    return response.data;
+  },
+
+  getUserRoleDistributionAnalytics: async (): Promise<Array<{role: string, count: number, color: string}>> => {
+    const response = await api.get('/admin/analytics/user-roles');
+    return response.data;
+  },
+
+  getQualityMetricsAnalytics: async (): Promise<{
+    averageQuality: number;
+    averageFluency: number;
+    averageAdequacy: number;
+    completionRate: number;
+  }> => {
+    const response = await api.get('/admin/analytics/quality-metrics');
     return response.data;
   },
 };
@@ -329,12 +383,16 @@ export const onboardingAPI = {
 // Language Proficiency Questions API
 export const languageProficiencyAPI = {
   getQuestionsByLanguages: async (languages: string[]): Promise<LanguageProficiencyQuestion[]> => {
-    const languagesParam = languages.join(',');
+    // Capitalize language names to match database format
+    const capitalizedLanguages = languages.map(lang => lang.charAt(0).toUpperCase() + lang.slice(1));
+    const languagesParam = capitalizedLanguages.join(',');
     const response = await api.get(`/language-proficiency-questions?languages=${encodeURIComponent(languagesParam)}`);
     return response.data;
   },
 
   submitAnswers: async (answers: UserQuestionAnswer[], sessionId: string, languages: string[]): Promise<OnboardingTestResult> => {
+    // Capitalize language names to match database format
+    const capitalizedLanguages = languages.map(lang => lang.charAt(0).toUpperCase() + lang.slice(1));
     const response = await api.post('/language-proficiency-questions/submit', {
       test_session_id: sessionId,
       answers: answers.map(answer => ({
@@ -342,7 +400,7 @@ export const languageProficiencyAPI = {
         selected_answer: answer.selected_answer,
         test_session_id: sessionId
       })),
-      languages: languages
+      languages: capitalizedLanguages
     });
     return response.data;
   },

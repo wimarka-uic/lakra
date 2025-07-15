@@ -48,6 +48,7 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 - **Admin Dashboard**: Comprehensive system overview and analytics
 - **User Management**: Manage users, roles, and permissions
 - **Content Management**: Add and manage sentences for annotation
+- **Bulk Import**: Import sentences via CSV files for efficient content management
 - **Quality Control**: Monitor annotation and evaluation quality
 - **System Analytics**: Track completion rates and quality metrics
 
@@ -191,6 +192,7 @@ After running the database initialization script, you can log in with:
 - `GET /api/sentences/unannotated` - Get unannotated sentences
 - `POST /api/sentences` - Create new sentence (admin only)
 - `POST /api/sentences/bulk` - Bulk create sentences (admin only)
+- `POST /api/sentences/import-csv` - Import sentences from CSV file (admin only)
 
 **Annotations:**
 - `POST /api/annotations` - Create new annotation

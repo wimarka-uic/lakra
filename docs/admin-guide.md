@@ -1337,3 +1337,226 @@ except Exception as e:
 **Last Updated**: January 2024
 **Administrator Guide Version**: 1.0.0
 **Target Audience**: System Administrators and IT Staff 
+
+# Admin Guide - Bulk Sentence Import via CSV
+
+## Overview
+
+The Lakra annotation system supports bulk import of sentences via CSV files. This feature allows administrators to efficiently add large numbers of sentences for annotation without manually entering each one through the web interface.
+
+## CSV Format Requirements
+
+### Required Columns
+
+Your CSV file must include the following columns (in any order):
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| `source_text` | The original text in the source language | "Hello world" |
+| `machine_translation` | The machine-generated translation | "Kumusta mundo" |
+| `source_language` | Source language code (lowercase) | "en" |
+| `target_language` | Target language code (lowercase) | "tagalog" |
+
+### Optional Columns
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| `domain` | Content domain/category | "general", "medical", "technical" |
+
+### Supported Languages
+
+#### Source Languages
+- `en` - English (only)
+
+#### Target Languages
+- `tagalog` - Tagalog (Filipino)
+- `cebuano` - Cebuano
+- `ilocano` - Ilocano
+
+## CSV File Format
+
+### Basic Example
+
+```csv
+source_text,machine_translation,source_language,target_language,domain
+"Hello world","Kumusta mundo","en","tagalog","general"
+"How are you?","Kumusta ka?","en","tagalog","conversation"
+"Where is the hospital?","Nasaan ang ospital?","en","tagalog","medical"
+"Thank you very much","Maraming salamat","en","tagalog","general"
+"The weather is nice today","Maganda ang panahon ngayon","en","tagalog","weather"
+```
+
+### Advanced Example with Multiple Languages
+
+```csv
+source_text,machine_translation,source_language,target_language,domain
+"Good morning","Maayong buntag","en","cebuano","greetings"
+"Where is the market?","Asa ang merkado?","en","cebuano","directions"
+"I need help","Kinahanglan nako og tabang","en","cebuano","emergency"
+"Please wait","Palihog hulat","en","cebuano","polite"
+"The food is delicious","Lami ang pagkaon","en","cebuano","food"
+"Thank you very much","Agyamanak unay","en","ilocano","polite"
+"Where is the bathroom?","Sadino ti banio?","en","ilocano","directions"
+"Take this medicine","Alaem daytoy nga agas","en","ilocano","medical"
+```
+
+## How to Import CSV Files
+
+### Step 1: Prepare Your CSV File
+
+1. Create a CSV file with the required columns
+2. Ensure all text is properly quoted if it contains commas
+3. Use UTF-8 encoding to support special characters
+4. Save the file with a `.csv` extension
+
+### Step 2: Access the Import Feature
+
+1. Log in to the admin dashboard
+2. Navigate to the "Sentences" tab
+3. Click the "Import CSV" button
+
+### Step 3: Upload and Import
+
+1. Click "Download Template" to get a sample CSV file
+2. Fill in your data following the template format
+3. Click "Choose File" and select your CSV file
+4. Review the format requirements shown in the modal
+5. Click "Import Sentences" to start the import process
+
+### Step 4: Review Results
+
+After import, you'll see a summary showing:
+- Number of sentences successfully imported
+- Number of rows skipped due to errors
+- Detailed error messages for any problematic rows
+
+## Common Issues and Solutions
+
+### File Encoding Issues
+
+**Problem:** "Invalid file encoding" error
+**Solution:** Ensure your CSV file is saved with UTF-8 encoding
+
+### Missing Required Columns
+
+**Problem:** "Missing required columns" error
+**Solution:** Check that your CSV includes all required columns: `source_text`, `machine_translation`, `source_language`, `target_language`
+
+### Invalid Language Codes
+
+**Problem:** "Invalid source language" or "Invalid target language" errors
+**Solution:** Use only the supported language codes listed above (all lowercase)
+
+### Empty Required Fields
+
+**Problem:** "Missing required text fields" error
+**Solution:** Ensure `source_text` and `machine_translation` columns are not empty
+
+### Special Characters
+
+**Problem:** Text with special characters not importing correctly
+**Solution:** 
+- Use UTF-8 encoding
+- Properly quote text containing commas, quotes, or newlines
+- Example: `"She said, ""Hello world!"""`
+
+## Best Practices
+
+### Data Quality
+
+1. **Review machine translations** before importing to ensure they're suitable for annotation
+2. **Use consistent domain categories** to help organize content
+3. **Include diverse sentence types** to improve annotation quality
+4. **Test with small batches** before importing large files
+
+### File Organization
+
+1. **Group by language pairs** in separate files for easier management
+2. **Use descriptive filenames** with language codes and dates
+3. **Keep backup copies** of your original CSV files
+4. **Document your domain categories** for consistency
+
+### Import Strategy
+
+1. **Start with small imports** (10-50 sentences) to test the process
+2. **Monitor import results** for any systematic errors
+3. **Import in batches** rather than one large file for better error handling
+4. **Review imported sentences** in the admin interface after import
+
+## Template Files
+
+### Basic Template
+
+Download the template from the import modal to get started with the correct format:
+
+```csv
+source_text,machine_translation,source_language,target_language,domain
+"Hello world","Kumusta mundo","en","tagalog","general"
+"How are you?","Kumusta ka?","en","tagalog","conversation"
+"Where is the hospital?","Nasaan ang ospital?","en","tagalog","medical"
+"Good morning","Maayong buntag","en","cebuano","greetings"
+"Where is the market?","Asa ang merkado?","en","cebuano","directions"
+"Thank you very much","Agyamanak unay","en","ilocano","polite"
+"The food is delicious","Naimas ti kanen","en","ilocano","food"
+```
+
+### Domain Categories
+
+Common domain categories you can use:
+- `general` - Everyday conversation
+- `medical` - Healthcare and medical terms
+- `technical` - Technology and technical content
+- `legal` - Legal documents and terminology
+- `education` - Educational content
+- `business` - Business and professional communication
+- `travel` - Travel and tourism
+- `food` - Food and dining
+- `weather` - Weather and climate
+- `family` - Family and relationships
+
+## Troubleshooting
+
+### Import Fails Completely
+
+1. Check file format (must be .csv)
+2. Verify UTF-8 encoding
+3. Ensure all required columns are present
+4. Check for proper CSV formatting (commas, quotes)
+
+### Partial Import Success
+
+1. Review error messages for specific rows
+2. Fix issues in your CSV file
+3. Re-import the corrected file
+4. Note that duplicate imports may create duplicate sentences
+
+### Performance Issues
+
+1. Break large files into smaller batches (100-500 sentences per file)
+2. Import during off-peak hours
+3. Monitor system resources during import
+
+## API Access
+
+For programmatic access, you can also use the API endpoint directly:
+
+```bash
+curl -X POST "http://localhost:8000/api/admin/sentences/import-csv" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@sentences.csv"
+```
+
+## Support
+
+If you encounter issues not covered in this guide:
+
+1. Check the error messages in the import results
+2. Review the CSV format requirements
+3. Test with the provided template
+4. Contact system administrators for technical support
+
+## Related Documentation
+
+- [Database Schema](../database/schema.md) - Understanding sentence structure
+- [API Documentation](../api/README.md) - Programmatic access
+- [User Manual](../user-manual.md) - General system usage 

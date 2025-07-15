@@ -710,6 +710,109 @@ def bulk_create_sentences(
     db.commit()
     return db_sentences
 
+@app.post("/api/admin/sentences/import-csv", response_model=dict)
+async def import_sentences_from_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """
+    Import sentences from a CSV file.
+    
+    Expected CSV format:
+    source_text,machine_translation,source_language,target_language,domain
+    
+    Example:
+    "Hello world","Kumusta mundo","en","tagalog","general"
+    "How are you?","Kumusta ka?","en","tagalog","conversation"
+    """
+    import csv
+    import io
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be a CSV file")
+    
+    try:
+        # Read CSV content
+        content = await file.read()
+        content_str = content.decode('utf-8')
+        
+        # Parse CSV
+        csv_reader = csv.DictReader(io.StringIO(content_str))
+        
+        # Validate required columns
+        required_columns = {'source_text', 'machine_translation', 'source_language', 'target_language'}
+        csv_columns = set(csv_reader.fieldnames or [])
+        
+        if not required_columns.issubset(csv_columns):
+            missing_columns = required_columns - csv_columns
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Missing required columns: {', '.join(missing_columns)}"
+            )
+        
+        # Process rows
+        imported_count = 0
+        skipped_count = 0
+        errors = []
+        
+        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 because row 1 is header
+            try:
+                # Validate required fields
+                if not row.get('source_text') or not row.get('machine_translation'):
+                    errors.append(f"Row {row_num}: Missing required text fields")
+                    skipped_count += 1
+                    continue
+                
+                # Create sentence object
+                sentence_data = {
+                    'source_text': row['source_text'].strip(),
+                    'machine_translation': row['machine_translation'].strip(),
+                    'source_language': row['source_language'].strip().lower(),
+                    'target_language': row['target_language'].strip().lower(),
+                    'domain': row.get('domain', '').strip() or None
+                }
+                
+                # Validate language codes
+                valid_source_languages = ['en']
+                valid_target_languages = ['tagalog', 'cebuano', 'ilocano']
+                
+                if sentence_data['source_language'] not in valid_source_languages:
+                    errors.append(f"Row {row_num}: Invalid source language '{sentence_data['source_language']}'. Only 'en' is supported.")
+                    skipped_count += 1
+                    continue
+                
+                if sentence_data['target_language'] not in valid_target_languages:
+                    errors.append(f"Row {row_num}: Invalid target language '{sentence_data['target_language']}'. Only 'tagalog', 'cebuano', and 'ilocano' are supported.")
+                    skipped_count += 1
+                    continue
+                
+                # Create sentence in database
+                db_sentence = Sentence(**sentence_data)
+                db.add(db_sentence)
+                imported_count += 1
+                
+            except Exception as e:
+                errors.append(f"Row {row_num}: {str(e)}")
+                skipped_count += 1
+                continue
+        
+        # Commit all valid sentences
+        db.commit()
+        
+        return {
+            "message": "CSV import completed",
+            "imported_count": imported_count,
+            "skipped_count": skipped_count,
+            "total_rows": imported_count + skipped_count,
+            "errors": errors
+        }
+        
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid file encoding. Please use UTF-8 encoding.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error processing CSV file: {str(e)}")
+
 # Evaluation endpoints
 @app.post("/api/evaluations", response_model=EvaluationResponse)
 def create_evaluation(
@@ -1768,7 +1871,7 @@ def get_language_proficiency_questions(
         language_list = [lang.strip() for lang in languages.split(',')]
         query = query.filter(LanguageProficiencyQuestion.language.in_(language_list))
     
-    questions = query.order_by(LanguageProficiencyQuestion.language, LanguageProficiencyQuestion.order).all()
+    questions = query.order_by(LanguageProficiencyQuestion.language, LanguageProficiencyQuestion.type, LanguageProficiencyQuestion.difficulty, LanguageProficiencyQuestion.created_at).all()
     return [LanguageProficiencyQuestionResponse.from_orm(q) for q in questions]
 
 @app.post("/api/language-proficiency-questions/submit")
@@ -1848,7 +1951,9 @@ def admin_get_all_questions(
     """Admin: Get all language proficiency questions"""
     questions = db.query(LanguageProficiencyQuestion).order_by(
         LanguageProficiencyQuestion.language, 
-        LanguageProficiencyQuestion.order
+        LanguageProficiencyQuestion.type,
+        LanguageProficiencyQuestion.difficulty,
+        LanguageProficiencyQuestion.created_at
     ).all()
     return [LanguageProficiencyQuestionResponse.from_orm(q) for q in questions]
 
@@ -1904,6 +2009,236 @@ def admin_delete_question(
     db.delete(db_question)
     db.commit()
     return {"message": "Question deleted successfully"}
+
+@app.get("/api/admin/analytics/user-growth")
+def get_user_growth_analytics(
+    months: int = 6,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get user growth and annotation activity over time"""
+    from sqlalchemy import func, extract
+    from datetime import datetime, timedelta
+    
+    # Get user registrations by month
+    user_growth = []
+    for i in range(months - 1, -1, -1):
+        start_date = datetime.now() - timedelta(days=30 * i)
+        end_date = start_date + timedelta(days=30)
+        
+        # Count users registered in this month
+        users_count = db.query(User).filter(
+            User.created_at >= start_date,
+            User.created_at < end_date
+        ).count()
+        
+        # Count annotations created in this month
+        annotations_count = db.query(Annotation).filter(
+            Annotation.created_at >= start_date,
+            Annotation.created_at < end_date
+        ).count()
+        
+        user_growth.append({
+            "month": start_date.strftime("%b %y"),
+            "users": users_count,
+            "annotations": annotations_count
+        })
+    
+    return user_growth
+
+@app.get("/api/admin/analytics/error-distribution")
+def get_error_distribution_analytics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get error type distribution from text highlights"""
+    from sqlalchemy import func
+    
+    # Get all text highlights with error types
+    highlights = db.query(TextHighlight).filter(
+        TextHighlight.error_type.isnot(None)
+    ).all()
+    
+    # Count by error type
+    error_counts = {}
+    for highlight in highlights:
+        error_type = highlight.error_type
+        if error_type not in error_counts:
+            error_counts[error_type] = 0
+        error_counts[error_type] += 1
+    
+    # Map error types to display names and colors
+    error_type_mapping = {
+        'MI_ST': {
+            'type': 'Minor Syntactic',
+            'color': '#f97316',
+            'description': 'Grammar, punctuation, word order'
+        },
+        'MI_SE': {
+            'type': 'Minor Semantic', 
+            'color': '#3b82f6',
+            'description': 'Word choice, cultural nuances'
+        },
+        'MA_ST': {
+            'type': 'Major Syntactic',
+            'color': '#ef4444', 
+            'description': 'Sentence structure, missing words'
+        },
+        'MA_SE': {
+            'type': 'Major Semantic',
+            'color': '#8b5cf6',
+            'description': 'Meaning distortion, context errors'
+        }
+    }
+    
+    # Convert to response format
+    error_distribution = []
+    for error_code, count in error_counts.items():
+        if error_code in error_type_mapping:
+            mapping = error_type_mapping[error_code]
+            error_distribution.append({
+                'type': mapping['type'],
+                'count': count,
+                'color': mapping['color'],
+                'description': mapping['description']
+            })
+    
+    return error_distribution
+
+@app.get("/api/admin/analytics/language-activity")
+def get_language_activity_analytics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get language activity statistics"""
+    from sqlalchemy import func
+    
+    # Get sentence counts by language
+    sentence_counts = db.query(
+        Sentence.target_language,
+        func.count(Sentence.id).label('sentence_count')
+    ).group_by(Sentence.target_language).all()
+    
+    # Get annotation counts by language
+    annotation_counts = db.query(
+        Sentence.target_language,
+        func.count(Annotation.id).label('annotation_count')
+    ).join(Annotation, Sentence.id == Annotation.sentence_id).group_by(
+        Sentence.target_language
+    ).all()
+    
+    # Combine the data
+    language_activity = []
+    sentence_dict = {lang: count for lang, count in sentence_counts}
+    annotation_dict = {lang: count for lang, count in annotation_counts}
+    
+    for language in sentence_dict.keys():
+        language_activity.append({
+            'language': language.capitalize(),
+            'sentences': sentence_dict[language],
+            'annotations': annotation_dict.get(language, 0)
+        })
+    
+    # Sort by sentence count
+    language_activity.sort(key=lambda x: x['sentences'], reverse=True)
+    
+    return language_activity
+
+@app.get("/api/admin/analytics/daily-activity")
+def get_daily_activity_analytics(
+    days: int = 7,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get daily activity for the last N days"""
+    from sqlalchemy import func, extract
+    from datetime import datetime, timedelta
+    
+    daily_activity = []
+    
+    for i in range(days - 1, -1, -1):
+        date = datetime.now() - timedelta(days=i)
+        start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = start_of_day + timedelta(days=1)
+        
+        # Count annotations for this day
+        annotations_count = db.query(Annotation).filter(
+            Annotation.created_at >= start_of_day,
+            Annotation.created_at < end_of_day
+        ).count()
+        
+        # Count evaluations for this day
+        evaluations_count = db.query(Evaluation).filter(
+            Evaluation.created_at >= start_of_day,
+            Evaluation.created_at < end_of_day
+        ).count()
+        
+        daily_activity.append({
+            'date': date.strftime('%a'),
+            'annotations': annotations_count,
+            'evaluations': evaluations_count
+        })
+    
+    return daily_activity
+
+@app.get("/api/admin/analytics/user-roles")
+def get_user_role_distribution(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get user role distribution"""
+    # Count users by role
+    admin_count = db.query(User).filter(User.is_admin == True).count()
+    evaluator_count = db.query(User).filter(
+        User.is_evaluator == True,
+        User.is_admin == False
+    ).count()
+    annotator_count = db.query(User).filter(
+        User.is_admin == False,
+        User.is_evaluator == False
+    ).count()
+    
+    return [
+        {'role': 'Admins', 'count': admin_count, 'color': '#8b5cf6'},
+        {'role': 'Evaluators', 'count': evaluator_count, 'color': '#10b981'},
+        {'role': 'Annotators', 'count': annotator_count, 'color': '#6b7280'}
+    ]
+
+@app.get("/api/admin/analytics/quality-metrics")
+def get_quality_metrics_analytics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get quality metrics from completed annotations"""
+    # Get completed annotations with quality scores
+    completed_annotations = db.query(Annotation).filter(
+        Annotation.annotation_status == 'completed',
+        Annotation.overall_quality.isnot(None)
+    ).all()
+    
+    if not completed_annotations:
+        return {
+            'averageQuality': 0,
+            'averageFluency': 0,
+            'averageAdequacy': 0,
+            'completionRate': 0
+        }
+    
+    # Calculate averages
+    total_annotations = db.query(Annotation).count()
+    completed_count = len(completed_annotations)
+    
+    avg_quality = sum(a.overall_quality for a in completed_annotations) / len(completed_annotations)
+    avg_fluency = sum(a.fluency_score for a in completed_annotations if a.fluency_score) / len(completed_annotations)
+    avg_adequacy = sum(a.adequacy_score for a in completed_annotations if a.adequacy_score) / len(completed_annotations)
+    completion_rate = (completed_count / total_annotations) * 100 if total_annotations > 0 else 0
+    
+    return {
+        'averageQuality': round(avg_quality, 1),
+        'averageFluency': round(avg_fluency, 1),
+        'averageAdequacy': round(avg_adequacy, 1),
+        'completionRate': round(completion_rate, 1)
+    }
 
 if __name__ == "__main__":
     import uvicorn

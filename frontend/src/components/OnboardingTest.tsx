@@ -1,224 +1,27 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { onboardingAPI } from '../services/api';
+import { languageProficiencyAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Clock, Brain, Star, AlertTriangle, HelpCircle, ArrowRight, Globe, BookOpen } from 'lucide-react';
-
-interface LanguageProficiencyQuestion {
-  id: string;
-  language: string;
-  type: 'grammar' | 'vocabulary' | 'translation' | 'cultural' | 'comprehension';
-  question: string;
-  options: string[];
-  correct_answer: number; // index of correct option
-  explanation: string;
-  difficulty: 'basic' | 'intermediate' | 'advanced';
-}
-
-interface UserAnswer {
-  question_id: string;
-  selected_answer: number;
-  is_correct: boolean;
-}
+import { Clock, Brain, AlertTriangle, ArrowRight, Globe, BookOpen } from 'lucide-react';
+import type { UserQuestionAnswer, LanguageProficiencyQuestion } from '../types';
 
 const OnboardingTest: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<UserAnswer[]>([]);
+  const [answers, setAnswers] = useState<UserQuestionAnswer[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(45 * 60); // 45 minutes
   const [showInstructions, setShowInstructions] = useState(true);
   const [testStarted, setTestStarted] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-
-  // Language proficiency questions based on user's languages
-  const questions: LanguageProficiencyQuestion[] = useMemo(() => {
-    const allQuestions: LanguageProficiencyQuestion[] = [];
-    
-    // Tagalog Questions
-    if (selectedLanguages.includes('tagalog')) {
-      allQuestions.push(
-        {
-          id: 'tagalog_1',
-          language: 'Tagalog',
-          type: 'grammar',
-          question: 'Which is the correct way to say "I am going to school" in Tagalog?',
-          options: [
-            'Ako ay pupunta sa eskwelahan',
-            'Pupunta ako sa eskwelahan',
-            'Sa eskwelahan ako pupunta',
-            'Lahat ng nabanggit'
-          ],
-          correct_answer: 3,
-          explanation: 'All three options are grammatically correct ways to express "I am going to school" in Tagalog, showing the flexibility of Filipino sentence structure.',
-          difficulty: 'basic'
-        },
-        {
-          id: 'tagalog_2',
-          language: 'Tagalog',
-          type: 'vocabulary',
-          question: 'What does "pakikipagkunware" mean in English?',
-          options: [
-            'Honesty',
-            'Pretending or acting',
-            'Helping others',
-            'Being lazy'
-          ],
-          correct_answer: 1,
-          explanation: '"Pakikipagkunware" refers to pretending, acting, or putting on a facade.',
-          difficulty: 'intermediate'
-        },
-        {
-          id: 'tagalog_3',
-          language: 'Tagalog',
-          type: 'cultural',
-          question: 'What is the traditional Filipino greeting that shows respect to elders?',
-          options: [
-            'Kamusta',
-            'Mano or pagmamano',
-            'Salamat',
-            'Kumain ka na?'
-          ],
-          correct_answer: 1,
-          explanation: 'Mano or pagmamano is the traditional Filipino gesture of respect where younger people take the hand of an elder and touch it to their forehead.',
-          difficulty: 'basic'
-        }
-      );
-    }
-
-    // Cebuano Questions
-    if (selectedLanguages.includes('cebuano')) {
-      allQuestions.push(
-        {
-          id: 'cebuano_1',
-          language: 'Cebuano',
-          type: 'vocabulary',
-          question: 'What does "maayong buntag" mean?',
-          options: [
-            'Good afternoon',
-            'Good evening',
-            'Good morning',
-            'Good night'
-          ],
-          correct_answer: 2,
-          explanation: '"Maayong buntag" is the Cebuano greeting for "good morning".',
-          difficulty: 'basic'
-        },
-        {
-          id: 'cebuano_2',
-          language: 'Cebuano',
-          type: 'grammar',
-          question: 'Which is the correct Cebuano translation of "I love you"?',
-          options: [
-            'Gihigugma ko ikaw',
-            'Gihigugma tika',
-            'Nahigugma ko nimo',
-            'Tanan og nabanggit'
-          ],
-          correct_answer: 3,
-          explanation: 'All three expressions are valid ways to say "I love you" in Cebuano, with slight variations in formality and regional usage.',
-          difficulty: 'intermediate'
-        }
-      );
-    }
-
-    // Ilocano Questions
-    if (selectedLanguages.includes('ilocano')) {
-      allQuestions.push(
-        {
-          id: 'ilocano_1',
-          language: 'Ilocano',
-          type: 'vocabulary',
-          question: 'What does "naimbag nga aldaw" mean?',
-          options: [
-            'Bad day',
-            'Good day',
-            'New day',
-            'Last day'
-          ],
-          correct_answer: 1,
-          explanation: '"Naimbag nga aldaw" means "good day" in Ilocano.',
-          difficulty: 'basic'
-        },
-        {
-          id: 'ilocano_2',
-          language: 'Ilocano',
-          type: 'cultural',
-          question: 'What is "bayanihan" in Ilocano culture?',
-          options: [
-            'A type of food',
-            'Community spirit and cooperation',
-            'A traditional dance',
-            'A religious ceremony'
-          ],
-          correct_answer: 1,
-          explanation: 'Bayanihan represents the Filipino spirit of community cooperation and helping one another.',
-          difficulty: 'intermediate'
-        }
-      );
-    }
-
-    // English Questions (for Filipino contexts)
-    if (selectedLanguages.includes('english')) {
-      allQuestions.push(
-        {
-          id: 'english_1',
-          language: 'English',
-          type: 'grammar',
-          question: 'Which sentence shows correct Philippine English usage?',
-          options: [
-            'I will open the aircon',
-            'I will turn on the air conditioner',
-            'Both are acceptable in Philippine English',
-            'Neither is correct'
-          ],
-          correct_answer: 2,
-          explanation: 'Both "aircon" (common in Philippine English) and "air conditioner" are acceptable, showing the localized variety of English used in the Philippines.',
-          difficulty: 'intermediate'
-        },
-        {
-          id: 'english_2',
-          language: 'English',
-          type: 'translation',
-          question: 'What is the best English translation of the Filipino concept "kilig"?',
-          options: [
-            'Happy',
-            'Excited',
-            'Butterflies in stomach/romantic excitement',
-            'Confused'
-          ],
-          correct_answer: 2,
-          explanation: '"Kilig" is a uniquely Filipino emotion describing the giddy, romantic excitement one feels, often translated as "butterflies in the stomach".',
-          difficulty: 'advanced'
-        }
-      );
-    }
-
-    // Add questions for other languages as needed
-    if (selectedLanguages.includes('hiligaynon')) {
-      allQuestions.push(
-        {
-          id: 'hiligaynon_1',
-          language: 'Hiligaynon',
-          type: 'vocabulary',
-          question: 'What does "maayong aga" mean in Hiligaynon?',
-          options: [
-            'Good evening',
-            'Good morning',
-            'Good afternoon',
-            'Good night'
-          ],
-          correct_answer: 1,
-          explanation: '"Maayong aga" is the Hiligaynon greeting for "good morning".',
-          difficulty: 'basic'
-        }
-      );
-    }
-
-    return allQuestions;
-  }, [selectedLanguages]);
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  
+  // API-fetched questions state
+  const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [questionsError, setQuestionsError] = useState<string>('');
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentAnswer = answers.find(a => a.question_id === currentQuestion?.id);
@@ -228,6 +31,34 @@ const OnboardingTest: React.FC = () => {
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+
+  // Fetch questions when languages are selected and test is started
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      if (testStarted && selectedLanguages.length > 0 && questions.length === 0 && !loadingQuestions) {
+        setLoadingQuestions(true);
+        setQuestionsError('');
+        
+        try {
+          console.log('Fetching questions for languages:', selectedLanguages);
+          const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(selectedLanguages);
+          console.log('Fetched questions:', fetchedQuestions);
+          setQuestions(fetchedQuestions);
+          
+          if (fetchedQuestions.length === 0) {
+            setQuestionsError('No questions available for your selected languages. Please contact support.');
+          }
+        } catch (error) {
+          console.error('Error fetching questions:', error);
+          setQuestionsError('Failed to load test questions. Please try again.');
+        } finally {
+          setLoadingQuestions(false);
+        }
+      }
+    };
+
+    fetchQuestions();
+  }, [testStarted, selectedLanguages, questions.length, loadingQuestions]);
 
   const handleStartTest = () => {
     if (user?.languages && user.languages.length > 0) {
@@ -241,15 +72,17 @@ const OnboardingTest: React.FC = () => {
   };
 
   const updateAnswer = (selectedAnswer: number) => {
+    if (!currentQuestion) return;
+    
     const isCorrect = selectedAnswer === currentQuestion.correct_answer;
-    const newAnswer: UserAnswer = {
+    const newAnswer: UserQuestionAnswer = {
       question_id: currentQuestion.id,
       selected_answer: selectedAnswer,
       is_correct: isCorrect
     };
     
     setAnswers(prev => {
-      const filtered = prev.filter(a => a.question_id !== currentQuestion.id);
+      const filtered = prev.filter(a => a.question_id !== newAnswer.question_id);
       return [...filtered, newAnswer];
     });
   };
@@ -278,7 +111,7 @@ const OnboardingTest: React.FC = () => {
       const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
       
       // Submit to backend
-      const result = await onboardingAPI.submitTest(1, answers);
+      const result = await languageProficiencyAPI.submitAnswers(answers, sessionId, selectedLanguages);
       
       if (result.passed || score >= 70) {
         setTimeout(() => {
@@ -307,7 +140,7 @@ Don't worry - language learning is a journey! You need at least 70% to pass, but
     } finally {
       setIsSubmitting(false);
     }
-  }, [answers, questions.length, navigate]);
+  }, [answers, questions.length, navigate, sessionId, selectedLanguages]);
 
   // Timer effect
   useEffect(() => {
@@ -487,14 +320,39 @@ Don't worry - language learning is a journey! You need at least 70% to pass, but
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Globe className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No questions available for your selected languages.</p>
-          <button
-            onClick={() => navigate('/profile')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Update Language Selection
-          </button>
+          {loadingQuestions ? (
+            <div className="flex flex-col items-center">
+              <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">Loading quiz questions...</p>
+              <p className="text-sm text-gray-500">
+                Preparing questions for {selectedLanguages.map(lang => 
+                  lang.charAt(0).toUpperCase() + lang.slice(1)
+                ).join(', ')}
+              </p>
+            </div>
+          ) : questionsError ? (
+            <div className="flex flex-col items-center">
+              <AlertTriangle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+              <p className="text-red-600 mb-4">{questionsError}</p>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <Globe className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">No questions available for your selected languages.</p>
+              <button
+                onClick={() => navigate('/profile')}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Update Language Selection
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
