@@ -39,7 +39,7 @@ interface OnboardingStep {
 }
 
 const UserDashboard: React.FC = () => {
-  const { user, markGuidelinesSeen } = useAuth();
+  const { user, markGuidelinesSeen, forceRefreshUser } = useAuth();
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -139,6 +139,45 @@ const UserDashboard: React.FC = () => {
     }
   }, [stats]);
 
+  useEffect(() => {
+    // Update onboarding step completion status when user data changes
+    if (user) {
+      console.log('UserDashboard: User data updated, onboarding_status:', user.onboarding_status);
+      setOnboardingSteps(currentSteps => 
+        currentSteps.map(step => {
+          if (step.id === 'qualification_test') {
+            const completed = user.onboarding_status === 'completed';
+            console.log('UserDashboard: Setting qualification_test completed to:', completed);
+            return {...step, completed};
+          }
+          if (step.id === 'read_guidelines') {
+            return {...step, completed: user.guidelines_seen || false};
+          }
+          return step;
+        })
+      );
+    }
+  }, [user]);
+
+  // Force refresh user data when component becomes visible (e.g., user returns from onboarding test)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        console.log('UserDashboard: Tab became visible, checking for updated user data...');
+        try {
+          await forceRefreshUser();
+        } catch (error) {
+          console.error('UserDashboard: Error refreshing user data on visibility change:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [forceRefreshUser]);
+
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
@@ -189,10 +228,43 @@ const UserDashboard: React.FC = () => {
     }
   };
 
-  const handleRefresh = async () => {
+  // Manual refresh function for user data
+  const handleManualRefresh = async () => {
     setRefreshing(true);
-    await loadDashboardData();
-    setTimeout(() => setRefreshing(false), 500);
+    console.log('UserDashboard: Manual refresh triggered, current user onboarding_status:', user?.onboarding_status);
+    try {
+      // Clear any cached data first
+      localStorage.removeItem('user');
+      
+      // Force refresh with multiple retries
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        await forceRefreshUser();
+        
+        // Get the updated user data
+        const updatedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log(`UserDashboard: Retry ${retryCount + 1}/${maxRetries} - user onboarding_status:`, updatedUser.onboarding_status);
+        
+        if (updatedUser.onboarding_status === 'completed') {
+          console.log('UserDashboard: Successfully verified user onboarding status is completed');
+          break;
+        }
+        
+        retryCount++;
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+        }
+      }
+      
+      await loadDashboardData(); // Reload dashboard data as well
+      console.log('UserDashboard: User refreshed, new onboarding_status:', user?.onboarding_status);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const formatTime = (seconds: number): string => {
@@ -290,6 +362,19 @@ const UserDashboard: React.FC = () => {
                   Complete your qualification test to start annotating.
                 </p>
               )}
+              {/* Temporary debug info - more prominent */}
+              <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs">
+                <p><strong>Debug Info:</strong></p>
+                <p>onboarding_status = "{user?.onboarding_status}"</p>
+                <p>Last refreshed: {new Date().toLocaleTimeString()}</p>
+                <button 
+                  onClick={handleManualRefresh}
+                  className="mt-1 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                  disabled={refreshing}
+                >
+                  {refreshing ? 'Refreshing...' : 'Force Refresh'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -305,7 +390,7 @@ const UserDashboard: React.FC = () => {
             </p>
           </div>
           <button 
-            onClick={handleRefresh} 
+            onClick={handleManualRefresh} 
             className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all"
           >
             <RefreshCcw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -346,7 +431,7 @@ const UserDashboard: React.FC = () => {
                     <p className="mt-1 text-xs text-gray-500">
                       {stats?.completedAnnotations || 0} / {userLevel.nextMilestone} annotations completed
                     </p>
-                  </div>
+                    </div>
                 </div>
                 
                 <div className="lg:col-span-2">

@@ -179,8 +179,27 @@ def convert_user_to_response(db: Session, user: User) -> UserResponse:
 
 @app.get("/api/me", response_model=UserResponse)
 def get_current_user_info(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    print(f"DEBUG: /api/me endpoint called for user {current_user.id} ({current_user.email})")
+    print(f"DEBUG: Dependency-injected user onboarding_status: {current_user.onboarding_status}")
+    
+    # Fresh query to ensure we get the latest data from database
+    fresh_user = db.query(User).filter(User.id == current_user.id).first()
+    if not fresh_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    print(f"DEBUG: Fresh user query onboarding_status: {fresh_user.onboarding_status}")
+    
+    # Refresh the session to ensure we get latest data
+    db.refresh(fresh_user)
+    
+    print(f"DEBUG: After refresh, user onboarding_status: {fresh_user.onboarding_status}")
+    print(f"DEBUG: /api/me endpoint returning user with onboarding_status: {fresh_user.onboarding_status}")
+    
     # Return user data with properly extracted languages
-    return UserResponse.from_orm(current_user)
+    return UserResponse.from_orm(fresh_user)
 
 @app.put("/api/me/guidelines-seen", response_model=UserResponse)
 def mark_guidelines_seen(
@@ -193,6 +212,21 @@ def mark_guidelines_seen(
     
     # Process the user to ensure languages are properly handled
     return convert_user_to_response(db, current_user)
+
+# Helper function to check onboarding completion
+def check_onboarding_completed(user: User):
+    """Check if user has completed onboarding test and raise exception if not"""
+    if user.onboarding_status != 'completed':
+        status_messages = {
+            'pending': 'You need to complete the onboarding test before you can access annotation features.',
+            'in_progress': 'Please complete your onboarding test to access annotation features.',
+            'failed': 'You need to pass the onboarding test before you can access annotation features. Please retake the test.'
+        }
+        message = status_messages.get(user.onboarding_status, 'Please complete your onboarding test.')
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=message
+        )
 
 # Sentence management endpoints
 @app.post("/api/sentences", response_model=SentenceResponse)
@@ -223,6 +257,9 @@ def get_next_sentence(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     # Find sentences that haven't been annotated by this user and match their preferred language
     next_sentence = db.query(Sentence).filter(
         Sentence.is_active == True,
@@ -244,6 +281,9 @@ def get_unannotated_sentences(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     # Find sentences that haven't been annotated by this user and match their preferred language
     unannotated_sentences = db.query(Sentence).filter(
         Sentence.is_active == True,
@@ -275,6 +315,9 @@ def create_annotation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     # Check if user already annotated this sentence
     existing_annotation = db.query(Annotation).filter(
         Annotation.sentence_id == annotation_data.sentence_id,
@@ -349,6 +392,9 @@ def create_legacy_annotation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     # Check if user already annotated this sentence
     existing_annotation = db.query(Annotation).filter(
         Annotation.sentence_id == annotation_data.sentence_id,
@@ -398,6 +444,9 @@ def update_annotation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     annotation = db.query(Annotation).filter(
         Annotation.id == annotation_id,
         Annotation.annotator_id == current_user.id
@@ -1618,6 +1667,9 @@ async def upload_voice_recording(
 ):
     """Upload voice recording for annotation final form"""
     
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     # Validate file type
     if not audio_file.content_type or not audio_file.content_type.startswith('audio/'):
         raise HTTPException(status_code=400, detail="File must be an audio file")
@@ -1881,6 +1933,10 @@ def submit_language_proficiency_answers(
     db: Session = Depends(get_db)
 ):
     """Submit language proficiency test answers"""
+    print(f"DEBUG: User {current_user.email} submitting {len(submission.answers)} answers")
+    print(f"DEBUG: Languages: {submission.languages}")
+    print(f"DEBUG: Current onboarding status: {current_user.onboarding_status}")
+    
     correct_count = 0
     total_questions = len(submission.answers)
     
@@ -1895,6 +1951,8 @@ def submit_language_proficiency_answers(
             is_correct = answer.selected_answer == question.correct_answer
             if is_correct:
                 correct_count += 1
+            
+            print(f"DEBUG: Question {answer.question_id}: correct={is_correct}")
             
             # Store the user's answer
             user_answer = UserQuestionAnswer(
@@ -1911,6 +1969,48 @@ def submit_language_proficiency_answers(
     # Calculate score
     score = (correct_count / total_questions * 100) if total_questions > 0 else 0
     passed = score >= 70.0
+    
+    print(f"DEBUG: Score: {score}%, Passed: {passed}")
+    
+    # Update user onboarding status if passed
+    if passed:
+        print(f"DEBUG: Updating user onboarding status to 'completed'")
+        print(f"DEBUG: User ID: {current_user.id}, Email: {current_user.email}")
+        print(f"DEBUG: Current status before update: {current_user.onboarding_status}")
+        
+        current_user.onboarding_status = 'completed'
+        current_user.onboarding_score = score
+        current_user.onboarding_completed_at = datetime.utcnow()
+        
+        print(f"DEBUG: Status set to: {current_user.onboarding_status}")
+        
+        # Ensure we're working with the same session
+        db.add(current_user)
+        db.commit()
+        
+        print(f"DEBUG: Committed to database")
+        
+        # Force refresh from database
+        db.refresh(current_user)
+        print(f"DEBUG: After refresh, current_user.onboarding_status: {current_user.onboarding_status}")
+        
+        # Additional verification - query fresh from database with explicit session
+        fresh_user = db.query(User).filter(User.id == current_user.id).first()
+        print(f"DEBUG: Fresh query shows onboarding status: {fresh_user.onboarding_status}")
+        print(f"DEBUG: Fresh query user ID: {fresh_user.id}, Email: {fresh_user.email}")
+        
+        # Close and recreate session to ensure no caching
+        db.expunge_all()
+        fresh_user2 = db.query(User).filter(User.id == current_user.id).first()
+        print(f"DEBUG: Second fresh query shows onboarding status: {fresh_user2.onboarding_status}")
+        
+    else:
+        print(f"DEBUG: User did not pass (score {score}% < 70%)")
+        current_user.onboarding_status = 'failed'
+        current_user.onboarding_score = score
+        db.add(current_user)
+        db.commit()
+        db.refresh(current_user)
     
     # Create results breakdown by language
     questions_by_language = {}

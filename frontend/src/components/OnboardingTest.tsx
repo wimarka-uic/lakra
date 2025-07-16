@@ -1,13 +1,31 @@
+/**
+ * OnboardingTest Component
+ * 
+ * This component handles the language proficiency quiz for new users.
+ * 
+ * Key fixes implemented:
+ * 1. Prevents infinite loops when no questions are available by using questionsFetched flag
+ * 2. Checks if user has already completed onboarding before allowing retakes
+ * 3. Proper error handling with retry functionality that resets test state
+ * 4. Timer only starts when questions are actually loaded and available
+ * 5. Validates all questions are answered before submission
+ * 6. Prevents multiple submissions with isSubmitting guard
+ * 7. Improved loading states and error handling for better UX
+ * 8. Proper state management to avoid UI glitches when no questions available
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { languageProficiencyAPI } from '../services/api';
+import { languageProficiencyAPI, onboardingAPI, authStorage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Clock, Brain, AlertTriangle, ArrowRight, Globe, BookOpen } from 'lucide-react';
-import type { UserQuestionAnswer, LanguageProficiencyQuestion } from '../types';
+import type { UserQuestionAnswer, LanguageProficiencyQuestion, OnboardingTest } from '../types';
+import QuizSuccessModal from './QuizSuccessModal';
+import QuizFailureModal from './QuizFailureModal';
 
 const OnboardingTest: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, forceRefreshUser } = useAuth();
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserQuestionAnswer[]>([]);
@@ -22,6 +40,16 @@ const OnboardingTest: React.FC = () => {
   const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [questionsError, setQuestionsError] = useState<string>('');
+  const [questionsFetched, setQuestionsFetched] = useState(false);
+  
+  // Onboarding completion check
+  const [checkingOnboardingStatus, setCheckingOnboardingStatus] = useState(true);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showFailureModal, setShowFailureModal] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentAnswer = answers.find(a => a.question_id === currentQuestion?.id);
@@ -32,10 +60,48 @@ const OnboardingTest: React.FC = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Check if user has already completed onboarding
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        // First check user object directly for completed status
+        if (user?.onboarding_status === 'completed') {
+          setOnboardingComplete(true);
+          setCheckingOnboardingStatus(false);
+          return;
+        }
+
+        // Check for completed tests via API if user status is not completed
+        try {
+          const tests = await onboardingAPI.getMyTests();
+          const completedTest = tests.find((test: OnboardingTest) => test.status === 'completed');
+          
+          if (completedTest) {
+            setOnboardingComplete(true);
+          }
+        } catch (apiError) {
+          console.warn('Could not fetch onboarding tests:', apiError);
+          // If API fails, rely on user object status
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+      } finally {
+        setCheckingOnboardingStatus(false);
+      }
+    };
+
+    if (user) {
+      checkOnboardingStatus();
+    } else {
+      setCheckingOnboardingStatus(false);
+    }
+  }, [user]);
+
   // Fetch questions when languages are selected and test is started
   useEffect(() => {
     const fetchQuestions = async () => {
-      if (testStarted && selectedLanguages.length > 0 && questions.length === 0 && !loadingQuestions) {
+      // Only fetch if test started, have languages, no questions yet, not loading, and haven't tried fetching yet
+      if (testStarted && selectedLanguages.length > 0 && questions.length === 0 && !loadingQuestions && !questionsFetched) {
         setLoadingQuestions(true);
         setQuestionsError('');
         
@@ -43,9 +109,13 @@ const OnboardingTest: React.FC = () => {
           console.log('Fetching questions for languages:', selectedLanguages);
           const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(selectedLanguages);
           console.log('Fetched questions:', fetchedQuestions);
-          setQuestions(fetchedQuestions);
           
-          if (fetchedQuestions.length === 0) {
+          // Mark as fetched regardless of result to prevent infinite loops
+          setQuestionsFetched(true);
+          
+          if (fetchedQuestions && fetchedQuestions.length > 0) {
+            setQuestions(fetchedQuestions);
+          } else {
             setQuestionsError('No questions available for your selected languages. Please contact support.');
           }
         } catch (error) {
@@ -58,7 +128,7 @@ const OnboardingTest: React.FC = () => {
     };
 
     fetchQuestions();
-  }, [testStarted, selectedLanguages, questions.length, loadingQuestions]);
+  }, [testStarted, selectedLanguages, questions.length, loadingQuestions, questionsFetched]);
 
   const handleStartTest = () => {
     if (user?.languages && user.languages.length > 0) {
@@ -88,9 +158,15 @@ const OnboardingTest: React.FC = () => {
   };
 
   const handleNext = () => {
+    if (!currentAnswer) {
+      alert('Please select an answer before proceeding.');
+      return;
+    }
+    
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
+      // This is the last question, submit the test
       handleSubmitTest();
     }
   };
@@ -101,7 +177,80 @@ const OnboardingTest: React.FC = () => {
     }
   };
 
+  const handleQuizSuccess = async () => {
+    try {
+      // Add delay to ensure backend has fully processed the completion
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Try to refresh user data with retry logic
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        await forceRefreshUser();
+        
+        // Check if the update worked
+        const currentUserData = authStorage.getUser();
+        if (currentUserData?.onboarding_status === 'completed') {
+          console.log('handleQuizSuccess: Successfully verified user onboarding status is completed');
+          break;
+        } else {
+          retryCount++;
+          console.log(`handleQuizSuccess: Retry ${retryCount}/${maxRetries} - user still shows status: ${currentUserData?.onboarding_status}`);
+          if (retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retry
+          }
+        }
+      }
+      
+      setShowSuccessModal(false);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      // Still navigate even if refresh fails
+      setShowSuccessModal(false);
+      navigate('/dashboard');
+    }
+  };
+
+  const handleRetryQuiz = () => {
+    // Reset all quiz state for a fresh start
+    setShowFailureModal(false);
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    setTimeRemaining(45 * 60);
+    setShowInstructions(true);
+    setTestStarted(false);
+    setQuestions([]);
+    setQuestionsFetched(false);
+    setQuestionsError('');
+    setLoadingQuestions(false);
+    setFinalScore(0);
+  };
+
   const handleSubmitTest = useCallback(async () => {
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
+
+    // Check if test is actually ready for submission
+    if (questions.length === 0) {
+      alert('No questions available to submit. Please try again later.');
+      return;
+    }
+
+    // Check if all questions are answered
+    if (answers.length < questions.length) {
+      const unansweredCount = questions.length - answers.length;
+      const confirmSubmit = window.confirm(
+        `You have ${unansweredCount} unanswered question(s). Are you sure you want to submit the test? Unanswered questions will be marked as incorrect.`
+      );
+      if (!confirmSubmit) {
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -114,25 +263,44 @@ const OnboardingTest: React.FC = () => {
       const result = await languageProficiencyAPI.submitAnswers(answers, sessionId, selectedLanguages);
       
       if (result.passed || score >= 70) {
-        setTimeout(() => {
-          alert(`🎉 Congratulations! You passed the Language Proficiency Quiz with a score of ${score.toFixed(1)}%!
-
-Your language skills are excellent, and you demonstrate strong proficiency in your selected languages.
-
-Welcome to the Lakra team! You can now access all annotation features.`);
-          navigate('/dashboard');
-        }, 1000);
+        // Show success modal instead of alert
+        setFinalScore(score);
+        
+        // Add a small delay to ensure backend transaction is committed, then refresh user data with retry
+        try {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          
+          // Try to refresh user data, with retry logic
+          let retryCount = 0;
+          const maxRetries = 3;
+          
+          while (retryCount < maxRetries) {
+            await forceRefreshUser();
+            
+            // Check if the update worked
+            const currentUserData = authStorage.getUser();
+            if (currentUserData?.onboarding_status === 'completed') {
+              console.log('OnboardingTest: Successfully updated user onboarding status to completed');
+              break;
+            } else {
+              retryCount++;
+              console.log(`OnboardingTest: Retry ${retryCount}/${maxRetries} - user still shows status: ${currentUserData?.onboarding_status}`);
+              if (retryCount < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+              }
+            }
+          }
+          
+          console.log('OnboardingTest: Successfully refreshed user data after quiz completion');
+        } catch (error) {
+          console.error('OnboardingTest: Error refreshing user data:', error);
+        }
+        
+        setShowSuccessModal(true);
       } else {
-        setTimeout(() => {
-          alert(`📚 You scored ${score.toFixed(1)}% on the Language Proficiency Quiz.
-
-Don't worry - language learning is a journey! You need at least 70% to pass, but this is a great opportunity to improve your skills.
-
-🔄 You can retake the quiz anytime after reviewing language materials and practicing more.
-
-💡 Tip: Focus on grammar rules, expand your vocabulary, and practice cultural understanding of your selected languages.`);
-          navigate('/dashboard');
-        }, 1000);
+        // Show failure modal instead of alert
+        setFinalScore(score);
+        setShowFailureModal(true);
       }
     } catch (error) {
       console.error('Error submitting test:', error);
@@ -140,11 +308,14 @@ Don't worry - language learning is a journey! You need at least 70% to pass, but
     } finally {
       setIsSubmitting(false);
     }
-  }, [answers, questions.length, navigate, sessionId, selectedLanguages]);
+  }, [answers, questions.length, sessionId, selectedLanguages, isSubmitting, forceRefreshUser]);
 
-  // Timer effect
+  // Timer effect - only start when questions are loaded and test has actually started
   useEffect(() => {
-    if (!testStarted || timeRemaining <= 0) return;
+    // Only start timer if: test started, time remaining, questions loaded, and questions available
+    if (!testStarted || timeRemaining <= 0 || !questionsFetched || questions.length === 0) {
+      return;
+    }
 
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
@@ -157,7 +328,7 @@ Don't worry - language learning is a journey! You need at least 70% to pass, but
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [testStarted, timeRemaining, handleSubmitTest]);
+  }, [testStarted, timeRemaining, questionsFetched, questions.length, handleSubmitTest]);
 
   const getQuestionTypeIcon = (type: string) => {
     switch (type) {
@@ -180,6 +351,49 @@ Don't worry - language learning is a journey! You need at least 70% to pass, but
       default: return 'General';
     }
   };
+
+  if (checkingOnboardingStatus) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <p className="text-gray-600">Checking onboarding status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (onboardingComplete) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="rounded-full bg-green-100 p-3">
+                <Globe className="h-12 w-12 text-green-600" />
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              🎉 Onboarding Complete!
+            </h1>
+            <p className="text-lg text-gray-600 mb-6">
+              You have already completed the language proficiency quiz and onboarding process.
+            </p>
+            <p className="text-gray-500 mb-8">
+              You now have full access to all annotation features and can start contributing to the project.
+            </p>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="inline-flex items-center px-8 py-3 border border-transparent text-lg font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+            >
+              Go to Dashboard
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showInstructions) {
     return (
@@ -316,11 +530,80 @@ Don't worry - language learning is a journey! You need at least 70% to pass, but
     );
   }
 
-  if (!currentQuestion) {
+  // Show loading/error states for when test is started but questions aren't ready
+  if (testStarted && (!currentQuestion && !loadingQuestions && !questionsError)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          {loadingQuestions ? (
+          <div className="flex flex-col items-center">
+            <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+            <p className="text-gray-600 mb-2">Preparing your test...</p>
+            <p className="text-sm text-gray-500">
+              Setting up questions for {selectedLanguages.map(lang => 
+                lang.charAt(0).toUpperCase() + lang.slice(1)
+              ).join(', ')}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error states or no questions available
+  if (testStarted && !currentQuestion && !loadingQuestions) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          {questionsError ? (
+            <div className="flex flex-col items-center">
+              <AlertTriangle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+              <p className="text-red-600 mb-4">{questionsError}</p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setQuestionsError('');
+                    setQuestionsFetched(false);
+                    setQuestions([]);
+                    setLoadingQuestions(false);
+                    // Reset test state for retry
+                    setCurrentQuestionIndex(0);
+                    setAnswers([]);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-3"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
+            </div>
+          ) : testStarted && questionsFetched && questions.length === 0 ? (
+            <div className="flex flex-col items-center">
+              <Globe className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">No questions available for your selected languages.</p>
+              <p className="text-gray-500 mb-6 text-sm">
+                This might be because your language combination doesn't have test questions yet.
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-3"
+                >
+                  Update Language Selection
+                </button>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
+            </div>
+          ) : (
             <div className="flex flex-col items-center">
               <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
               <p className="text-gray-600 mb-2">Loading quiz questions...</p>
@@ -330,29 +613,42 @@ Don't worry - language learning is a journey! You need at least 70% to pass, but
                 ).join(', ')}
               </p>
             </div>
-          ) : questionsError ? (
-            <div className="flex flex-col items-center">
-              <AlertTriangle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-              <p className="text-red-600 mb-4">{questionsError}</p>
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Return to Dashboard
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center">
-              <Globe className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No questions available for your selected languages.</p>
-              <button
-                onClick={() => navigate('/profile')}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Update Language Selection
-              </button>
-            </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state when questions are being fetched
+  if (loadingQuestions) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <p className="text-gray-600 mb-2">Loading quiz questions...</p>
+          <p className="text-sm text-gray-500">
+            Fetching questions for {selectedLanguages.map(lang => 
+              lang.charAt(0).toUpperCase() + lang.slice(1)
+            ).join(', ')}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only show main test interface if we have a current question
+  if (!currentQuestion) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">No question available</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+          >
+            Return to Dashboard
+          </button>
         </div>
       </div>
     );
@@ -468,6 +764,28 @@ Don't worry - language learning is a journey! You need at least 70% to pass, but
           </div>
         </div>
       </div>
+      
+      {/* Success Modal */}
+      <QuizSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        score={finalScore}
+        onContinue={handleQuizSuccess}
+        languages={selectedLanguages}
+      />
+      
+      {/* Failure Modal */}
+      <QuizFailureModal
+        isOpen={showFailureModal}
+        onClose={() => setShowFailureModal(false)}
+        score={finalScore}
+        onRetry={handleRetryQuiz}
+        onContinue={() => {
+          setShowFailureModal(false);
+          navigate('/dashboard');
+        }}
+        languages={selectedLanguages}
+      />
     </div>
   );
 };

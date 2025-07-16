@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI, sentencesAPI, languageProficiencyAPI } from '../services/api';
 import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion } from '../types';
-import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download } from 'lucide-react';
+import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download, UserCheck, UserX, Key } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -98,6 +98,44 @@ const AdminDashboard: React.FC = () => {
   } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
+  // User Management states
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [showEditUser, setShowEditUser] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showUserDetails, setShowUserDetails] = useState(false);
+  const [userFilter, setUserFilter] = useState({
+    role: 'all',
+    active: 'all',
+    search: ''
+  });
+  const [newUser, setNewUser] = useState({
+    email: '',
+    username: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    is_active: true,
+    is_evaluator: false,
+    languages: ['en'],
+    skip_onboarding: false
+  });
+  const [editUser, setEditUser] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    username: '',
+    is_active: true,
+    is_evaluator: false,
+    languages: ['en']
+  });
+  const [usersPagination, setUsersPagination] = useState({
+    currentPage: 1,
+    itemsPerPage: 10,
+    totalUsers: 0
+  });
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
   useEffect(() => {
     loadDashboardData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -115,6 +153,18 @@ const AdminDashboard: React.FC = () => {
         if (showCSVImport) {
           setShowCSVImport(false);
         }
+        if (showAddUser) {
+          setShowAddUser(false);
+        }
+        if (showEditUser) {
+          setShowEditUser(false);
+        }
+        if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
+        }
+        if (showUserDetails) {
+          setShowUserDetails(false);
+        }
       }
     };
 
@@ -122,7 +172,7 @@ const AdminDashboard: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [showAddQuestion, showAddSentence, showCSVImport]);
+  }, [showAddQuestion, showAddSentence, showCSVImport, showAddUser, showEditUser, showDeleteConfirm, showUserDetails]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -227,6 +277,160 @@ const AdminDashboard: React.FC = () => {
       console.error('Error loading sentences:', error);
     }
   }, [languageFilter]);
+
+  // Load Users with Pagination
+  const loadUsers = React.useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      const fetchedUsers = await adminAPI.getAllUsers(
+        (usersPagination.currentPage - 1) * usersPagination.itemsPerPage,
+        usersPagination.itemsPerPage,
+        userFilter.role === 'all' ? undefined : userFilter.role,
+        userFilter.active === 'all' ? undefined : userFilter.active === 'true',
+        userFilter.search || undefined
+      );
+      setUsers(fetchedUsers);
+      
+      // For now, we'll set a reasonable total based on the returned data
+      setUsersPagination(prev => ({
+        ...prev,
+        totalUsers: fetchedUsers.length >= usersPagination.itemsPerPage ? 
+          (usersPagination.currentPage * usersPagination.itemsPerPage) + 1 : 
+          (usersPagination.currentPage - 1) * usersPagination.itemsPerPage + fetchedUsers.length
+      }));
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [usersPagination.currentPage, usersPagination.itemsPerPage, userFilter]);
+
+  // Load users when tab changes or filters change
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers();
+    }
+  }, [activeTab, loadUsers]);
+
+  // CRUD Handlers for User Management
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await adminAPI.createUser(newUser);
+      setNewUser({
+        email: '',
+        username: '',
+        password: '',
+        first_name: '',
+        last_name: '',
+        is_active: true,
+        is_evaluator: false,
+        languages: ['en'],
+        skip_onboarding: false
+      });
+      setShowAddUser(false);
+      await loadUsers();
+      await loadDashboardData(); // Refresh stats
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Failed to create user. Please check the details and try again.');
+    }
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    try {
+      await adminAPI.updateUser(selectedUser.id, editUser);
+      setShowEditUser(false);
+      setSelectedUser(null);
+      await loadUsers();
+      await loadDashboardData(); // Refresh stats
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Failed to update user. Please try again.');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await adminAPI.deleteUser(selectedUser.id);
+      setShowDeleteConfirm(false);
+      setSelectedUser(null);
+      await loadUsers();
+      await loadDashboardData(); // Refresh stats
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Failed to delete user. Please try again.');
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setEditUser({
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      username: user.username,
+      is_active: user.is_active,
+      is_evaluator: user.is_evaluator,
+      languages: user.languages || ['en']
+    });
+    setShowEditUser(true);
+  };
+
+  const handleShowDeleteConfirm = (user: User) => {
+    setSelectedUser(user);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleResetUserPassword = async (userId: number) => {
+    const newPassword = prompt('Enter new password for user:');
+    if (!newPassword) return;
+    
+    try {
+      await adminAPI.resetUserPassword(userId, newPassword);
+      alert('Password reset successfully');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert('Failed to reset password. Please try again.');
+    }
+  };
+
+  const handleDeactivateUser = async (userId: number) => {
+    const reason = prompt('Enter reason for deactivation (optional):');
+    try {
+      await adminAPI.deactivateUser(userId, reason || undefined);
+      await loadUsers();
+    } catch (error) {
+      console.error('Error deactivating user:', error);
+      alert('Failed to deactivate user. Please try again.');
+    }
+  };
+
+  // User filter handlers
+  const handleUserFilterChange = (newFilter: Partial<typeof userFilter>) => {
+    setUserFilter(prev => ({ ...prev, ...newFilter }));
+    setUsersPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
+  };
+
+  // Pagination handlers
+  const handleUserPageChange = (newPage: number) => {
+    setUsersPagination(prev => ({ ...prev, currentPage: newPage }));
+  };
+
+  // Generate secure password
+  const generateSecurePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewUser(prev => ({ ...prev, password }));
+  };
 
   useEffect(() => {
     if (activeTab === 'sentences') {
@@ -1372,94 +1576,248 @@ const AdminDashboard: React.FC = () => {
 
         {/* Users Tab */}
         {activeTab === 'users' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Header with Actions */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">User Management</h3>
+                <p className="text-sm text-gray-600 mt-1">Manage user accounts, roles, and permissions</p>
+              </div>
+              <button
+                onClick={() => setShowAddUser(true)}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add User</span>
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white p-4 border border-gray-200 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label htmlFor="user-role-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <select
+                    id="user-role-filter"
+                    value={userFilter.role}
+                    onChange={(e) => handleUserFilterChange({ role: e.target.value })}
+                    className="select-field"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="admin">Admin</option>
+                    <option value="evaluator">Evaluator</option>
+                    <option value="annotator">Annotator</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="user-active-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    id="user-active-filter"
+                    value={userFilter.active}
+                    onChange={(e) => handleUserFilterChange({ active: e.target.value })}
+                    className="select-field"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label htmlFor="user-search" className="block text-sm font-medium text-gray-700 mb-1">
+                    Search
+                  </label>
+                  <input
+                    id="user-search"
+                    type="text"
+                    placeholder="Search by name, email, or username..."
+                    value={userFilter.search}
+                    onChange={(e) => handleUserFilterChange({ search: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Users Table */}
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Joined
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.first_name} {user.last_name}
-                            </div>
-                            <div className="text-sm text-gray-500">@{user.username}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {user.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex space-x-1">
-                          {user.is_admin && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                              Admin
-                            </span>
-                          )}
-                          {user.is_evaluator && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Evaluator
-                            </span>
-                          )}
-                          {!user.is_admin && !user.is_evaluator && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              User
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.is_active 
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {user.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleToggleEvaluatorRole(user.id)}
-                          className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                            user.is_evaluator
-                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                              : 'bg-green-100 text-green-800 hover:bg-green-200'
-                          }`}
-                        >
-                          {user.is_evaluator ? 'Remove Evaluator' : 'Make Evaluator'}
-                        </button>
-                      </td>
+              {isLoadingUsers ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-beauty-bush-600"></div>
+                  <span className="ml-2 text-gray-600">Loading users...</span>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Role
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Joined
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {users.map((user) => (
+                      <tr key={user.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {user.first_name} {user.last_name}
+                              </div>
+                              <div className="text-sm text-gray-500">@{user.username}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex space-x-1">
+                            {user.is_admin && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                Admin
+                              </span>
+                            )}
+                            {user.is_evaluator && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Evaluator
+                              </span>
+                            )}
+                            {!user.is_admin && !user.is_evaluator && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                User
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.is_active 
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-1">
+                            <button
+                              onClick={() => handleEditUser(user)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                              title="Edit User"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleToggleEvaluatorRole(user.id)}
+                              className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                user.is_evaluator
+                                  ? 'text-red-600 hover:text-red-900 hover:bg-red-50'
+                                  : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                              }`}
+                              title={user.is_evaluator ? 'Remove Evaluator Role' : 'Make Evaluator'}
+                            >
+                              <UserCheck className="h-3 w-3 mr-1" />
+                              {user.is_evaluator ? 'Remove' : 'Promote'}
+                            </button>
+                            <button
+                              onClick={() => handleResetUserPassword(user.id)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded transition-colors"
+                              title="Reset Password"
+                            >
+                              <Key className="h-3 w-3 mr-1" />
+                              Reset
+                            </button>
+                            {user.is_active ? (
+                              <button
+                                onClick={() => handleDeactivateUser(user.id)}
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 hover:text-orange-900 hover:bg-orange-50 rounded transition-colors"
+                                title="Deactivate User"
+                              >
+                                <UserX className="h-3 w-3 mr-1" />
+                                Deactivate
+                              </button>
+                            ) : null}
+                            <button
+                              onClick={() => handleShowDeleteConfirm(user)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
+                              title="Delete User"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Pagination */}
+            <div className="bg-white px-4 py-3 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-700">Showing</span>
+                  <select
+                    value={usersPagination.itemsPerPage}
+                    onChange={(e) => setUsersPagination(prev => ({ ...prev, itemsPerPage: Number(e.target.value), currentPage: 1 }))}
+                    className="select-field text-sm"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="text-sm text-gray-700">per page</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleUserPageChange(usersPagination.currentPage - 1)}
+                    disabled={usersPagination.currentPage === 1}
+                    className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-700">
+                    Page {usersPagination.currentPage}
+                  </span>
+                  <button
+                    onClick={() => handleUserPageChange(usersPagination.currentPage + 1)}
+                    disabled={users.length < usersPagination.itemsPerPage}
+                    className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2908,6 +3266,705 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Add User Modal */}
+      {showAddUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Add New Annotator</h3>
+                <button
+                  onClick={() => setShowAddUser(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="add-first-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      id="add-first-name"
+                      type="text"
+                      required
+                      value={newUser.first_name}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, first_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="add-last-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      id="add-last-name"
+                      type="text"
+                      required
+                      value={newUser.last_name}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, last_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="add-email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    id="add-email"
+                    type="email"
+                    required
+                    value={newUser.email}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="add-username" className="block text-sm font-medium text-gray-700 mb-1">
+                    Username
+                  </label>
+                  <input
+                    id="add-username"
+                    type="text"
+                    required
+                    value={newUser.username}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="add-password" className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <div className="flex space-x-2">
+                    <input
+                      id="add-password"
+                      type="text"
+                      required
+                      value={newUser.password}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={generateSecurePassword}
+                      className="px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                    >
+                      Generate
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Languages
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input
+                        id="add-lang-en"
+                        type="checkbox"
+                        value="en"
+                        checked={newUser.languages.includes('en')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'en'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'en')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-lang-en" className="ml-2 block text-sm text-gray-700">
+                        English
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="add-lang-tagalog"
+                        type="checkbox"
+                        value="tagalog"
+                        checked={newUser.languages.includes('tagalog')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'tagalog'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'tagalog')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-lang-tagalog" className="ml-2 block text-sm text-gray-700">
+                        Tagalog
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="add-lang-cebuano"
+                        type="checkbox"
+                        value="cebuano"
+                        checked={newUser.languages.includes('cebuano')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'cebuano'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'cebuano')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-lang-cebuano" className="ml-2 block text-sm text-gray-700">
+                        Cebuano
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="add-lang-ilocano"
+                        type="checkbox"
+                        value="ilocano"
+                        checked={newUser.languages.includes('ilocano')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'ilocano'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'ilocano')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-lang-ilocano" className="ml-2 block text-sm text-gray-700">
+                        Ilocano
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center">
+                    <input
+                      id="add-is-active"
+                      type="checkbox"
+                      checked={newUser.is_active}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, is_active: e.target.checked }))}
+                      className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="add-is-active" className="ml-2 block text-sm text-gray-700">
+                      Active annotator
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <input
+                      id="add-is-evaluator"
+                      type="checkbox"
+                      checked={newUser.is_evaluator}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
+                      className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="add-is-evaluator" className="ml-2 block text-sm text-gray-700">
+                      Evaluator privileges
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <input
+                      id="add-skip-onboarding"
+                      type="checkbox"
+                      checked={newUser.skip_onboarding}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, skip_onboarding: e.target.checked }))}
+                      className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="add-skip-onboarding" className="ml-2 block text-sm text-gray-700">
+                      Skip onboarding test
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddUser(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700"
+                  >
+                    Create Annotator
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditUser && selectedUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Edit Annotator</h3>
+                <button
+                  onClick={() => setShowEditUser(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleUpdateUser} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="edit-first-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      id="edit-first-name"
+                      type="text"
+                      required
+                      value={editUser.first_name}
+                      onChange={(e) => setEditUser(prev => ({ ...prev, first_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-last-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      id="edit-last-name"
+                      type="text"
+                      required
+                      value={editUser.last_name}
+                      onChange={(e) => setEditUser(prev => ({ ...prev, last_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    id="edit-email"
+                    type="email"
+                    required
+                    value={editUser.email}
+                    onChange={(e) => setEditUser(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="edit-username" className="block text-sm font-medium text-gray-700 mb-1">
+                    Username
+                  </label>
+                  <input
+                    id="edit-username"
+                    type="text"
+                    required
+                    value={editUser.username}
+                    onChange={(e) => setEditUser(prev => ({ ...prev, username: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Languages
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input
+                        id="edit-lang-en"
+                        type="checkbox"
+                        value="en"
+                        checked={editUser.languages.includes('en')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'en'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'en')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-lang-en" className="ml-2 block text-sm text-gray-700">
+                        English
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="edit-lang-tagalog"
+                        type="checkbox"
+                        value="tagalog"
+                        checked={editUser.languages.includes('tagalog')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'tagalog'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'tagalog')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-lang-tagalog" className="ml-2 block text-sm text-gray-700">
+                        Tagalog
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="edit-lang-cebuano"
+                        type="checkbox"
+                        value="cebuano"
+                        checked={editUser.languages.includes('cebuano')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'cebuano'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'cebuano')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-lang-cebuano" className="ml-2 block text-sm text-gray-700">
+                        Cebuano
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="edit-lang-ilocano"
+                        type="checkbox"
+                        value="ilocano"
+                        checked={editUser.languages.includes('ilocano')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'ilocano'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'ilocano')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-lang-ilocano" className="ml-2 block text-sm text-gray-700">
+                        Ilocano
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center">
+                    <input
+                      id="edit-is-active"
+                      type="checkbox"
+                      checked={editUser.is_active}
+                      onChange={(e) => setEditUser(prev => ({ ...prev, is_active: e.target.checked }))}
+                      className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="edit-is-active" className="ml-2 block text-sm text-gray-700">
+                      Active annotator
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <input
+                      id="edit-is-evaluator"
+                      type="checkbox"
+                      checked={editUser.is_evaluator}
+                      onChange={(e) => setEditUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
+                      className="checkbox-field"
+                    />
+                    <label htmlFor="edit-is-evaluator" className="ml-2 block text-sm text-gray-700">
+                      Evaluator privileges
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditUser(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700"
+                  >
+                    Update Annotator
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Delete Annotator</h3>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600">
+                  Are you sure you want to delete the annotator <span className="font-medium">{selectedUser.first_name} {selectedUser.last_name}</span>? 
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteUser}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
+                >
+                  Delete Annotator
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showUserDetails && selectedUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Annotator Details</h3>
+                <button
+                  onClick={() => setShowUserDetails(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Personal Information */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Personal Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Full Name</label>
+                      <p className="mt-1 text-base text-gray-900 font-medium">{selectedUser.first_name} {selectedUser.last_name}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Username</label>
+                      <p className="mt-1 text-base text-gray-900 font-mono">@{selectedUser.username}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600">Email Address</label>
+                      <p className="mt-1 text-base text-gray-900">{selectedUser.email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Account Status */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Account Status</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Status</label>
+                      <div className="mt-1">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          selectedUser.is_active 
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {selectedUser.is_active ? '✓ Active' : '✗ Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Member Since</label>
+                      <p className="mt-1 text-base text-gray-900">{new Date(selectedUser.created_at).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Last Updated</label>
+                      <p className="mt-1 text-base text-gray-900">
+                        {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        }) : 'Never'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Roles & Permissions */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Roles & Permissions</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUser.is_admin && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                        👑 Administrator
+                      </span>
+                    )}
+                    {selectedUser.is_evaluator && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                        🔍 Evaluator
+                      </span>
+                    )}
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200">
+                      ✏️ Annotator
+                    </span>
+                    {!selectedUser.is_admin && !selectedUser.is_evaluator && (
+                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-gray-500 bg-gray-100 border border-gray-200">
+                        Basic User
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Languages */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Languages</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUser.languages && selectedUser.languages.length > 0 ? (
+                      selectedUser.languages.map((lang) => (
+                        <span key={lang} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                          🌐 {lang.charAt(0).toUpperCase() + lang.slice(1)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-500 italic">No languages specified</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Account Information */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Account Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
+                      <div className="text-lg font-bold text-blue-600">
+                        #{selectedUser.id}
+                      </div>
+                      <div className="text-sm text-gray-600">User ID</div>
+                    </div>
+                    <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
+                      <div className="text-lg font-bold text-green-600">
+                        {selectedUser.languages?.length || 0}
+                      </div>
+                      <div className="text-sm text-gray-600">Languages</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center mt-8 pt-4 border-t border-gray-200">
+                <div className="text-xs text-gray-500">
+                  ID: {selectedUser.id} • Created: {new Date(selectedUser.created_at).toLocaleString()}
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowUserDetails(false);
+                      handleEditUser(selectedUser);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+                  >
+                    Edit Annotator
+                  </button>
+                  <button
+                    onClick={() => setShowUserDetails(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
