@@ -2,13 +2,27 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, B
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
+from config import settings
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./annotation_system.db"
+# Use settings from config
+SQLALCHEMY_DATABASE_URL = settings.database_url
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
+# Create engine with appropriate settings based on database type
+if settings.is_postgresql:
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout,
+        pool_recycle=settings.db_pool_recycle,
+        pool_pre_ping=True  # Verify connections before use
+    )
+else:
+    # SQLite configuration
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, 
+        connect_args={"check_same_thread": False}
+    )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

@@ -1,90 +1,106 @@
-from database import SessionLocal, create_tables, User, Sentence, UserLanguage
+from database import SessionLocal, User, Sentence, UserLanguage
 from auth import get_password_hash
 
 def init_database():
-    create_tables()
+    """
+    Initialize PostgreSQL database with sample data.
+    Assumes tables already exist.
+    """
+    print("Initializing PostgreSQL database with sample data...")
     db = SessionLocal()
     
-    # Create sample users
-    sample_users = [
-        {
-            "email": "admin@example.com",
-            "username": "admin",
-            "first_name": "Admin",
-            "last_name": "User",
-            "password": "admin123",
-            "is_admin": True,
-            "is_evaluator": False,
-            "guidelines_seen": True,
-            "preferred_language": "en",
-            "languages": ["en"]
-        },
-        {
-            "email": "annotator@example.com",
-            "username": "cebuano_annotator",
-            "first_name": "Maria",
-            "last_name": "Santos",
-            "password": "annotator123",
-            "is_admin": False,
-            "is_evaluator": False,
-            "guidelines_seen": True,
-            "preferred_language": "cebuano",
-            "languages": ["cebuano", "en"]
-        },
-        {
-            "email": "evaluator@example.com",
-            "username": "evaluator",
-            "first_name": "Juan",
-            "last_name": "Dela Cruz",
-            "password": "evaluator123",
-            "is_admin": False,
-            "is_evaluator": True,
-            "guidelines_seen": True,
-            "preferred_language": "en",
-            "languages": ["en", "cebuano", "tagalog"]
-        }
-    ]
-    
-    for user_data in sample_users:
-        existing_user = db.query(User).filter(User.email == user_data["email"]).first()
-        if not existing_user:
-            # Create user
-            user = User(
-                email=user_data["email"],
-                username=user_data["username"],
-                first_name=user_data["first_name"],
-                last_name=user_data["last_name"],
-                hashed_password=get_password_hash(user_data["password"]),
-                preferred_language=user_data["preferred_language"],
-                is_admin=user_data["is_admin"],
-                is_evaluator=user_data["is_evaluator"],
-                guidelines_seen=user_data["guidelines_seen"]
-            )
-            db.add(user)
-            db.flush()  # Flush to get the user ID
-            
-            # Add user languages
-            for language in user_data["languages"]:
-                user_language = UserLanguage(
-                    user_id=user.id,
-                    language=language
+    try:
+        # Check if database already has data
+        existing_users = db.query(User).count()
+        existing_sentences = db.query(Sentence).count()
+        
+        if existing_users > 0 or existing_sentences > 0:
+            print(f"Database already contains data: {existing_users} users, {existing_sentences} sentences")
+            response = input("Do you want to continue and add more data? (y/N): ")
+            if response.lower() != 'y':
+                print("Initialization cancelled.")
+                return
+        
+        # Create sample users
+        sample_users = [
+            {
+                "email": "admin@example.com",
+                "username": "admin",
+                "first_name": "Admin",
+                "last_name": "User",
+                "password": "admin123",
+                "is_admin": True,
+                "is_evaluator": False,
+                "guidelines_seen": True,
+                "preferred_language": "en",
+                "languages": ["en"]
+            },
+            {
+                "email": "annotator@example.com",
+                "username": "cebuano_annotator",
+                "first_name": "Maria",
+                "last_name": "Santos",
+                "password": "annotator123",
+                "is_admin": False,
+                "is_evaluator": False,
+                "guidelines_seen": True,
+                "preferred_language": "cebuano",
+                "languages": ["cebuano", "en"]
+            },
+            {
+                "email": "evaluator@example.com",
+                "username": "evaluator",
+                "first_name": "Juan",
+                "last_name": "Dela Cruz",
+                "password": "evaluator123",
+                "is_admin": False,
+                "is_evaluator": True,
+                "guidelines_seen": True,
+                "preferred_language": "en",
+                "languages": ["en", "cebuano", "tagalog"]
+            }
+        ]
+        
+        for user_data in sample_users:
+            existing_user = db.query(User).filter(User.email == user_data["email"]).first()
+            if not existing_user:
+                # Create user
+                user = User(
+                    email=user_data["email"],
+                    username=user_data["username"],
+                    first_name=user_data["first_name"],
+                    last_name=user_data["last_name"],
+                    hashed_password=get_password_hash(user_data["password"]),
+                    preferred_language=user_data["preferred_language"],
+                    is_admin=user_data["is_admin"],
+                    is_evaluator=user_data["is_evaluator"],
+                    guidelines_seen=user_data["guidelines_seen"]
                 )
-                db.add(user_language)
-            
-            db.commit()
-            role_description = []
-            if user_data["is_admin"]:
-                role_description.append("Admin")
-            if user_data["is_evaluator"]:
-                role_description.append("Evaluator")
-            if not role_description:
-                role_description.append("Annotator")
-            
-            role_str = " & ".join(role_description)
-            print(f"{role_str} user created: {user_data['email']} / {user_data['password']}")
-    
-    # Add sample sentences
-    sample_sentences = [
+                db.add(user)
+                db.flush()  # Flush to get the user ID
+                
+                # Add user languages
+                for language in user_data["languages"]:
+                    user_language = UserLanguage(
+                        user_id=user.id,
+                        language=language
+                    )
+                    db.add(user_language)
+                
+                db.commit()
+                role_description = []
+                if user_data["is_admin"]:
+                    role_description.append("Admin")
+                if user_data["is_evaluator"]:
+                    role_description.append("Evaluator")
+                if not role_description:
+                    role_description.append("Annotator")
+                
+                role_str = " & ".join(role_description)
+                print(f"{role_str} user created: {user_data['email']} / {user_data['password']}")
+        
+        # Add sample sentences
+        sample_sentences = [
         # Cebuano sentences
         {
             "source_text": "Good morning! How are you today?",
@@ -269,19 +285,29 @@ def init_database():
             "target_language": "waray",
             "domain": "technical"
         }
-    ]
+        ]
 
-    # Check if sentences already exist
-    existing_sentences = db.query(Sentence).all()
-    if not existing_sentences:
-        for sentence_data in sample_sentences:
-            sentence = Sentence(**sentence_data)
-            db.add(sentence)
-        db.commit()
-        print(f"Added {len(sample_sentences)} sample sentences")
+        # Check if sentences already exist
+        existing_sentences = db.query(Sentence).all()
+        if not existing_sentences:
+            for sentence_data in sample_sentences:
+                sentence = Sentence(**sentence_data)
+                db.add(sentence)
+            db.commit()
+            print(f"Added {len(sample_sentences)} sample sentences")
     
-    db.close()
-    print("Database initialization completed!")
+    except Exception as e:
+        print(f"Error during database initialization: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+    
+    print("PostgreSQL database initialization completed!")
+    print("\nSample users created:")
+    print("- Admin: admin@example.com / admin123")
+    print("- Annotator: annotator@example.com / annotator123") 
+    print("- Evaluator: evaluator@example.com / evaluator123")
 
 if __name__ == "__main__":
     init_database()
