@@ -5,75 +5,54 @@ import os
 from typing import Optional, List
 from pydantic import BaseModel, field_validator
 from functools import lru_cache
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 class Settings(BaseModel):
     """Application settings"""
     
-    # Database
-    database_url: str = "sqlite:///./annotation_system.db"
-    db_pool_size: int = 10
-    db_max_overflow: int = 20
-    db_pool_timeout: int = 30
-    db_pool_recycle: int = 3600
+    # Database - PostgreSQL only
+    database_url: str = os.getenv('DATABASE_URL', 'postgresql://user:password@localhost:5432/lakra')
+    db_pool_size: int = int(os.getenv('DB_POOL_SIZE', '10'))
+    db_max_overflow: int = int(os.getenv('DB_MAX_OVERFLOW', '20'))
+    db_pool_timeout: int = int(os.getenv('DB_POOL_TIMEOUT', '30'))
+    db_pool_recycle: int = int(os.getenv('DB_POOL_RECYCLE', '3600'))
     
     # Security
-    secret_key: str = "fallback-secret-key-change-this"
-    access_token_expire_minutes: int = 1440
+    secret_key: str = os.getenv('SECRET_KEY', 'fallback-secret-key-change-this')
+    access_token_expire_minutes: int = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', '1440'))
     
     # API
-    api_host: str = "0.0.0.0"
-    api_port: int = 8000
-    debug: bool = True
+    api_host: str = os.getenv('API_HOST', '0.0.0.0')
+    api_port: int = int(os.getenv('API_PORT', '8000'))
+    debug: bool = os.getenv('DEBUG', 'True').lower() == 'true'
     
     # CORS
-    allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    allowed_origins: List[str] = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
     
     # File uploads
-    max_file_size_mb: int = 10
-    upload_dir: str = "./uploads"
-    
-    def __init__(self, **kwargs):
-        # Load from environment variables
-        env_vars = {
-            'database_url': os.getenv('DATABASE_URL', 'sqlite:///./annotation_system.db'),
-            'secret_key': os.getenv('SECRET_KEY', 'fallback-secret-key-change-this'),
-            'access_token_expire_minutes': int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', 1440)),
-            'api_host': os.getenv('API_HOST', '0.0.0.0'),
-            'api_port': int(os.getenv('API_PORT', 8000)),
-            'debug': os.getenv('DEBUG', 'True').lower() == 'true',
-            'allowed_origins': os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(','),
-            'max_file_size_mb': int(os.getenv('MAX_FILE_SIZE_MB', 10)),
-            'upload_dir': os.getenv('UPLOAD_DIR', './uploads'),
-            'db_pool_size': int(os.getenv('DB_POOL_SIZE', 10)),
-            'db_max_overflow': int(os.getenv('DB_MAX_OVERFLOW', 20)),
-            'db_pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', 30)),
-            'db_pool_recycle': int(os.getenv('DB_POOL_RECYCLE', 3600)),
-        }
-        env_vars.update(kwargs)
-        super().__init__(**env_vars)
+    max_file_size_mb: int = int(os.getenv('MAX_FILE_SIZE_MB', '10'))
+    upload_dir: str = os.getenv('UPLOAD_DIR', './uploads')
     
     @field_validator('database_url')
     @classmethod
     def validate_database_url(cls, v):
-        """Validate database URL format"""
+        """Validate database URL format - PostgreSQL only"""
         if not v:
             raise ValueError('DATABASE_URL cannot be empty')
         
-        # Basic validation for supported database types
-        if not (v.startswith('sqlite:///') or v.startswith('postgresql://')):
-            raise ValueError('DATABASE_URL must be SQLite or PostgreSQL')
+        # Only PostgreSQL is supported
+        if not v.startswith('postgresql://'):
+            raise ValueError('DATABASE_URL must be PostgreSQL (postgresql://...)')
         
         return v
     
     @property
     def is_postgresql(self) -> bool:
-        """Check if using PostgreSQL"""
-        return self.database_url.startswith('postgresql://')
-    
-    @property
-    def is_sqlite(self) -> bool:
-        """Check if using SQLite"""
-        return self.database_url.startswith('sqlite:///')
+        """Check if using PostgreSQL - always True now"""
+        return True
 
 @lru_cache()
 def get_settings() -> Settings:

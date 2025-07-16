@@ -37,14 +37,22 @@ npm install
 
 Create configuration files:
 
-**backend/.env:**
+**backend/.env** (copy from .env.example):
+```bash
+# Copy the example file and edit as needed
+cd backend
+cp .env.example .env
+# Edit .env with your database credentials and settings
+```
+
+Key settings to update in `backend/.env`:
 ```env
-DATABASE_URL=sqlite:///./annotation_system.db
-SECRET_KEY=your-secret-key-change-this-in-production
-API_HOST=localhost
+DATABASE_URL=postgresql://lakra_user:your_password@localhost:5432/lakra_db
+SECRET_KEY=your-very-secure-secret-key-here
+API_HOST=0.0.0.0
 API_PORT=8000
 DEBUG=True
-CORS_ORIGINS=http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 **frontend/.env:**
@@ -220,8 +228,8 @@ curl -X POST http://localhost:8000/api/register \
 Common settings in `backend/.env`:
 
 ```env
-# Database
-DATABASE_URL=sqlite:///./annotation_system.db
+# Database - PostgreSQL only
+DATABASE_URL=postgresql://lakra_user:lakra_pass@localhost:5432/lakra_dev
 
 # Security
 SECRET_KEY=your-secret-key-here

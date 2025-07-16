@@ -25,9 +25,8 @@ try:
     print(f"Timestamp: {datetime.now()}")
     print(f"Environment DATABASE_URL: {os.getenv('DATABASE_URL', 'NOT SET')}")
     print(f"Settings Database URL: {settings.database_url}")
-    print(f"Database Type: {'PostgreSQL' if settings.is_postgresql else 'SQLite'}")
+    print(f"Database Type: PostgreSQL")
     print(f"Is PostgreSQL: {settings.is_postgresql}")
-    print(f"Is SQLite: {settings.is_sqlite}")
     print("-" * 60)
     
     # Test 1: Basic engine connection
@@ -45,17 +44,11 @@ try:
     print("\nTest 2: Testing session creation...")
     try:
         db = SessionLocal()
-        # Test a simple query
-        if settings.is_postgresql:
-            result = db.execute(text("SELECT version()"))
-            version_info = result.fetchone()[0]
-            print(f"✅ Session created successfully")
-            print(f"   PostgreSQL version: {version_info}")
-        else:
-            result = db.execute(text("SELECT sqlite_version()"))
-            version_info = result.fetchone()[0]
-            print(f"✅ Session created successfully")
-            print(f"   SQLite version: {version_info}")
+        # Test PostgreSQL version query
+        result = db.execute(text("SELECT version()"))
+        version_info = result.fetchone()[0]
+        print(f"✅ Session created successfully")
+        print(f"   PostgreSQL version: {version_info}")
         db.close()
     except Exception as e:
         print(f"❌ Session creation failed: {e}")
@@ -65,22 +58,13 @@ try:
     print("\nTest 3: Checking existing tables...")
     try:
         with engine.connect() as connection:
-            if settings.is_postgresql:
-                # PostgreSQL query to list tables
-                result = connection.execute(text("""
-                    SELECT table_name 
-                    FROM information_schema.tables 
-                    WHERE table_schema = 'public'
-                    ORDER BY table_name
-                """))
-            else:
-                # SQLite query to list tables
-                result = connection.execute(text("""
-                    SELECT name 
-                    FROM sqlite_master 
-                    WHERE type='table' 
-                    ORDER BY name
-                """))
+            # PostgreSQL query to list tables
+            result = connection.execute(text("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+                ORDER BY table_name
+            """))
             
             tables = [row[0] for row in result.fetchall()]
             if tables:
@@ -92,17 +76,16 @@ try:
     except Exception as e:
         print(f"❌ Failed to check tables: {e}")
     
-    # Test 4: Check database connection pool (for PostgreSQL)
-    if settings.is_postgresql:
-        print("\nTest 4: Testing connection pool...")
-        try:
-            pool_status = engine.pool.status()
-            print(f"✅ Connection pool status: {pool_status}")
-            print(f"   Pool size: {engine.pool.size()}")
-            print(f"   Checked out connections: {engine.pool.checkedout()}")
-            print(f"   Overflow connections: {engine.pool.overflow()}")
-        except Exception as e:
-            print(f"❌ Connection pool test failed: {e}")
+    # Test 4: Check database connection pool
+    print("\nTest 4: Testing connection pool...")
+    try:
+        pool_status = engine.pool.status()
+        print(f"✅ Connection pool status: {pool_status}")
+        print(f"   Pool size: {engine.pool.size()}")
+        print(f"   Checked out connections: {engine.pool.checkedout()}")
+        print(f"   Overflow connections: {engine.pool.overflow()}")
+    except Exception as e:
+        print(f"❌ Connection pool test failed: {e}")
     
     print("\n" + "=" * 60)
     print("🎉 DATABASE CONNECTION TEST COMPLETED SUCCESSFULLY!")

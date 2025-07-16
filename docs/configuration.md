@@ -24,8 +24,8 @@ For local development, create these files:
 
 **backend/.env:**
 ```env
-# Database
-DATABASE_URL=sqlite:///./annotation_system.db
+# Database - PostgreSQL only
+DATABASE_URL=postgresql://lakra_user:lakra_pass@localhost:5432/lakra_dev
 
 # Security
 SECRET_KEY=dev-secret-key-change-in-production
@@ -85,18 +85,17 @@ VITE_ENVIRONMENT=production
 
 ### 1. Database Configuration
 
-#### SQLite (Development)
-```env
-DATABASE_URL=sqlite:///./annotation_system.db
-```
-
-#### PostgreSQL (Production)
+#### PostgreSQL (Required for all environments)
 ```env
 DATABASE_URL=postgresql://username:password@host:port/database
 DB_POOL_SIZE=20
 DB_MAX_OVERFLOW=5
 DB_POOL_TIMEOUT=30
 ```
+
+**Examples:**
+- **Development**: `postgresql://lakra_user:lakra_pass@localhost:5432/lakra_dev`
+- **Production**: `postgresql://lakra_user:secure_password@db.example.com:5432/lakra_prod`
 
 #### MySQL (Alternative)
 ```env

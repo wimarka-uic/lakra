@@ -26,15 +26,15 @@ lakra/
 #### Database Configuration
 
 ```env
-# Database connection string
-DATABASE_URL=sqlite:///./annotation_system.db
-# Production example: DATABASE_URL=postgresql://user:password@localhost:5432/lakra
+# PostgreSQL database connection string (REQUIRED)
+DATABASE_URL=postgresql://user:password@localhost:5432/lakra_db
 ```
 
-**Options:**
-- **SQLite**: `sqlite:///./annotation_system.db`
-- **PostgreSQL**: `postgresql://user:password@host:port/database`
-- **MySQL**: `mysql://user:password@host:port/database`
+**Format:** `postgresql://user:password@host:port/database`
+
+**Example configurations:**
+- **Local development**: `postgresql://lakra_user:lakra_pass@localhost:5432/lakra_dev`
+- **Production**: `postgresql://lakra_user:secure_password@db.example.com:5432/lakra_prod`
 
 #### Authentication & Security
 
@@ -244,7 +244,7 @@ VITE_CDN_URL=https://cdn.yourdomain.com
 ```env
 # Development settings
 DEBUG=True
-DATABASE_URL=sqlite:///./annotation_system.db
+DATABASE_URL=postgresql://lakra_user:lakra_pass@localhost:5432/lakra_dev
 SECRET_KEY=development-secret-key
 API_HOST=localhost
 API_PORT=8000
@@ -386,8 +386,8 @@ from typing import Optional
 from functools import lru_cache
 
 class Settings:
-    # Database
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./annotation_system.db")
+    # Database - PostgreSQL only
+    database_url: str = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/lakra_db")
     
     # Security
     secret_key: str = os.getenv("SECRET_KEY", "your-secret-key-here")
@@ -456,8 +456,8 @@ class Settings(BaseSettings):
     
     @validator('database_url')
     def validate_database_url(cls, v):
-        if not v.startswith(('sqlite://', 'postgresql://', 'mysql://')):
-            raise ValueError('Invalid database URL format')
+        if not v.startswith('postgresql://'):
+            raise ValueError('DATABASE_URL must be PostgreSQL (postgresql://...)')
         return v
     
     class Config:
@@ -632,8 +632,8 @@ if (config.enableDebugMode) {
 # Lakra Backend Configuration
 # ==================================================
 
-# Database Configuration
-DATABASE_URL=sqlite:///./annotation_system.db
+# Database Configuration - PostgreSQL only
+DATABASE_URL=postgresql://lakra_user:lakra_pass@localhost:5432/lakra_dev
 
 # Security Settings
 SECRET_KEY=your-secret-key-here

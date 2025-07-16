@@ -6,7 +6,7 @@ The Lakra annotation system uses a relational database to store user data, annot
 
 ## Database Technology
 
-- **Primary Database**: SQLite (development)
+- **Primary Database**: PostgreSQL (required for all environments)
 - **Production Ready**: PostgreSQL (recommended)
 - **ORM**: SQLAlchemy with declarative mapping
 - **Migrations**: Custom Python migration scripts

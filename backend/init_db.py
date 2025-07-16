@@ -4,7 +4,7 @@ from auth import get_password_hash
 def init_database():
     """
     Initialize PostgreSQL database with sample data.
-    Assumes tables already exist.
+    Assumes tables already exist (run migrations/setup_postgresql.py first).
     """
     print("Initializing PostgreSQL database with sample data...")
     db = SessionLocal()

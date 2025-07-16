@@ -37,8 +37,7 @@ This guide provides step-by-step instructions for installing the Lakra annotatio
 - npm 7.0 or higher (or yarn 1.22+)
 
 **Database Requirements:**
-- SQLite 3.35+ (development)
-- PostgreSQL 12+ (production recommended)
+- PostgreSQL 12+ (required for all environments)
 
 ## Installation Methods
 
@@ -90,19 +89,17 @@ npm run dev
 
 #### Step 4: Configuration
 
-Create environment files:
+Create environment files from examples:
 
-**Backend (.env):**
-```env
-DATABASE_URL=sqlite:///./annotation_system.db
-SECRET_KEY=your-secret-key-here
-API_HOST=localhost
-API_PORT=8000
-DEBUG=True
-CORS_ORIGINS=http://localhost:5173
+**Backend Configuration:**
+```bash
+# Copy and customize the backend environment file
+cd backend
+cp .env.example .env
+# Edit .env with your specific settings (database credentials, secret key, etc.)
 ```
 
-**Frontend (.env):**
+**Frontend Configuration:**
 ```env
 VITE_API_URL=http://localhost:8000
 VITE_APP_NAME=Lakra
@@ -511,8 +508,9 @@ rm -rf backend/venv
 # Remove node modules
 rm -rf frontend/node_modules
 
-# Remove database (if using SQLite)
-rm -f backend/annotation_system.db
+# Remove PostgreSQL data (if needed)
+# Note: This will delete all data - only for complete reinstallation
+# dropdb lakra_dev  # or whatever your database name is
 ```
 
 ### Production Cleanup
