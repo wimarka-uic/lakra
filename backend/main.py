@@ -63,6 +63,7 @@ from schemas import (
 app = FastAPI(title="Lakra - Annotation Tool for WiMarka", version="1.0.0")
 
 # CORS middleware
+print(f"CORS - Allowed origins: {settings.allowed_origins}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,  # Use config from environment
