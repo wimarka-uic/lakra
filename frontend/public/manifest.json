@@ -28,7 +28,7 @@
   "screenshots": [
     {
       "src": "/seo-image-mobile.jpg",
-      "sizes": "640x320",
+      "sizes": "1200x630",
       "type": "image/jpeg",
       "label": "Lakra Platform Interface"
     }
