@@ -81,6 +81,20 @@ if [ ! -z "$REMAINING_CADDY" ]; then
     sleep 1
 fi
 
+# Kill any other Caddy processes that might be using the admin port
+CADDY_ADMIN_PROCS=$(lsof -ti:2019 || true)
+if [ ! -z "$CADDY_ADMIN_PROCS" ]; then
+    echo "🔄 Killing processes using Caddy admin port 2019: $CADDY_ADMIN_PROCS"
+    kill -9 $CADDY_ADMIN_PROCS || true
+fi
+
+# Kill any processes using port 443
+PORT_443_PROCS=$(lsof -ti:443 || true)
+if [ ! -z "$PORT_443_PROCS" ]; then
+    echo "🔄 Killing processes using port 443: $PORT_443_PROCS"
+    kill -9 $PORT_443_PROCS || true
+fi
+
 echo ""
 echo "✅ All backend services stopped successfully!"
 echo "🧹 Cleanup completed."

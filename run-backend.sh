@@ -19,6 +19,18 @@ if ! command -v caddy &> /dev/null; then
     exit 1
 fi
 
+# Check for existing processes
+EXISTING_CADDY=$(pgrep -f "caddy run" || true)
+EXISTING_UVICORN=$(pgrep -f "uvicorn main:app" || true)
+
+if [ ! -z "$EXISTING_CADDY" ] || [ ! -z "$EXISTING_UVICORN" ]; then
+    echo "⚠️  Existing backend processes found:"
+    [ ! -z "$EXISTING_CADDY" ] && echo "   Caddy: $EXISTING_CADDY"
+    [ ! -z "$EXISTING_UVICORN" ] && echo "   Uvicorn: $EXISTING_UVICORN"
+    echo "   Please run ./stop-backend.sh first or kill these processes manually"
+    exit 1
+fi
+
 # Check if we can bind to port 443 (requires root or CAP_NET_BIND_SERVICE)
 if [ "$EUID" -ne 0 ] && ! command -v setcap &> /dev/null; then
     echo "⚠️  Warning: Port 443 requires root privileges or CAP_NET_BIND_SERVICE capability."
