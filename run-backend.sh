@@ -30,7 +30,7 @@ echo "🔄 Running in background..."
 echo ""
 
 # Run the server in background and save PID
-python main.py > server.log 2>&1 &
+uvicorn main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
 SERVER_PID=$!
 
 # Save PID to file for easy stopping later
