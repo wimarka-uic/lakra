@@ -162,7 +162,7 @@ const EvaluationInterface: React.FC = () => {
     } catch (error) {
       logger.apiError('submitEvaluation', error as Error, {
         component: 'EvaluationInterface',
-        metadata: { annotationId: currentAnnotation?.id }
+        metadata: { annotationId: annotation?.id }
       });
       setMessage('Error submitting evaluation. Please try again.');
       setTimeout(() => setMessage(''), 5000);

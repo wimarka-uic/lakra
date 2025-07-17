@@ -1,16 +1,18 @@
-enum LogLevel {
-  DEBUG = 0,
-  INFO = 1,
-  WARN = 2,
-  ERROR = 3,
-  NONE = 4
-}
+const LogLevel = {
+  DEBUG: 0,
+  INFO: 1,
+  WARN: 2,
+  ERROR: 3,
+  NONE: 4
+} as const;
+
+type LogLevel = typeof LogLevel[keyof typeof LogLevel];
 
 interface LogContext {
   component?: string;
   action?: string;
   userId?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class Logger {
@@ -32,7 +34,7 @@ class Logger {
     return `[${timestamp}] ${level}${contextStr}: ${message}`;
   }
 
-  private logWithContext(level: LogLevel, levelName: string, message: string, context?: LogContext, ...args: any[]) {
+  private logWithContext(level: LogLevel, levelName: string, message: string, context?: LogContext, ...args: unknown[]) {
     if (!this.shouldLog(level)) return;
 
     const formattedMessage = this.formatMessage(levelName, message, context);
@@ -54,28 +56,23 @@ class Logger {
 
     // In production, you might want to send errors to a logging service
     if (!this.isDevelopment && level >= LogLevel.ERROR) {
-      this.sendToLoggingService(levelName, message, context, args);
+      // Implementation omitted for placeholder
     }
   }
 
-  private sendToLoggingService(level: string, message: string, context?: LogContext, args?: any[]) {
-    // TODO: Implement actual logging service integration (e.g., Sentry, LogRocket, etc.)
-    // For now, this is a placeholder
-  }
-
-  debug(message: string, context?: LogContext, ...args: any[]) {
+  debug(message: string, context?: LogContext, ...args: unknown[]) {
     this.logWithContext(LogLevel.DEBUG, 'DEBUG', message, context, ...args);
   }
 
-  info(message: string, context?: LogContext, ...args: any[]) {
+  info(message: string, context?: LogContext, ...args: unknown[]) {
     this.logWithContext(LogLevel.INFO, 'INFO', message, context, ...args);
   }
 
-  warn(message: string, context?: LogContext, ...args: any[]) {
+  warn(message: string, context?: LogContext, ...args: unknown[]) {
     this.logWithContext(LogLevel.WARN, 'WARN', message, context, ...args);
   }
 
-  error(message: string, context?: LogContext, error?: Error, ...args: any[]) {
+  error(message: string, context?: LogContext, error?: Error, ...args: unknown[]) {
     const errorArgs = error ? [error, ...args] : args;
     this.logWithContext(LogLevel.ERROR, 'ERROR', message, context, ...errorArgs);
   }
@@ -93,7 +90,7 @@ class Logger {
     }, error);
   }
 
-  userAction(action: string, userId?: number, metadata?: Record<string, any>) {
+  userAction(action: string, userId?: number, metadata?: Record<string, unknown>) {
     this.info(`User action: ${action}`, {
       component: 'UserAction',
       action,
@@ -102,7 +99,7 @@ class Logger {
     });
   }
 
-  authEvent(event: string, userId?: number, metadata?: Record<string, any>) {
+  authEvent(event: string, userId?: number, metadata?: Record<string, unknown>) {
     this.info(`Auth event: ${event}`, {
       component: 'Auth',
       action: event,
@@ -116,5 +113,4 @@ class Logger {
 export const logger = new Logger();
 
 // Export types for use in components
-export type { LogContext };
-export { LogLevel }; 
+export type { LogContext }; 
