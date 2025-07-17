@@ -306,6 +306,14 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/admin/*" 
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Default redirects */}
           <Route path="/" element={<SmartRedirect />} />

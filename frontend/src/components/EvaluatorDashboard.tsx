@@ -5,6 +5,7 @@ import {
   FileText, 
   Clock, 
   CheckCircle,
+  CheckSquare,
   AlertCircle,
   Target,
   Brain,
@@ -74,20 +75,30 @@ const EvaluatorDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-2">
-            <Brain className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Machine Translation Evaluator</h1>
+      <div className="max-w-7xl mx-auto py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+        {/* Mobile Page Indicator */}
+        <div className="md:hidden mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center space-x-2">
+              <CheckSquare className="h-5 w-5 text-blue-600" />
+              <span className="text-sm font-medium text-blue-900">Evaluator Dashboard</span>
+            </div>
           </div>
-          <p className="text-gray-600">
+        </div>
+
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
+            <Brain className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Machine Translation Evaluator</h1>
+          </div>
+          <p className="text-sm sm:text-base text-gray-600">
             DistilBERT-powered machine translation quality assessment platform
           </p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -148,7 +159,7 @@ const EvaluatorDashboard: React.FC = () => {
         </div>
 
         {/* Quality Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-6 sm:mb-8">
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Assessment Progress</h2>
@@ -219,7 +230,7 @@ const EvaluatorDashboard: React.FC = () => {
             <div className="space-y-3">
               <a
                 href="/mt-assess"
-                className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all min-h-[60px] hover:scale-105 active:scale-95"
               >
                 <Zap className="h-5 w-5 text-blue-500 mr-3" />
                 <div>
@@ -230,7 +241,7 @@ const EvaluatorDashboard: React.FC = () => {
               
               <a
                 href="/my-assessments"
-                className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all min-h-[60px] hover:scale-105 active:scale-95"
               >
                 <FileText className="h-5 w-5 text-green-500 mr-3" />
                 <div>

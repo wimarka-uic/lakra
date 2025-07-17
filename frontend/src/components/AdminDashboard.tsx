@@ -19,15 +19,43 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const AdminDashboard: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [sentenceAnnotations, setSentenceAnnotations] = useState<Map<number, Annotation[]>>(new Map());
   const [sentenceCounts, setSentenceCounts] = useState<{[key: string]: number}>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests'>('home');
+  
+  // Get active tab from URL
+  const getActiveTabFromUrl = (): 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' => {
+    const path = location.pathname;
+    if (path.includes('/overview')) return 'overview';
+    if (path.includes('/users')) return 'users';
+    if (path.includes('/sentences')) return 'sentences';
+    if (path.includes('/onboarding-tests')) return 'onboarding-tests';
+    return 'home';
+  };
+  
+  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests'>(getActiveTabFromUrl());
+
+  // Update active tab when URL changes
+  useEffect(() => {
+    setActiveTab(getActiveTabFromUrl());
+  }, [location.pathname]);
+
+  // Handle tab navigation
+  const handleTabChange = (tab: 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests') => {
+    setActiveTab(tab);
+    const basePath = '/admin';
+    const tabPath = tab === 'home' ? '' : `/${tab}`;
+    navigate(basePath + tabPath);
+  };
+
   const [showAddSentence, setShowAddSentence] = useState(false);
   const [languageFilter, setLanguageFilter] = useState<string>('all');
   const [expandedSentences, setExpandedSentences] = useState<Set<number>>(new Set());
@@ -970,30 +998,60 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
         
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              { key: 'home', label: 'Home', icon: Home },
-              { key: 'overview', label: 'Overview', icon: BarChart3 },
-              { key: 'users', label: 'Users', icon: Users },
-              { key: 'sentences', label: 'Sentences', icon: FileText },
-              { key: 'onboarding-tests', label: 'Onboarding Tests', icon: BookOpen },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests')}
-                className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.key
-                    ? 'border-beauty-bush-500 text-beauty-bush-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <tab.icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
+        {/* Tab Navigation - Hidden on mobile */}
+        <div className="border-b border-gray-200 mb-6 hidden md:block">
+          <nav className="-mb-px flex overflow-x-auto scrollbar-hide">
+            <div className="flex space-x-1 sm:space-x-4 lg:space-x-8 min-w-max px-1">
+              {[
+                { key: 'home', label: 'Home', icon: Home },
+                { key: 'overview', label: 'Overview', icon: BarChart3 },
+                { key: 'users', label: 'Users', icon: Users },
+                { key: 'sentences', label: 'Sentences', icon: FileText },
+                { key: 'onboarding-tests', label: 'Tests', fullLabel: 'Onboarding Tests', icon: BookOpen },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => handleTabChange(tab.key as 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests')}
+                  className={`flex items-center space-x-1 sm:space-x-2 py-2 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors duration-200 ${
+                    activeTab === tab.key
+                      ? 'border-beauty-bush-500 text-beauty-bush-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  title={tab.fullLabel || tab.label}
+                >
+                  <tab.icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.key === 'onboarding-tests' ? 'Tests' : tab.label}</span>
+                </button>
+              ))}
+            </div>
           </nav>
+        </div>
+
+        {/* Mobile Tab Indicator */}
+        <div className="md:hidden mb-6">
+          <div className="bg-beauty-bush-50 border border-beauty-bush-200 rounded-lg p-3">
+            <div className="flex items-center space-x-2">
+              {(() => {
+                const currentTab = [
+                  { key: 'home', label: 'Home', icon: Home },
+                  { key: 'overview', label: 'Overview', icon: BarChart3 },
+                  { key: 'users', label: 'Users', icon: Users },
+                  { key: 'sentences', label: 'Sentences', icon: FileText },
+                  { key: 'onboarding-tests', label: 'Onboarding Tests', icon: BookOpen },
+                ].find(tab => tab.key === activeTab);
+                
+                if (!currentTab) return null;
+                
+                return (
+                  <>
+                    <currentTab.icon className="h-5 w-5 text-beauty-bush-600" />
+                    <span className="text-sm font-medium text-beauty-bush-900">{currentTab.label}</span>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
         </div>
 
         {/* Home Tab */}
@@ -1850,22 +1908,22 @@ const AdminDashboard: React.FC = () => {
         {/* Sentences Tab */}
         {activeTab === 'sentences' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">Manage Sentences</h3>
                 <p className="text-sm text-gray-600 mt-1">View and manage sentences with advanced error tagging annotations</p>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   onClick={() => setShowCSVImport(true)}
-                  className="btn-secondary flex items-center space-x-2"
+                  className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto"
                 >
                   <Upload className="h-4 w-4" />
                   <span>Import CSV</span>
                 </button>
                 <button
                   onClick={() => setShowAddSentence(true)}
-                  className="btn-primary flex items-center space-x-2"
+                  className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Add Sentence</span>
@@ -2100,29 +2158,29 @@ const AdminDashboard: React.FC = () => {
             )}
 
             {/* Search and Filter Controls */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="flex flex-col space-y-4">
                 {/* Search Bar */}
-                <div className="relative flex-1 max-w-md">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search sentences, domains, or content..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    className="w-full pl-10 pr-4 py-3 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500 text-base sm:text-sm"
                   />
                 </div>
 
                 {/* Controls Row */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {/* Language Filter */}
                   <div className="flex items-center space-x-2">
-                    <Filter className="h-4 w-4 text-gray-400" />
+                    <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <select
                       value={languageFilter}
                       onChange={(e) => setLanguageFilter(e.target.value)}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                      className="flex-1 border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                     >
                       <option value="all">All Languages</option>
                       <option value="tagalog">Tagalog (Filipino)</option>
@@ -2135,7 +2193,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'most_annotated' | 'least_annotated')}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
@@ -2147,7 +2205,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={itemsPerPage}
                     onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value={5}>5 per page</option>
                     <option value={10}>10 per page</option>
@@ -2159,7 +2217,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
                     <button
                       onClick={() => setViewMode('compact')}
-                      className={`px-3 py-2 text-sm flex items-center space-x-1 ${
+                      className={`flex-1 px-3 py-3 sm:py-2 text-base sm:text-sm flex items-center justify-center space-x-2 ${
                         viewMode === 'compact' 
                           ? 'bg-beauty-bush-500 text-white' 
                           : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -2170,7 +2228,7 @@ const AdminDashboard: React.FC = () => {
                     </button>
                     <button
                       onClick={() => setViewMode('detailed')}
-                      className={`px-3 py-2 text-sm flex items-center space-x-1 ${
+                      className={`flex-1 px-3 py-3 sm:py-2 text-base sm:text-sm flex items-center justify-center space-x-2 ${
                         viewMode === 'detailed' 
                           ? 'bg-beauty-bush-500 text-white' 
                           : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -2184,7 +2242,7 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Results Summary */}
-              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-3">
+              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-4">
                 <span>
                   Showing {paginatedSentences.length} of {filteredAndSortedSentences.length} sentences
                   {searchQuery && (
@@ -2375,32 +2433,32 @@ const AdminDashboard: React.FC = () => {
                     return (
                       <div key={sentence.id} className="hover:bg-gray-50 transition-colors duration-200">
                         {/* Compact Header */}
-                        <div className="p-4">
-                          <div className="flex items-center justify-between mb-3">
+                        <div className="p-4 sm:p-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-3 sm:space-y-0">
                             <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center">
+                              <div className="w-10 h-10 sm:w-8 sm:h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center flex-shrink-0">
                                 <span className="text-sm font-bold text-beauty-bush-700">#{sentence.id}</span>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                                    <span className="text-xs px-2 py-1 bg-beauty-bush-500 text-white rounded font-medium">
-                      {sentence.source_language.toUpperCase()} → {sentence.target_language.toUpperCase()}
-                    </span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-beauty-bush-500 text-white rounded-full font-medium">
+                                  {sentence.source_language.toUpperCase()} → {sentence.target_language.toUpperCase()}
+                                </span>
                                 {sentence.domain && (
-                                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                                  <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-gray-100 text-gray-700 rounded-full">
                                     {sentence.domain}
                                   </span>
                                 )}
                               </div>
                             </div>
                             
-                            <div className="flex items-center space-x-3">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                               {annotations.length > 0 && (
-                                <div className="flex items-center space-x-2 text-xs">
-                                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded font-medium">
+                                <div className="flex flex-wrap items-center gap-2 text-xs">
+                                  <span className="px-3 py-2 sm:px-2 sm:py-1 bg-green-100 text-green-800 rounded-full font-medium">
                                     {annotations.length} annotations
                                   </span>
                                   {allHighlights.length > 0 && (
-                                    <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded font-medium">
+                                    <span className="px-3 py-2 sm:px-2 sm:py-1 bg-purple-100 text-purple-800 rounded-full font-medium">
                                       {allHighlights.length} tags
                                     </span>
                                   )}
@@ -2408,7 +2466,7 @@ const AdminDashboard: React.FC = () => {
                               )}
                               <button
                                 onClick={() => toggleSentenceExpansion(sentence.id)}
-                                className="flex items-center space-x-1 text-sm text-beauty-bush-600 hover:text-beauty-bush-800 font-medium"
+                                className="flex items-center space-x-2 text-sm text-beauty-bush-600 hover:text-beauty-bush-800 font-medium px-3 py-2 rounded-lg hover:bg-beauty-bush-50 transition-all"
                               >
                                 <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
                                 <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -2418,13 +2476,13 @@ const AdminDashboard: React.FC = () => {
 
                           {/* Compact Content Preview */}
                           {viewMode === 'compact' && !isExpanded && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-700 line-clamp-2">
-                                <strong>Source:</strong> {sentence.source_text.substring(0, 100)}
+                            <div className="space-y-3 mt-2">
+                              <div className="text-sm sm:text-base text-gray-700 line-clamp-2 leading-relaxed">
+                                <strong className="text-gray-900">Source:</strong> {sentence.source_text.substring(0, 100)}
                                 {sentence.source_text.length > 100 && '...'}
                               </div>
-                              <div className="text-sm text-gray-700 line-clamp-2">
-                                <strong>Translation:</strong> {sentence.machine_translation.substring(0, 100)}
+                              <div className="text-sm sm:text-base text-gray-700 line-clamp-2 leading-relaxed">
+                                <strong className="text-gray-900">Translation:</strong> {sentence.machine_translation.substring(0, 100)}
                                 {sentence.machine_translation.length > 100 && '...'}
                               </div>
                             </div>
@@ -2432,42 +2490,42 @@ const AdminDashboard: React.FC = () => {
 
                           {/* Detailed Content */}
                           {(viewMode === 'detailed' || isExpanded) && (
-                            <div className="space-y-4 border-t pt-4">
+                            <div className="space-y-5 sm:space-y-4 border-t pt-5 sm:pt-4 mt-2">
                               {/* Source Text */}
-                              <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-3 rounded-r-lg">
-                                <h5 className="text-xs font-medium text-beauty-bush-900 mb-2 uppercase tracking-wide">
+                              <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-4 sm:p-3 rounded-r-lg">
+                                <h5 className="text-xs font-medium text-beauty-bush-900 mb-3 sm:mb-2 uppercase tracking-wide">
                                   Source Text ({sentence.source_language.toUpperCase()})
                                 </h5>
-                                <p className="text-sm text-gray-900 leading-relaxed">{sentence.source_text}</p>
+                                <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{sentence.source_text}</p>
                               </div>
 
                               {/* Tagalog Source (if available) */}
                               {sentence.tagalog_source_text && (
-                                <div className="bg-emerald-50 border-l-4 border-emerald-400 p-3 rounded-r-lg">
-                                  <h5 className="text-xs font-medium text-emerald-900 mb-2 uppercase tracking-wide">
+                                <div className="bg-emerald-50 border-l-4 border-emerald-400 p-4 sm:p-3 rounded-r-lg">
+                                  <h5 className="text-xs font-medium text-emerald-900 mb-3 sm:mb-2 uppercase tracking-wide">
                                     Tagalog Source Text
                                   </h5>
-                                  <p className="text-sm text-gray-900 leading-relaxed">{sentence.tagalog_source_text}</p>
+                                  <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{sentence.tagalog_source_text}</p>
                                 </div>
                               )}
 
                               {/* Machine Translation with Tags */}
-                              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-3">
-                                <div className="flex items-center space-x-2 mb-2">
+                              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4 sm:p-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-3 sm:mb-2">
                                   <h5 className="text-xs font-medium text-purple-900 uppercase tracking-wide">
                                     Machine Translation with Error Tags
                                   </h5>
                                   {allHighlights.length > 0 && (
-                                    <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                                    <span className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 sm:px-2 sm:py-1 rounded-full self-start sm:self-auto">
                                       {allHighlights.length} annotations
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-sm text-gray-900 leading-relaxed bg-white border border-purple-100 rounded p-3">
+                                <div className="text-base sm:text-sm text-gray-900 leading-relaxed bg-white border border-purple-100 rounded p-4 sm:p-3">
                                   {renderHighlightedText(sentence.machine_translation, allHighlights, 'machine')}
                                 </div>
                                 {allHighlights.length === 0 && (
-                                  <div className="mt-2 text-xs text-gray-500 italic">
+                                  <div className="mt-3 sm:mt-2 text-xs text-gray-500 italic">
                                     No error annotations yet.
                                   </div>
                                 )}
@@ -2475,8 +2533,8 @@ const AdminDashboard: React.FC = () => {
 
                               {/* Annotations Summary - Only if expanded */}
                               {isExpanded && annotations.length > 0 && (
-                                <div className="bg-white border border-gray-300 rounded-lg p-4">
-                                  <div className="flex items-center justify-between mb-3">
+                                <div className="bg-white border border-gray-300 rounded-lg p-5 sm:p-4">
+                                  <div className="flex items-center justify-between mb-4 sm:mb-3">
                                     <h5 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center">
                                       <MessageCircle className="h-4 w-4 mr-2 text-gray-600" />
                                       Advanced Error Annotations ({annotations.length})
@@ -2484,34 +2542,34 @@ const AdminDashboard: React.FC = () => {
                                   </div>
                                   
                                   {/* Quick Stats */}
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                                                              <div className="text-center p-2 bg-beauty-bush-50 rounded">
-                            <div className="text-xs text-gray-600">Completed</div>
-                            <div className="text-sm font-bold text-beauty-bush-600">
-                              {annotations.filter(a => a.annotation_status === 'completed').length}
-                            </div>
-                          </div>
-                                    <div className="text-center p-2 bg-yellow-50 rounded">
-                                      <div className="text-xs text-gray-600">In Progress</div>
-                                      <div className="text-sm font-bold text-yellow-600">
+                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3 mb-5 sm:mb-4">
+                                    <div className="text-center p-3 sm:p-2 bg-beauty-bush-50 rounded-lg">
+                                      <div className="text-xs text-gray-600 mb-1">Completed</div>
+                                      <div className="text-base sm:text-sm font-bold text-beauty-bush-600">
+                                        {annotations.filter(a => a.annotation_status === 'completed').length}
+                                      </div>
+                                    </div>
+                                    <div className="text-center p-3 sm:p-2 bg-yellow-50 rounded-lg">
+                                      <div className="text-xs text-gray-600 mb-1">In Progress</div>
+                                      <div className="text-base sm:text-sm font-bold text-yellow-600">
                                         {annotations.filter(a => a.annotation_status === 'in_progress').length}
                                       </div>
                                     </div>
-                                    <div className="text-center p-2 bg-green-50 rounded">
-                                      <div className="text-xs text-gray-600">Avg Quality</div>
+                                    <div className="text-center p-3 sm:p-2 bg-green-50 rounded-lg">
+                                      <div className="text-xs text-gray-600 mb-1">Avg Quality</div>
                                       {annotations.filter(a => a.overall_quality).length > 0 ? (
-                                        <div className={`text-sm font-bold ${getScoreColor((annotations.reduce((sum, a) => sum + (a.overall_quality || 0), 0) / annotations.filter(a => a.overall_quality).length))}`}>
+                                        <div className={`text-base sm:text-sm font-bold ${getScoreColor((annotations.reduce((sum, a) => sum + (a.overall_quality || 0), 0) / annotations.filter(a => a.overall_quality).length))}`}>
                                           {(annotations.reduce((sum, a) => sum + (a.overall_quality || 0), 0) / annotations.filter(a => a.overall_quality).length).toFixed(1)}
                                         </div>
                                       ) : (
-                                        <div className="text-sm font-bold text-gray-600">
+                                        <div className="text-base sm:text-sm font-bold text-gray-600">
                                           N/A
                                         </div>
                                       )}
                                     </div>
-                                    <div className="text-center p-2 bg-purple-50 rounded">
-                                      <div className="text-xs text-gray-600">Error Tags</div>
-                                      <div className="text-sm font-bold text-purple-600">
+                                    <div className="text-center p-3 sm:p-2 bg-purple-50 rounded-lg">
+                                      <div className="text-xs text-gray-600 mb-1">Error Tags</div>
+                                      <div className="text-base sm:text-sm font-bold text-purple-600">
                                         {allHighlights.length}
                                       </div>
                                     </div>
@@ -2519,9 +2577,9 @@ const AdminDashboard: React.FC = () => {
 
                                   {/* Error Type Distribution */}
                                   {allHighlights.length > 0 && (
-                                    <div className="mb-4">
-                                      <h6 className="text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">Error Type Distribution</h6>
-                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    <div className="mb-5 sm:mb-4">
+                                      <h6 className="text-xs font-medium text-gray-700 mb-3 sm:mb-2 uppercase tracking-wide">Error Type Distribution</h6>
+                                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-2">
                                         {(() => {
                                           const errorTypeCounts = allHighlights.reduce((acc, h) => {
                                             const type = h.error_type || 'MI_SE';
@@ -2530,7 +2588,7 @@ const AdminDashboard: React.FC = () => {
                                           }, {} as {[key: string]: number});
 
                                           return Object.entries(errorTypeCounts).map(([type, count]) => (
-                                            <div key={type} className="text-center p-2 rounded-lg border-2 transition-all hover:shadow-md" 
+                                            <div key={type} className="text-center p-3 sm:p-2 rounded-lg border-2 transition-all hover:shadow-md" 
                                                  style={{
                                                    backgroundColor: getErrorTypeStyle(type).includes('orange') ? '#fff7ed' :
                                                                   getErrorTypeStyle(type).includes('blue') ? '#eff6ff' :
@@ -2541,8 +2599,8 @@ const AdminDashboard: React.FC = () => {
                                                                getErrorTypeStyle(type).includes('red') ? '#f87171' :
                                                                getErrorTypeStyle(type).includes('purple') ? '#c084fc' : '#9ca3af'
                                                  }}>
-                                              <div className="text-xs text-gray-600 font-medium">[{type}]</div>
-                                              <div className="text-lg font-bold" style={{
+                                              <div className="text-xs text-gray-600 font-medium mb-1">[{type}]</div>
+                                              <div className="text-xl sm:text-lg font-bold mb-1" style={{
                                                 color: getErrorTypeStyle(type).includes('orange') ? '#ea580c' :
                                                        getErrorTypeStyle(type).includes('blue') ? '#2563eb' :
                                                        getErrorTypeStyle(type).includes('red') ? '#dc2626' :
@@ -2729,27 +2787,27 @@ const AdminDashboard: React.FC = () => {
             )}
 
             {/* Search and Filter Controls */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="flex flex-col space-y-4">
                 {/* Search Bar */}
-                <div className="relative flex-1 max-w-md">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search questions, explanations, or options..."
                     value={questionSearchQuery}
                     onChange={(e) => setQuestionSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    className="w-full pl-10 pr-4 py-3 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500 text-base sm:text-sm"
                   />
                 </div>
 
                 {/* Controls Row */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                   {/* Language Filter */}
                   <select
                     value={questionLanguageFilter}
                     onChange={(e) => setQuestionLanguageFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="all">All Languages</option>
                     <option value="tagalog">Tagalog (Filipino)</option>
@@ -2761,7 +2819,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={questionTypeFilter}
                     onChange={(e) => setQuestionTypeFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="all">All Types</option>
                     <option value="grammar">Grammar</option>
@@ -2775,7 +2833,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={questionDifficultyFilter}
                     onChange={(e) => setQuestionDifficultyFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="all">All Difficulties</option>
                     <option value="basic">Basic</option>
@@ -2787,7 +2845,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={questionSortBy}
                     onChange={(e) => setQuestionSortBy(e.target.value as 'newest' | 'oldest' | 'difficulty' | 'language')}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
@@ -2799,7 +2857,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={questionItemsPerPage}
                     onChange={(e) => setQuestionItemsPerPage(Number(e.target.value))}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value={5}>5 per page</option>
                     <option value={10}>10 per page</option>
@@ -2810,7 +2868,7 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Results Summary */}
-              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-3">
+              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-4">
                 <span>
                   Showing {paginatedQuestions.length} of {filteredAndSortedQuestions.length} questions
                   {questionSearchQuery && (
@@ -2992,7 +3050,7 @@ const AdminDashboard: React.FC = () => {
               {paginatedQuestions.length > 0 ? (
                 <div className="divide-y divide-gray-200">
                   {paginatedQuestions.map((question) => (
-                    <div key={question.id} className="p-6 hover:bg-gray-50">
+                    <div key={question.id} className="p-5 sm:p-6 hover:bg-gray-50">
                       {editingQuestion?.id === question.id ? (
                         // Edit Mode
                         <div className="space-y-4">
@@ -3113,66 +3171,68 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       ) : (
                         // View Mode
-                        <div className="space-y-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center">
+                        <div className="space-y-5 sm:space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-3 sm:space-y-0">
+                            <div className="flex items-start space-x-3">
+                              <div className="w-10 h-10 sm:w-8 sm:h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center flex-shrink-0">
                                 <span className="text-sm font-bold text-beauty-bush-700">#{question.id}</span>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs px-2 py-1 bg-beauty-bush-500 text-white rounded font-medium">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-beauty-bush-500 text-white rounded-full font-medium">
                                   {question.language}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded font-medium ${getQuestionTypeColor(question.type)}`}>
+                                <span className={`text-xs px-3 py-2 sm:px-2 sm:py-1 rounded-full font-medium ${getQuestionTypeColor(question.type)}`}>
                                   {question.type}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded font-medium ${getDifficultyColor(question.difficulty)}`}>
+                                <span className={`text-xs px-3 py-2 sm:px-2 sm:py-1 rounded-full font-medium ${getDifficultyColor(question.difficulty)}`}>
                                   {question.difficulty}
                                 </span>
                                 {question.is_active ? (
-                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded font-medium">
+                                  <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-green-100 text-green-800 rounded-full font-medium">
                                     Active
                                   </span>
                                 ) : (
-                                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded font-medium">
+                                  <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-gray-100 text-gray-800 rounded-full font-medium">
                                     Inactive
                                   </span>
                                 )}
                               </div>
                             </div>
                             
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-3 self-start sm:self-auto">
                               <button
                                 onClick={() => setEditingQuestion(question)}
-                                className="text-blue-600 hover:text-blue-800 p-1"
+                                className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 px-3 py-2 rounded-lg hover:bg-blue-50 transition-all"
                               >
                                 <Edit className="h-4 w-4" />
+                                <span className="text-sm">Edit</span>
                               </button>
                               <button
                                 onClick={() => handleDeleteQuestion(question.id)}
-                                className="text-red-600 hover:text-red-800 p-1"
+                                className="flex items-center space-x-2 text-red-600 hover:text-red-800 px-3 py-2 rounded-lg hover:bg-red-50 transition-all"
                               >
                                 <Trash2 className="h-4 w-4" />
+                                <span className="text-sm">Delete</span>
                               </button>
                             </div>
                           </div>
                           
-                          <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-3 rounded-r-lg">
-                            <h5 className="text-sm font-medium text-beauty-bush-900 mb-2">Question</h5>
-                            <p className="text-gray-900">{question.question}</p>
+                          <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-4 sm:p-3 rounded-r-lg">
+                            <h5 className="text-sm font-medium text-beauty-bush-900 mb-3 sm:mb-2">Question</h5>
+                            <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{question.question}</p>
                           </div>
                           
                           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">Answer Options</h5>
-                            <div className="space-y-2">
+                            <h5 className="text-sm font-medium text-gray-700 mb-4 sm:mb-3">Answer Options</h5>
+                            <div className="space-y-3 sm:space-y-2">
                               {question.options.map((option, index) => (
-                                <div key={index} className={`flex items-center space-x-2 p-2 rounded ${
+                                <div key={index} className={`flex items-start space-x-3 p-3 sm:p-2 rounded-lg ${
                                   index === question.correct_answer ? 'bg-green-100 border border-green-300' : 'bg-white border border-gray-200'
                                 }`}>
-                                  <span className="text-sm font-medium text-gray-700 w-8">{String.fromCharCode(65 + index)}.</span>
-                                  <span className="text-sm text-gray-900">{option}</span>
+                                  <span className="text-sm font-medium text-gray-700 w-8 flex-shrink-0 mt-0.5 sm:mt-0">{String.fromCharCode(65 + index)}.</span>
+                                  <span className="text-base sm:text-sm text-gray-900 leading-relaxed flex-1">{option}</span>
                                   {index === question.correct_answer && (
-                                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-medium">
+                                    <span className="text-xs bg-green-500 text-white px-3 py-1 sm:px-2 sm:py-1 rounded-full font-medium flex-shrink-0">
                                       Correct
                                     </span>
                                   )}
@@ -3181,13 +3241,13 @@ const AdminDashboard: React.FC = () => {
                             </div>
                           </div>
                           
-                          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r-lg">
-                            <h5 className="text-sm font-medium text-yellow-900 mb-2">Explanation</h5>
-                            <p className="text-gray-900">{question.explanation}</p>
+                          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 sm:p-3 rounded-r-lg">
+                            <h5 className="text-sm font-medium text-yellow-900 mb-3 sm:mb-2">Explanation</h5>
+                            <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{question.explanation}</p>
                           </div>
                           
                           {question.created_at && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
                               Created: {new Date(question.created_at).toLocaleString()}
                             </div>
                           )}

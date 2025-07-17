@@ -380,6 +380,19 @@ const UserDashboard: React.FC = () => {
       )}
 
       <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+        {/* Mobile Page Indicator */}
+        <div className="md:hidden mb-6">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
+            <div className="flex items-center space-x-2">
+              <User className="h-5 w-5 text-primary-600" />
+              <span className="text-sm font-medium text-primary-900">User Dashboard</span>
+              <div className="ml-auto text-xs text-primary-600">
+                Use menu for quick navigation
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Header with refresh button */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
           <div>
@@ -390,7 +403,7 @@ const UserDashboard: React.FC = () => {
           </div>
           <button 
             onClick={handleRefresh} 
-            className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all w-full sm:w-auto"
+            className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all w-full sm:w-auto min-h-[44px]"
           >
             <RefreshCcw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -501,7 +514,7 @@ const UserDashboard: React.FC = () => {
                 <div>
                   <Link 
                     to="/annotate" 
-                    className="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
+                    className="inline-flex items-center justify-center w-full sm:w-auto px-4 py-3 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-all min-h-[44px] hover:scale-105 active:scale-95"
                   >
                     Start Annotating
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -547,7 +560,7 @@ const UserDashboard: React.FC = () => {
                             step.buttonLink === 'guidelines' ? (
                               <button
                                 onClick={handleShowGuidelines}
-                                className="inline-flex items-center text-xs font-medium text-primary-600 hover:text-primary-500"
+                                className="inline-flex items-center px-3 py-2 text-xs font-medium text-primary-600 hover:text-primary-500 hover:bg-primary-50 rounded-md transition-all min-h-[36px]"
                               >
                                 {step.buttonText}
                                 <ChevronRight className="ml-1 h-3 w-3" />
@@ -555,7 +568,7 @@ const UserDashboard: React.FC = () => {
                             ) : (
                               <Link 
                                 to={step.buttonLink} 
-                                className="inline-flex items-center text-xs font-medium text-primary-600 hover:text-primary-500"
+                                className="inline-flex items-center px-3 py-2 text-xs font-medium text-primary-600 hover:text-primary-500 hover:bg-primary-50 rounded-md transition-all min-h-[36px]"
                               >
                                 {step.buttonText}
                                 <ChevronRight className="ml-1 h-3 w-3" />
@@ -637,7 +650,7 @@ const UserDashboard: React.FC = () => {
               <p className="text-gray-500">No recent annotations found</p>
               <Link 
                 to="/annotate" 
-                className="inline-flex items-center mt-4 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
+                className="inline-flex items-center mt-4 px-4 py-3 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-all min-h-[44px] hover:scale-105 active:scale-95"
               >
                 Start Annotating
                 <ArrowRight className="ml-2 h-4 w-4" />
