@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User, LoginCredentials, RegisterData } from '../types';
 import { authAPI, authStorage } from '../services/api';
+import { logger } from '../utils/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -38,18 +39,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const storedUser = authStorage.getUser();
       const storedToken = authStorage.getToken();
 
-      console.log('Auth initialization: Stored user onboarding status:', storedUser?.onboarding_status);
+      logger.debug('Initializing auth with stored user', {
+        component: 'AuthContext',
+        action: 'initialize',
+        userId: storedUser?.id,
+        metadata: { onboardingStatus: storedUser?.onboarding_status }
+      });
 
       if (storedUser && storedToken) {
         try {
-          // Always fetch fresh user data to ensure we have the latest onboarding status
-          console.log('Auth initialization: Fetching fresh user data...');
+          logger.debug('Fetching fresh user data to validate token', {
+            component: 'AuthContext',
+            action: 'validateToken',
+            userId: storedUser.id
+          });
+          
           const currentUser = await authAPI.getCurrentUser();
-          console.log('Auth initialization: Fresh user onboarding status:', currentUser.onboarding_status);
+          
+          logger.authEvent('tokenValidated', currentUser.id, {
+            onboardingStatus: currentUser.onboarding_status
+          });
+          
           authStorage.setUser(currentUser);
           setUser(currentUser);
         } catch (error: unknown) {
-          console.error('Token validation failed, logging out:', error);
+          logger.authEvent('tokenValidationFailed', storedUser.id);
+          logger.apiError('getCurrentUser', error as Error, {
+            component: 'AuthContext'
+          });
+          
           // Token is invalid, clear storage and logout
           authStorage.removeToken();
           authStorage.removeUser();
@@ -81,8 +99,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const updatedUser = await authAPI.markGuidelinesSeen();
       authStorage.setUser(updatedUser);
       setUser(updatedUser);
+      
+      logger.userAction('guidelinesMarkedSeen', updatedUser.id);
     } catch (error) {
-      console.error('Error marking guidelines as seen:', error);
+      logger.apiError('markGuidelinesSeen', error as Error, {
+        component: 'AuthContext',
+        userId: user?.id
+      });
       throw error;
     }
   };
@@ -91,7 +114,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const token = authStorage.getToken();
       if (!token) {
-        // No token, ensure user is logged out
+        logger.debug('No token found during refresh, logging out user', {
+          component: 'AuthContext',
+          action: 'refreshUser'
+        });
         setUser(null);
         return;
       }
@@ -99,12 +125,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const currentUser = await authAPI.getCurrentUser();
       authStorage.setUser(currentUser);
       setUser(currentUser);
+      
+      logger.debug('User data refreshed successfully', {
+        component: 'AuthContext',
+        action: 'refreshUser',
+        userId: currentUser.id,
+        metadata: { onboardingStatus: currentUser.onboarding_status }
+      });
     } catch (error: unknown) {
-      console.error('Error refreshing user data:', error);
+      logger.apiError('refreshUser', error as Error, {
+        component: 'AuthContext',
+        userId: user?.id
+      });
+      
       // If refresh fails due to invalid token, logout user
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { status?: number } };
         if (axiosError.response?.status === 401) {
+          logger.authEvent('tokenExpired', user?.id);
           authStorage.removeToken();
           authStorage.removeUser();
           setUser(null);
@@ -117,30 +155,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const forceRefreshUser = async () => {
     const token = authStorage.getToken();
     if (!token) {
-      console.warn('forceRefreshUser: No token found');
+      logger.warn('No token found during force refresh', {
+        component: 'AuthContext',
+        action: 'forceRefreshUser'
+      });
       return;
     }
     
-    console.log('forceRefreshUser: Fetching fresh user data after quiz completion...');
-    console.log('forceRefreshUser: Current stored user onboarding_status:', authStorage.getUser()?.onboarding_status);
+    // Check if we already have updated user data in storage that's newer than our current state
+    const storedUser = authStorage.getUser();
+    if (storedUser && storedUser.onboarding_status !== user?.onboarding_status) {
+      logger.debug('Using updated user data from storage', {
+        component: 'AuthContext',
+        action: 'forceRefreshUser',
+        userId: storedUser.id,
+        metadata: { 
+          storedOnboardingStatus: storedUser.onboarding_status,
+          currentOnboardingStatus: user?.onboarding_status
+        }
+      });
+      setUser(storedUser);
+      return;
+    }
+    
+    logger.debug('Fetching fresh user data from API', {
+      component: 'AuthContext',
+      action: 'forceRefreshUser',
+      userId: storedUser?.id,
+      metadata: { currentOnboardingStatus: storedUser?.onboarding_status }
+    });
     
     try {
       const currentUser = await authAPI.getCurrentUser();
-      console.log('forceRefreshUser: API returned user onboarding status:', currentUser.onboarding_status);
-      console.log('forceRefreshUser: Full user object from API:', currentUser);
+      
+      logger.debug('API returned fresh user data', {
+        component: 'AuthContext',
+        action: 'forceRefreshUser',
+        userId: currentUser.id,
+        metadata: { 
+          newOnboardingStatus: currentUser.onboarding_status,
+          previousOnboardingStatus: user?.onboarding_status
+        }
+      });
       
       // Force update both storage and state
       authStorage.setUser(currentUser);
       setUser(currentUser);
       
-      console.log('forceRefreshUser: User state updated, new onboarding_status:', currentUser.onboarding_status);
-      
-      // Verify the update worked
-      const verifyUser = authStorage.getUser();
-      console.log('forceRefreshUser: Verification - stored user onboarding_status:', verifyUser?.onboarding_status);
+      logger.debug('User state force updated successfully', {
+        component: 'AuthContext',
+        action: 'forceRefreshUser',
+        userId: currentUser.id,
+        metadata: { onboardingStatus: currentUser.onboarding_status }
+      });
       
     } catch (error) {
-      console.error('forceRefreshUser: Error fetching user data:', error);
+      logger.apiError('forceRefreshUser', error as Error, {
+        component: 'AuthContext',
+        userId: user?.id
+      });
       throw error;
     }
   };
@@ -154,13 +227,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const token = authStorage.getToken();
         if (!token) return;
         
-        console.log('Background refresh: Fetching latest user data...');
+        logger.debug('Background refresh: Fetching latest user data', {
+          component: 'AuthContext',
+          action: 'backgroundRefresh',
+          userId: user?.id
+        });
+        
         const currentUser = await authAPI.getCurrentUser();
-        console.log('Background refresh: User onboarding status:', currentUser.onboarding_status);
+        
+        logger.debug('Background refresh completed', {
+          component: 'AuthContext',
+          action: 'backgroundRefresh',
+          userId: currentUser.id,
+          metadata: { onboardingStatus: currentUser.onboarding_status }
+        });
+        
         authStorage.setUser(currentUser);
         setUser(currentUser);
       } catch (error) {
-        console.warn('Background user refresh failed:', error);
+        logger.warn('Background user refresh failed', {
+          component: 'AuthContext',
+          action: 'backgroundRefresh',
+          userId: user?.id,
+          metadata: { error: (error as Error).message }
+        });
       }
     };
 

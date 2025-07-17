@@ -1,19 +1,3 @@
-/**
- * OnboardingTest Component
- * 
- * This component handles the language proficiency quiz for new users.
- * 
- * Key fixes implemented:
- * 1. Prevents infinite loops when no questions are available by using questionsFetched flag
- * 2. Checks if user has already completed onboarding before allowing retakes
- * 3. Proper error handling with retry functionality that resets test state
- * 4. Timer only starts when questions are actually loaded and available
- * 5. Validates all questions are answered before submission
- * 6. Prevents multiple submissions with isSubmitting guard
- * 7. Improved loading states and error handling for better UX
- * 8. Proper state management to avoid UI glitches when no questions available
- */
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { languageProficiencyAPI, onboardingAPI, authStorage } from '../services/api';
@@ -50,6 +34,7 @@ const OnboardingTest: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  const [justCompletedQuiz, setJustCompletedQuiz] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentAnswer = answers.find(a => a.question_id === currentQuestion?.id);
@@ -60,12 +45,24 @@ const OnboardingTest: React.FC = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Auto-refresh user data after successful quiz completion
+  const autoRefreshUserData = useCallback(async (): Promise<boolean> => {
+    try {
+      await forceRefreshUser();
+      const currentUserData = authStorage.getUser();
+      return currentUserData?.onboarding_status === 'completed';
+    } catch {
+      return false;
+    }
+  }, [forceRefreshUser]);
+
   // Check if user has already completed onboarding
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       try {
         // First check user object directly for completed status
-        if (user?.onboarding_status === 'completed') {
+        // Don't show completed screen if we just completed the quiz (show modal first)
+        if (user?.onboarding_status === 'completed' && !justCompletedQuiz) {
           setOnboardingComplete(true);
           setCheckingOnboardingStatus(false);
           return;
@@ -79,12 +76,11 @@ const OnboardingTest: React.FC = () => {
           if (completedTest) {
             setOnboardingComplete(true);
           }
-        } catch (apiError) {
-          console.warn('Could not fetch onboarding tests:', apiError);
+        } catch {
           // If API fails, rely on user object status
         }
-      } catch (error) {
-        console.error('Error checking onboarding status:', error);
+      } catch {
+        // Silent error handling
       } finally {
         setCheckingOnboardingStatus(false);
       }
@@ -95,7 +91,7 @@ const OnboardingTest: React.FC = () => {
     } else {
       setCheckingOnboardingStatus(false);
     }
-  }, [user]);
+  }, [user, justCompletedQuiz]);
 
   // Fetch questions when languages are selected and test is started
   useEffect(() => {
@@ -106,9 +102,7 @@ const OnboardingTest: React.FC = () => {
         setQuestionsError('');
         
         try {
-          console.log('Fetching questions for languages:', selectedLanguages);
           const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(selectedLanguages);
-          console.log('Fetched questions:', fetchedQuestions);
           
           // Mark as fetched regardless of result to prevent infinite loops
           setQuestionsFetched(true);
@@ -118,8 +112,7 @@ const OnboardingTest: React.FC = () => {
           } else {
             setQuestionsError('No questions available for your selected languages. Please contact support.');
           }
-        } catch (error) {
-          console.error('Error fetching questions:', error);
+        } catch {
           setQuestionsError('Failed to load test questions. Please try again.');
         } finally {
           setLoadingQuestions(false);
@@ -179,36 +172,22 @@ const OnboardingTest: React.FC = () => {
 
   const handleQuizSuccess = async () => {
     try {
-      // Add delay to ensure backend has fully processed the completion
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Auto-refresh user data
+      const refreshSuccess = await autoRefreshUserData();
       
-      // Try to refresh user data with retry logic
-      let retryCount = 0;
-      const maxRetries = 3;
-      
-      while (retryCount < maxRetries) {
-        await forceRefreshUser();
-        
-        // Check if the update worked
-        const currentUserData = authStorage.getUser();
-        if (currentUserData?.onboarding_status === 'completed') {
-          console.log('handleQuizSuccess: Successfully verified user onboarding status is completed');
-          break;
-        } else {
-          retryCount++;
-          console.log(`handleQuizSuccess: Retry ${retryCount}/${maxRetries} - user still shows status: ${currentUserData?.onboarding_status}`);
-          if (retryCount < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retry
-          }
-        }
+      if (!refreshSuccess) {
+        // If auto-refresh failed, try one more time after a short delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await autoRefreshUserData();
       }
       
       setShowSuccessModal(false);
+      setJustCompletedQuiz(false);
       navigate('/dashboard');
-    } catch (error) {
-      console.error('Error refreshing user data:', error);
-      // Still navigate even if refresh fails
+    } catch {
+      // Still navigate even if refresh fails - the dashboard will handle the updated state
       setShowSuccessModal(false);
+      setJustCompletedQuiz(false);
       navigate('/dashboard');
     }
   };
@@ -226,6 +205,7 @@ const OnboardingTest: React.FC = () => {
     setQuestionsError('');
     setLoadingQuestions(false);
     setFinalScore(0);
+    setJustCompletedQuiz(false);
   };
 
   const handleSubmitTest = useCallback(async () => {
@@ -263,52 +243,31 @@ const OnboardingTest: React.FC = () => {
       const result = await languageProficiencyAPI.submitAnswers(answers, sessionId, selectedLanguages);
       
       if (result.passed || score >= 70) {
-        // Show success modal instead of alert
+        // Show success modal and mark as just completed
         setFinalScore(score);
+        setJustCompletedQuiz(true);
         
-        // Add a small delay to ensure backend transaction is committed, then refresh user data with retry
-        try {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-          
-          // Try to refresh user data, with retry logic
-          let retryCount = 0;
-          const maxRetries = 3;
-          
-          while (retryCount < maxRetries) {
-            await forceRefreshUser();
-            
-            // Check if the update worked
-            const currentUserData = authStorage.getUser();
-            if (currentUserData?.onboarding_status === 'completed') {
-              console.log('OnboardingTest: Successfully updated user onboarding status to completed');
-              break;
-            } else {
-              retryCount++;
-              console.log(`OnboardingTest: Retry ${retryCount}/${maxRetries} - user still shows status: ${currentUserData?.onboarding_status}`);
-              if (retryCount < maxRetries) {
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
-              }
-            }
-          }
-          
-          console.log('OnboardingTest: Successfully refreshed user data after quiz completion');
-        } catch (error) {
-          console.error('OnboardingTest: Error refreshing user data:', error);
+        // Update user data if returned from backend
+        if (result.updated_user) {
+          authStorage.setUser(result.updated_user);
+          await forceRefreshUser();
+        } else {
+          // Auto-refresh user data in background
+          autoRefreshUserData();
         }
         
         setShowSuccessModal(true);
       } else {
-        // Show failure modal instead of alert
+        // Show failure modal
         setFinalScore(score);
         setShowFailureModal(true);
       }
-    } catch (error) {
-      console.error('Error submitting test:', error);
+    } catch {
       alert('Error submitting quiz. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [answers, questions.length, sessionId, selectedLanguages, isSubmitting, forceRefreshUser]);
+  }, [answers, questions.length, sessionId, selectedLanguages, isSubmitting, forceRefreshUser, autoRefreshUserData]);
 
   // Timer effect - only start when questions are loaded and test has actually started
   useEffect(() => {

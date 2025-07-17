@@ -102,6 +102,16 @@ export const authAPI = {
     const response = await api.put('/me/guidelines-seen');
     return response.data;
   },
+
+  updateProfile: async (profileData: {
+    first_name?: string;
+    last_name?: string;
+    preferred_language?: string;
+    languages?: string[];
+  }): Promise<User> => {
+    const response = await api.put('/me/profile', profileData);
+    return response.data;
+  },
 };
 
 // Sentences API
@@ -226,6 +236,7 @@ export const adminAPI = {
     first_name: string;
     last_name: string;
     is_active?: boolean;
+    is_admin?: boolean;
     is_evaluator?: boolean;
     languages?: string[];
     skip_onboarding?: boolean;

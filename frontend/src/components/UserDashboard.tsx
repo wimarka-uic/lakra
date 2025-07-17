@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { annotationsAPI, sentencesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import type { Annotation } from '../types';
+import type { Annotation, User as UserType } from '../types';
+import { logger } from '../utils/logger';
 import { 
   FileText, 
   Clock, 
@@ -68,10 +69,25 @@ const UserDashboard: React.FC = () => {
           : step
       ));
     } catch (error) {
-      console.error('Error marking guidelines as seen:', error);
+      logger.apiError('markGuidelinesSeen', error as Error, {
+        component: 'UserDashboard',
+        userId: user?.id
+      });
       // Still close the modal even if the API call fails
       setShowGuidelines(false);
     }
+  };
+
+  // Helper function to check if profile is complete
+  const isProfileComplete = (user: UserType | null): boolean => {
+    if (!user) return false;
+    return !!(
+      user.first_name && 
+      user.last_name && 
+      user.preferred_language && 
+      user.languages && 
+      user.languages.length > 0
+    );
   };
 
   // User onboarding journey steps
@@ -110,7 +126,7 @@ const UserDashboard: React.FC = () => {
       icon: User,
       buttonText: 'Update Profile',
       buttonLink: '/profile',
-      completed: false
+      completed: isProfileComplete(user)
     }
   ]);
 
@@ -142,16 +158,27 @@ const UserDashboard: React.FC = () => {
   useEffect(() => {
     // Update onboarding step completion status when user data changes
     if (user) {
-      console.log('UserDashboard: User data updated, onboarding_status:', user.onboarding_status);
+      logger.debug('User data updated in dashboard', {
+        component: 'UserDashboard',
+        userId: user.id,
+        metadata: { onboardingStatus: user.onboarding_status }
+      });
       setOnboardingSteps(currentSteps => 
         currentSteps.map(step => {
           if (step.id === 'qualification_test') {
             const completed = user.onboarding_status === 'completed';
-            console.log('UserDashboard: Setting qualification_test completed to:', completed);
+            logger.debug('Updated qualification test state', {
+              component: 'UserDashboard',
+              userId: user.id,
+              metadata: { qualificationCompleted: completed }
+            });
             return {...step, completed};
           }
           if (step.id === 'read_guidelines') {
             return {...step, completed: user.guidelines_seen || false};
+          }
+          if (step.id === 'profile_setup') {
+            return {...step, completed: isProfileComplete(user)};
           }
           return step;
         })
@@ -163,11 +190,17 @@ const UserDashboard: React.FC = () => {
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (!document.hidden) {
-        console.log('UserDashboard: Tab became visible, checking for updated user data...');
+        logger.debug('Tab became visible, refreshing user data', {
+          component: 'UserDashboard',
+          userId: user?.id
+        });
         try {
           await forceRefreshUser();
         } catch (error) {
-          console.error('UserDashboard: Error refreshing user data on visibility change:', error);
+          logger.error('Failed to refresh user data on visibility change', {
+            component: 'UserDashboard',
+            userId: user?.id
+          }, error as Error);
         }
       }
     };
@@ -222,46 +255,25 @@ const UserDashboard: React.FC = () => {
       }
       
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      logger.apiError('loadDashboardData', error as Error, {
+        component: 'UserDashboard',
+        userId: user?.id
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Manual refresh function for user data
-  const handleManualRefresh = async () => {
+  // Manual refresh function for dashboard data
+  const handleRefresh = async () => {
     setRefreshing(true);
-    console.log('UserDashboard: Manual refresh triggered, current user onboarding_status:', user?.onboarding_status);
     try {
-      // Clear any cached data first
-      localStorage.removeItem('user');
-      
-      // Force refresh with multiple retries
-      let retryCount = 0;
-      const maxRetries = 3;
-      
-      while (retryCount < maxRetries) {
-        await forceRefreshUser();
-        
-        // Get the updated user data
-        const updatedUser = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log(`UserDashboard: Retry ${retryCount + 1}/${maxRetries} - user onboarding_status:`, updatedUser.onboarding_status);
-        
-        if (updatedUser.onboarding_status === 'completed') {
-          console.log('UserDashboard: Successfully verified user onboarding status is completed');
-          break;
-        }
-        
-        retryCount++;
-        if (retryCount < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
-        }
-      }
-      
-      await loadDashboardData(); // Reload dashboard data as well
-      console.log('UserDashboard: User refreshed, new onboarding_status:', user?.onboarding_status);
+      await loadDashboardData();
     } catch (error) {
-      console.error('Error refreshing data:', error);
+      logger.apiError('refreshDashboardData', error as Error, {
+        component: 'UserDashboard',
+        userId: user?.id
+      });
     } finally {
       setRefreshing(false);
     }
@@ -362,36 +374,23 @@ const UserDashboard: React.FC = () => {
                   Complete your qualification test to start annotating.
                 </p>
               )}
-              {/* Temporary debug info - more prominent */}
-              <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs">
-                <p><strong>Debug Info:</strong></p>
-                <p>onboarding_status = "{user?.onboarding_status}"</p>
-                <p>Last refreshed: {new Date().toLocaleTimeString()}</p>
-                <button 
-                  onClick={handleManualRefresh}
-                  className="mt-1 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-                  disabled={refreshing}
-                >
-                  {refreshing ? 'Refreshing...' : 'Force Refresh'}
-                </button>
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
         {/* Header with refresh button */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Your Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Your Dashboard</h1>
             <p className="mt-1 text-sm text-gray-500">
               Track your progress and manage your annotation work
             </p>
           </div>
           <button 
-            onClick={handleManualRefresh} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all"
+            onClick={handleRefresh} 
+            className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all w-full sm:w-auto"
           >
             <RefreshCcw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -399,16 +398,16 @@ const UserDashboard: React.FC = () => {
         </div>
 
         {/* User Progress Overview */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="p-4 sm:p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <User className="h-5 w-5 text-primary-500" />
-                    <h2 className="text-lg font-semibold text-gray-800">{user?.first_name} {user?.last_name}</h2>
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-800">{user?.first_name} {user?.last_name}</h2>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="bg-primary-100 text-primary-800 text-xs font-medium px-2.5 py-1 rounded-full">
                       {userLevel.title}
                     </span>
@@ -435,65 +434,65 @@ const UserDashboard: React.FC = () => {
                 </div>
                 
                 <div className="lg:col-span-2">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <FileText className="h-5 w-5 text-blue-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Total Annotations</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <FileText className="h-5 w-5 text-blue-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Total Annotations</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{stats?.totalAnnotations || 0}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.totalAnnotations || 0}</p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Completed</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <CheckCircle className="h-5 w-5 text-green-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Completed</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{stats?.completedAnnotations || 0}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.completedAnnotations || 0}</p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Clock className="h-5 w-5 text-amber-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Time Spent</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <Clock className="h-5 w-5 text-amber-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Time Spent</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">
                         {formatTime(stats?.totalTimeSpent || 0)}
                       </p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Calendar className="h-5 w-5 text-purple-500" />
-                        <h3 className="text-sm font-medium text-gray-700">This Week</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <Calendar className="h-5 w-5 text-purple-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">This Week</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{stats?.annotationsThisWeek || 0}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.annotationsThisWeek || 0}</p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Star className="h-5 w-5 text-yellow-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Avg. Quality</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <Star className="h-5 w-5 text-yellow-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Avg. Quality</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">
                         {stats?.averageQualityScore ? stats.averageQualityScore.toFixed(1) : 'N/A'}
                       </p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <TrendingUp className="h-5 w-5 text-indigo-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Available</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <TrendingUp className="h-5 w-5 text-indigo-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Available</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{availableSentences}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{availableSentences}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                 <div className="flex items-center">
                   <span className="text-sm text-gray-500">
                     {getProgressPercentage()}% of your annotations are completed
@@ -502,7 +501,7 @@ const UserDashboard: React.FC = () => {
                 <div>
                   <Link 
                     to="/annotate" 
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
+                    className="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
                   >
                     Start Annotating
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -515,9 +514,9 @@ const UserDashboard: React.FC = () => {
         
         {/* User onboarding journey */}
         {onboardingSteps.some(step => !step.completed) && (
-          <div className="mb-8 animate-fadeIn">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Get Started with Annotation</h2>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-6">
+          <div className="mb-6 sm:mb-8 animate-fadeIn">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Get Started with Annotation</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-4 sm:p-6">
               <div className="space-y-4">
                 {onboardingSteps.map((step, index) => (
                   <div key={step.id} className={`

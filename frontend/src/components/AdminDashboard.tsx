@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI, sentencesAPI, languageProficiencyAPI } from '../services/api';
 import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion } from '../types';
+import { logger } from '../utils/logger';
 import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download, UserCheck, UserX, Key } from 'lucide-react';
 import { 
   BarChart, 
@@ -116,6 +117,7 @@ const AdminDashboard: React.FC = () => {
     first_name: '',
     last_name: '',
     is_active: true,
+    is_admin: false,
     is_evaluator: false,
     languages: ['en'],
     skip_onboarding: false
@@ -126,6 +128,7 @@ const AdminDashboard: React.FC = () => {
     email: '',
     username: '',
     is_active: true,
+    is_admin: false,
     is_evaluator: false,
     languages: ['en']
   });
@@ -189,7 +192,9 @@ const AdminDashboard: React.FC = () => {
       // Load real analytics data
       await loadAnalyticsData();
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      logger.apiError('loadDashboardData', error as Error, {
+        component: 'AdminDashboard'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -234,7 +239,9 @@ const AdminDashboard: React.FC = () => {
         }
       });
     } catch (error) {
-      console.error('Error loading analytics data:', error);
+      logger.apiError('loadAnalyticsData', error as Error, {
+        component: 'AdminDashboard'
+      });
       setAnalyticsError('Failed to load analytics data. Please try again.');
       // Fallback to empty data if analytics fail
       setAnalyticsData({
@@ -268,13 +275,18 @@ const AdminDashboard: React.FC = () => {
           const annotations = await adminAPI.getSentenceAnnotations(sentence.id);
           annotationsMap.set(sentence.id, annotations);
         } catch (error) {
-          console.error(`Error loading annotations for sentence ${sentence.id}:`, error);
+          logger.apiError(`loadAnnotations`, error as Error, {
+          component: 'AdminDashboard',
+          metadata: { sentenceId: sentence.id }
+        });
           annotationsMap.set(sentence.id, []);
         }
       }
       setSentenceAnnotations(annotationsMap);
     } catch (error) {
-      console.error('Error loading sentences:', error);
+      logger.apiError('loadSentences', error as Error, {
+        component: 'AdminDashboard'
+      });
     }
   }, [languageFilter]);
 
@@ -299,7 +311,9 @@ const AdminDashboard: React.FC = () => {
           (usersPagination.currentPage - 1) * usersPagination.itemsPerPage + fetchedUsers.length
       }));
     } catch (error) {
-      console.error('Error loading users:', error);
+      logger.apiError('loadUsers', error as Error, {
+        component: 'AdminDashboard'
+      });
     } finally {
       setIsLoadingUsers(false);
     }
@@ -324,6 +338,7 @@ const AdminDashboard: React.FC = () => {
         first_name: '',
         last_name: '',
         is_active: true,
+        is_admin: false,
         is_evaluator: false,
         languages: ['en'],
         skip_onboarding: false
@@ -332,7 +347,10 @@ const AdminDashboard: React.FC = () => {
       await loadUsers();
       await loadDashboardData(); // Refresh stats
     } catch (error) {
-      console.error('Error creating user:', error);
+      logger.apiError('createUser', error as Error, {
+        component: 'AdminDashboard',
+        metadata: { email: newUser.email }
+      });
       alert('Failed to create user. Please check the details and try again.');
     }
   };
@@ -348,7 +366,10 @@ const AdminDashboard: React.FC = () => {
       await loadUsers();
       await loadDashboardData(); // Refresh stats
     } catch (error) {
-      console.error('Error updating user:', error);
+      logger.apiError('updateUser', error as Error, {
+        component: 'AdminDashboard',
+        metadata: { userId: selectedUser?.id }
+      });
       alert('Failed to update user. Please try again.');
     }
   };
@@ -363,7 +384,10 @@ const AdminDashboard: React.FC = () => {
       await loadUsers();
       await loadDashboardData(); // Refresh stats
     } catch (error) {
-      console.error('Error deleting user:', error);
+      logger.apiError('deleteUser', error as Error, {
+        component: 'AdminDashboard',
+        metadata: { userId: selectedUser?.id }
+      });
       alert('Failed to delete user. Please try again.');
     }
   };
@@ -376,6 +400,7 @@ const AdminDashboard: React.FC = () => {
       email: user.email,
       username: user.username,
       is_active: user.is_active,
+      is_admin: user.is_admin,
       is_evaluator: user.is_evaluator,
       languages: user.languages || ['en']
     });
@@ -1581,7 +1606,7 @@ const AdminDashboard: React.FC = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">User Management</h3>
-                <p className="text-sm text-gray-600 mt-1">Manage user accounts, roles, and permissions</p>
+                <p className="text-sm text-gray-600 mt-1">Create and manage users with different roles (Annotator, Evaluator, or Admin)</p>
               </div>
               <button
                 onClick={() => setShowAddUser(true)}
@@ -3269,11 +3294,11 @@ const AdminDashboard: React.FC = () => {
 
       {/* Add User Modal */}
       {showAddUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Add New Annotator</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg shadow-xl border w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-medium text-gray-900">Add New User</h3>
                 <button
                   onClick={() => setShowAddUser(false)}
                   className="text-gray-400 hover:text-gray-600"
@@ -3281,7 +3306,7 @@ const AdminDashboard: React.FC = () => {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <form onSubmit={handleCreateUser} className="space-y-4">
+                              <form onSubmit={handleCreateUser} className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="add-first-name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -3473,62 +3498,89 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <input
-                      id="add-is-active"
-                      type="checkbox"
-                      checked={newUser.is_active}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, is_active: e.target.checked }))}
-                      className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="add-is-active" className="ml-2 block text-sm text-gray-700">
-                      Active annotator
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <input
-                      id="add-is-evaluator"
-                      type="checkbox"
-                      checked={newUser.is_evaluator}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
-                      className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="add-is-evaluator" className="ml-2 block text-sm text-gray-700">
-                      Evaluator privileges
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <input
-                      id="add-skip-onboarding"
-                      type="checkbox"
-                      checked={newUser.skip_onboarding}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, skip_onboarding: e.target.checked }))}
-                      className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="add-skip-onboarding" className="ml-2 block text-sm text-gray-700">
-                      Skip onboarding test
-                    </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    User Role & Settings
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input
+                        id="add-is-active"
+                        type="checkbox"
+                        checked={newUser.is_active}
+                        onChange={(e) => setNewUser(prev => ({ ...prev, is_active: e.target.checked }))}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-is-active" className="ml-2 block text-sm text-gray-700">
+                        Active user
+                      </label>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-3 rounded-lg border">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Role Permissions:</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <input
+                            id="add-is-admin"
+                            type="checkbox"
+                            checked={newUser.is_admin}
+                            onChange={(e) => setNewUser(prev => ({ ...prev, is_admin: e.target.checked }))}
+                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="add-is-admin" className="ml-2 block text-sm text-gray-700">
+                            <span className="font-medium text-purple-700">Administrator</span> - Full system access
+                          </label>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <input
+                            id="add-is-evaluator"
+                            type="checkbox"
+                            checked={newUser.is_evaluator}
+                            onChange={(e) => setNewUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="add-is-evaluator" className="ml-2 block text-sm text-gray-700">
+                            <span className="font-medium text-blue-700">Evaluator</span> - Can evaluate annotations
+                          </label>
+                        </div>
+                        
+                        <div className="text-xs text-gray-500 mt-2">
+                          Note: Users without special roles are Annotators by default
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="add-skip-onboarding"
+                        type="checkbox"
+                        checked={newUser.skip_onboarding}
+                        onChange={(e) => setNewUser(prev => ({ ...prev, skip_onboarding: e.target.checked }))}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-skip-onboarding" className="ml-2 block text-sm text-gray-700">
+                        Skip onboarding test
+                      </label>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddUser(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700"
-                  >
-                    Create Annotator
-                  </button>
-                </div>
+                                  <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddUser(false)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700 transition-colors"
+                    >
+                      Create User
+                    </button>
+                  </div>
               </form>
             </div>
           </div>
@@ -3537,11 +3589,11 @@ const AdminDashboard: React.FC = () => {
 
       {/* Edit User Modal */}
       {showEditUser && selectedUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Edit Annotator</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
                 <button
                   onClick={() => setShowEditUser(false)}
                   className="text-gray-400 hover:text-gray-600"
@@ -3549,7 +3601,7 @@ const AdminDashboard: React.FC = () => {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <form onSubmit={handleUpdateUser} className="space-y-4">
+              <form onSubmit={handleUpdateUser} className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="edit-first-name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -3718,47 +3770,74 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <input
-                      id="edit-is-active"
-                      type="checkbox"
-                      checked={editUser.is_active}
-                      onChange={(e) => setEditUser(prev => ({ ...prev, is_active: e.target.checked }))}
-                      className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="edit-is-active" className="ml-2 block text-sm text-gray-700">
-                      Active annotator
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <input
-                      id="edit-is-evaluator"
-                      type="checkbox"
-                      checked={editUser.is_evaluator}
-                      onChange={(e) => setEditUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
-                      className="checkbox-field"
-                    />
-                    <label htmlFor="edit-is-evaluator" className="ml-2 block text-sm text-gray-700">
-                      Evaluator privileges
-                    </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    User Role & Settings
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input
+                        id="edit-is-active"
+                        type="checkbox"
+                        checked={editUser.is_active}
+                        onChange={(e) => setEditUser(prev => ({ ...prev, is_active: e.target.checked }))}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-is-active" className="ml-2 block text-sm text-gray-700">
+                        Active user
+                      </label>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-3 rounded-lg border">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Role Permissions:</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <input
+                            id="edit-is-admin"
+                            type="checkbox"
+                            checked={editUser.is_admin}
+                            onChange={(e) => setEditUser(prev => ({ ...prev, is_admin: e.target.checked }))}
+                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="edit-is-admin" className="ml-2 block text-sm text-gray-700">
+                            <span className="font-medium text-purple-700">Administrator</span> - Full system access
+                          </label>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <input
+                            id="edit-is-evaluator"
+                            type="checkbox"
+                            checked={editUser.is_evaluator}
+                            onChange={(e) => setEditUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="edit-is-evaluator" className="ml-2 block text-sm text-gray-700">
+                            <span className="font-medium text-blue-700">Evaluator</span> - Can evaluate annotations
+                          </label>
+                        </div>
+                        
+                        <div className="text-xs text-gray-500 mt-2">
+                          Note: Users without special roles are Annotators by default
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex justify-end space-x-3 pt-4">
+                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
                   <button
                     type="button"
                     onClick={() => setShowEditUser(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700"
+                    className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700 transition-colors"
                   >
-                    Update Annotator
+                    Update User
                   </button>
                 </div>
               </form>
@@ -3769,11 +3848,11 @@ const AdminDashboard: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && selectedUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Delete Annotator</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-medium text-gray-900">Delete User</h3>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   className="text-gray-400 hover:text-gray-600"
@@ -3783,22 +3862,22 @@ const AdminDashboard: React.FC = () => {
               </div>
               <div className="mb-4">
                 <p className="text-sm text-gray-600">
-                  Are you sure you want to delete the annotator <span className="font-medium">{selectedUser.first_name} {selectedUser.last_name}</span>? 
+                  Are you sure you want to delete the user <span className="font-medium">{selectedUser.first_name} {selectedUser.last_name}</span>? 
                   This action cannot be undone.
                 </p>
               </div>
-              <div className="flex justify-end space-x-3">
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteUser}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors"
                 >
-                  Delete Annotator
+                  Delete User
                 </button>
               </div>
             </div>
@@ -3808,11 +3887,11 @@ const AdminDashboard: React.FC = () => {
 
       {/* User Details Modal */}
       {showUserDetails && selectedUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Annotator Details</h3>
+                <h3 className="text-xl font-semibold text-gray-900">User Details</h3>
                 <button
                   onClick={() => setShowUserDetails(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -3939,7 +4018,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex justify-between items-center mt-8 pt-4 border-t border-gray-200">
+              <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
                 <div className="text-xs text-gray-500">
                   ID: {selectedUser.id} • Created: {new Date(selectedUser.created_at).toLocaleString()}
                 </div>
@@ -3951,7 +4030,7 @@ const AdminDashboard: React.FC = () => {
                     }}
                     className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
                   >
-                    Edit Annotator
+                    Edit User
                   </button>
                   <button
                     onClick={() => setShowUserDetails(false)}

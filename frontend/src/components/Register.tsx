@@ -37,7 +37,6 @@ const Register: React.FC = () => {
   const [testStarted, setTestStarted] = useState(false);
   const [isSubmittingTest, setIsSubmittingTest] = useState(false);
   const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
-  const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [testSessionId, setTestSessionId] = useState('');
   
   // Use ref to track if questions have been loaded for current languages
@@ -51,43 +50,8 @@ const Register: React.FC = () => {
     return `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
 
-  // Fetch questions when languages change and we're on step 4
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      const languageKey = formData.languages.sort().join(',');
-      
-      if (currentStep === 4 && 
-          formData.languages.length > 0 && 
-          !loadingQuestions && 
-          questionsLoadedRef.current !== languageKey) {
-        
-        setLoadingQuestions(true);
-        questionsLoadedRef.current = languageKey;
-        
-        try {
-          console.log('Fetching questions for languages:', formData.languages);
-          const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(formData.languages);
-          console.log('Fetched questions:', fetchedQuestions);
-          setQuestions(fetchedQuestions);
-          
-          // Generate session ID when starting test
-          if (!testSessionId) {
-            const sessionId = generateSessionId();
-            setTestSessionId(sessionId);
-            console.log('Generated session ID:', sessionId);
-          }
-        } catch (error) {
-          console.error('Error fetching questions:', error);
-          setError('Failed to load test questions. Please try again.');
-          questionsLoadedRef.current = ''; // Reset on error to allow retry
-        } finally {
-          setLoadingQuestions(false);
-        }
-      }
-    };
-
-    fetchQuestions();
-  }, [currentStep, formData.languages, testSessionId]);
+  // Note: Questions are now fetched during step 3 validation before proceeding to step 4
+  // This prevents users from reaching the test step without available questions
 
   // Reset questions when step changes or languages change
   useEffect(() => {
@@ -365,13 +329,42 @@ const Register: React.FC = () => {
         const needsOnboardingTest = formData.user_type === 'annotator';
         
         if (needsOnboardingTest) {
-          // For annotators, move to onboarding test step
-          setCurrentStep(4);
-          setTestStarted(true);
-          // Reset any previous test state
-          setCurrentQuestionIndex(0);
-          setOnboardingAnswers([]);
-          setTimeRemaining(45 * 60);
+          // Check if questions are available for selected languages before proceeding
+          try {
+            setError(''); // Clear any previous errors
+            const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(formData.languages);
+            
+            if (!fetchedQuestions || fetchedQuestions.length === 0) {
+              setError(
+                `No proficiency test questions are currently available for your selected languages (${formData.languages.map(lang => 
+                  lang.charAt(0).toUpperCase() + lang.slice(1)
+                ).join(', ')}). Please try selecting different languages or contact support for assistance.`
+              );
+              setIsLoading(false);
+              return;
+            }
+            
+            // Questions are available, proceed to test
+            setQuestions(fetchedQuestions);
+            if (!testSessionId) {
+              const sessionId = generateSessionId();
+              setTestSessionId(sessionId);
+            }
+            questionsLoadedRef.current = formData.languages.sort().join(',');
+            
+            // For annotators, move to onboarding test step
+            setCurrentStep(4);
+            setTestStarted(true);
+            // Reset any previous test state
+            setCurrentQuestionIndex(0);
+            setOnboardingAnswers([]);
+            setTimeRemaining(45 * 60);
+          } catch (questionError) {
+            console.error('Error checking questions availability:', questionError);
+            setError('Unable to load proficiency test questions. Please try again or contact support.');
+            setIsLoading(false);
+            return;
+          }
         } else {
           // For evaluators, complete registration normally
           const registerData = {
@@ -428,8 +421,8 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4 sm:py-12 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-6 sm:space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-6 px-4 sm:py-12 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-4 sm:space-y-8">
         <div>
           <div className="flex justify-center">
             <Logo className="h-24 w-24 text-primary-500" />
@@ -548,34 +541,25 @@ const Register: React.FC = () => {
                     </div>
 
                     <div
-                      onClick={() => handleUserTypeChange('evaluator')}
-                      className={`relative rounded-lg border-2 p-4 cursor-pointer transition-all ${
-                        formData.user_type === 'evaluator'
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className="relative rounded-lg border-2 p-4 cursor-not-allowed transition-all border-gray-200 bg-gray-50 opacity-60"
                     >
                       <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <UserCheck className={`h-6 w-6 ${
-                            formData.user_type === 'evaluator' ? 'text-primary-600' : 'text-gray-400'
-                          }`} />
+                          <UserCheck className="h-6 w-6 text-gray-400" />
                         </div>
                         <div className="ml-3 flex-1">
-                          <h3 className={`text-sm font-medium ${
-                            formData.user_type === 'evaluator' ? 'text-primary-900' : 'text-gray-900'
-                          }`}>
-                            Evaluator
-                          </h3>
-                          <p className={`text-sm ${
-                            formData.user_type === 'evaluator' ? 'text-primary-700' : 'text-gray-500'
-                          }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-sm font-medium text-gray-500">
+                              Evaluator
+                            </h3>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              Coming Soon
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-400">
                             Evaluate and review annotations made by other users for quality assurance.
                           </p>
                         </div>
-                        {formData.user_type === 'evaluator' && (
-                          <Check className="h-5 w-5 text-primary-600" />
-                        )}
                       </div>
                     </div>
                   </div>
@@ -818,61 +802,28 @@ const Register: React.FC = () => {
                   </div>
                 </div>
 
-                {loadingQuestions ? (
-                  // Loading state while fetching questions
-                  <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+                {questions.length === 0 ? (
+                  // This state should not occur now since we check for questions before reaching step 4
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
                     <div className="flex flex-col items-center">
-                      <Loader2 className="animate-spin h-8 w-8 text-primary-600 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Preparing your test...</h3>
-                      <p className="text-sm text-gray-600">
-                        Loading questions for {formData.languages.map(lang => 
-                          lang.charAt(0).toUpperCase() + lang.slice(1)
-                        ).join(', ')}
-                      </p>
-                    </div>
-                  </div>
-                ) : questions.length === 0 ? (
-                  // No questions available
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-                    <div className="flex flex-col items-center">
-                      <AlertCircle className="h-8 w-8 text-yellow-600 mb-4" />
-                      <h3 className="text-lg font-medium text-yellow-900 mb-2">No Test Questions Available</h3>
-                      <p className="text-sm text-yellow-800 mb-4">
-                        There are currently no test questions available for your selected languages: {' '}
-                        {formData.languages.map(lang => 
-                          lang.charAt(0).toUpperCase() + lang.slice(1)
-                        ).join(', ')}
-                      </p>
-                      <p className="text-xs text-yellow-700">
-                        Your registration will be completed without the proficiency test. You can take the test later from your dashboard.
+                      <AlertCircle className="h-8 w-8 text-red-600 mb-4" />
+                      <h3 className="text-lg font-medium text-red-900 mb-2">Error Loading Test</h3>
+                      <p className="text-sm text-red-800 mb-4">
+                        An unexpected error occurred while loading the proficiency test.
                       </p>
                       <button
                         type="button"
-                        onClick={async () => {
-                          // Complete registration without test
-                          const registerData = {
-                            email: formData.email,
-                            username: formData.username,
-                            password: formData.password,
-                            first_name: formData.first_name,
-                            last_name: formData.last_name,
-                            preferred_language: formData.preferred_language,
-                            languages: formData.languages,
-                            is_evaluator: false,
-                            user_type: formData.user_type
-                          };
-                          
-                          try {
-                            await register(registerData);
-                            setRegistrationSuccess(true);
-                            setTimeout(() => navigate('/'), 2000);
-                          } catch {
-                            setError('Registration failed. Please try again.');
-                          }
+                        onClick={() => {
+                          // Go back to step 3 to try again
+                          setCurrentStep(3);
+                          setQuestions([]);
+                          questionsLoadedRef.current = '';
+                          setTestSessionId('');
+                          setError('');
                         }}
-                        className="mt-4 px-6 py-2 bg-yellow-600 text-white rounded-md text-sm font-medium hover:bg-yellow-700"
+                        className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
                       >
-                        Complete Registration
+                        Go Back and Try Again
                       </button>
                     </div>
                   </div>

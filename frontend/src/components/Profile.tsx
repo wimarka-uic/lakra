@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authAPI } from '../services/api';
 import { User, Save, AlertCircle, CheckCircle } from 'lucide-react';
 
 // This component will allow users to update their profile settings
 const Profile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     first_name: '',
@@ -53,11 +54,17 @@ const Profile: React.FC = () => {
     // Update preferred_language logic
     let updatedPreferredLanguage = formData.preferred_language;
     
-    if (newLanguages.length === 1) {
+    if (newLanguages.length === 0) {
+      // No languages selected, clear preferred language
+      updatedPreferredLanguage = '';
+    } else if (newLanguages.length === 1) {
       // When only one language is selected, it automatically becomes the primary
       updatedPreferredLanguage = newLanguages[0];
     } else if (isSelected && languageId === formData.preferred_language && newLanguages.length > 0) {
       // If removing the current preferred language, set the first remaining one as preferred
+      updatedPreferredLanguage = newLanguages[0];
+    } else if (!newLanguages.includes(formData.preferred_language) && newLanguages.length > 0) {
+      // If current preferred language is not in the new languages list, set the first one as preferred
       updatedPreferredLanguage = newLanguages[0];
     } else if (formData.preferred_language === '' && newLanguages.length > 0) {
       // Set a preferred language if none is selected but languages are available
@@ -73,11 +80,15 @@ const Profile: React.FC = () => {
 
   // Update preferred language
   const handlePreferredLanguageChange = (languageId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      preferred_language: languageId,
-    }));
-    setIsDirty(true);
+    // Only update if it's a different language than currently selected
+    // This prevents deselecting the current primary language
+    if (languageId !== formData.preferred_language && formData.languages.includes(languageId)) {
+      setFormData(prev => ({
+        ...prev,
+        preferred_language: languageId,
+      }));
+      setIsDirty(true);
+    }
   };
 
   // Handle form submission
@@ -88,17 +99,18 @@ const Profile: React.FC = () => {
     setSuccessMessage('');
 
     try {
-      // This would be implemented in a real app with a profile update API call
-      // await userAPI.updateProfile(formData);
+      // Update profile via API
+      await authAPI.updateProfile(formData);
       
-      // Simulated success for now
-      setTimeout(() => {
-        setSuccessMessage('Profile updated successfully!');
-        setIsLoading(false);
-        setIsDirty(false);
-      }, 1000);
-    } catch {
-      setError('Failed to update profile. Please try again.');
+      // Refresh user data in context
+      await refreshUser();
+      
+      setSuccessMessage('Profile updated successfully!');
+      setIsDirty(false);
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      setError(error.response?.data?.detail || 'Failed to update profile. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -229,26 +241,33 @@ const Profile: React.FC = () => {
                   <div className="mt-4">
                     <h3 className="text-sm font-medium mb-2">Set primary language:</h3>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                      {formData.languages.map((langId) => {
-                        const language = availableLanguages.find(l => l.id === langId);
-                        return (
-                          <button
-                            key={langId}
-                            type="button"
-                            onClick={() => handlePreferredLanguageChange(langId)}
-                            className={`
-                              px-3 py-2 rounded-lg text-xs font-medium border transition-colors duration-200
-                              ${
-                                formData.preferred_language === langId
-                                  ? 'bg-primary-500 border-primary-500 text-white'
-                                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                              }
-                            `}
-                          >
-                            {language?.name}
-                          </button>
-                        );
-                      })}
+                      {formData.languages
+                        .filter(langId => langId && langId.trim() !== '') // Filter out empty/invalid language IDs
+                        .map((langId) => {
+                          const language = availableLanguages.find(l => l.id === langId);
+                          // Only render if we found a matching language
+                          if (!language) return null;
+                          
+                          return (
+                            <button
+                              key={langId}
+                              type="button"
+                              onClick={() => handlePreferredLanguageChange(langId)}
+                              className={`
+                                px-3 py-2 rounded-lg text-xs font-medium border transition-colors duration-200
+                                ${
+                                  formData.preferred_language === langId
+                                    ? 'bg-primary-500 border-primary-500 text-white'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                }
+                              `}
+                            >
+                              {language.name}
+                            </button>
+                          );
+                        })
+                        .filter(Boolean) // Remove any null elements
+                      }
                     </div>
                     <p className="mt-2 text-xs text-gray-500">
                       This will be your primary language for translation work
