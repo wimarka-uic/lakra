@@ -12,7 +12,7 @@ echo "🚀 Starting Lakra Backend Server..."
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "📦 Creating virtual environment..."
-    python3 -m venv venv
+    python -m venv venv
 fi
 
 # Activate virtual environment
