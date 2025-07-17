@@ -1,16 +1,17 @@
 import React from 'react';
-import { Users, Award } from 'lucide-react';
+import { Users} from 'lucide-react';
 import Logo from './Logo';
 
 const About: React.FC = () => {
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <>
+      <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm border p-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div className="p-4 rounded-full">
-              <Logo size="large" className="h-24 w-auto" />
+              <Logo size="large" className="h-32 w-auto" />
             </div>
           </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -32,8 +33,12 @@ const About: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Researchers</h3>
             <div className="space-y-3">
               <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-primary-600 font-semibold">SM</span>
+              <div className="w-16 h-16 rounded-full overflow-hidden mr-3 ring-2 ring-primary-200">
+                  <img 
+                    src="/smontojo.jpg" 
+                    alt="Shaira Montojo" 
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Montojo, Shaira Lorraine Q.</p>
@@ -41,8 +46,12 @@ const About: React.FC = () => {
               </div>
               
               <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-primary-600 font-semibold">AO</span>
+                <div className="w-16 h-16 rounded-full overflow-hidden mr-3 ring-2 ring-primary-200">
+                  <img 
+                    src="/aorig.jpg" 
+                    alt="Al Gabriel Orig" 
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Orig, Al Gabriel A.</p>
@@ -50,8 +59,12 @@ const About: React.FC = () => {
               </div>
               
               <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-primary-600 font-semibold">CT</span>
+              <div className="w-16 h-16 rounded-full overflow-hidden mr-3 ring-2 ring-primary-200">
+                  <img 
+                    src="/cte.png" 
+                    alt="Charlese Te" 
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Te, Charlese Jeanrie A.</p>
@@ -63,8 +76,12 @@ const About: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Adviser</h3>
             <div className="flex items-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                <Award className="h-6 w-6 text-green-600" />
+              <div className="w-20 h-20 rounded-full overflow-hidden mr-4 ring-2 ring-green-200">
+                <img 
+                  src="/kadlaon.jpg" 
+                  alt="Ms. Kristine Mae Adlaon" 
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
                 <p className="font-semibold text-gray-900">Ms. Kristine Mae Adlaon, MIT</p>
@@ -149,7 +166,8 @@ const About: React.FC = () => {
           This tool is part of ongoing academic research in machine translation evaluation for Philippine languages.
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

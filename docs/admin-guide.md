@@ -470,9 +470,6 @@ ENABLE_DARK_MODE=False
 ```bash
 # PostgreSQL backup
 pg_dump -U lakra_user -h localhost lakra_production > backup_$(date +%Y%m%d_%H%M%S).sql
-
-# SQLite backup
-sqlite3 annotation_system.db ".backup backup_$(date +%Y%m%d_%H%M%S).db"
 ```
 
 **Database Optimization**:

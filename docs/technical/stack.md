@@ -199,13 +199,6 @@ Lakra follows a modern web application architecture with clear separation betwee
 - **Purpose**: Efficient database connections
 - **Features**: Connection reuse, overflow handling
 
-### Development Database
-
-**SQLite 3.35+**
-- **Purpose**: Development and testing database
-- **Why**: Zero configuration, file-based, SQL compatible
-- **Features**: ACID transactions, full-text search
-
 ### Caching (Optional)
 
 **Redis**
@@ -443,7 +436,6 @@ Lakra follows a modern web application architecture with clear separation betwee
 
 - **MySQL**: Less feature-rich than PostgreSQL
 - **MongoDB**: NoSQL not needed for structured data
-- **SQLite**: Good for development, limited for production scale
 
 ## Future Technology Roadmap
 

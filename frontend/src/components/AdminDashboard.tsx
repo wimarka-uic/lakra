@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI, sentencesAPI, languageProficiencyAPI } from '../services/api';
 import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion } from '../types';
-import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download } from 'lucide-react';
+import { logger } from '../utils/logger';
+import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download, UserCheck, UserX, Key } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -18,15 +19,43 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const AdminDashboard: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [sentenceAnnotations, setSentenceAnnotations] = useState<Map<number, Annotation[]>>(new Map());
   const [sentenceCounts, setSentenceCounts] = useState<{[key: string]: number}>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests'>('home');
+  
+  // Get active tab from URL
+  const getActiveTabFromUrl = (): 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' => {
+    const path = location.pathname;
+    if (path.includes('/overview')) return 'overview';
+    if (path.includes('/users')) return 'users';
+    if (path.includes('/sentences')) return 'sentences';
+    if (path.includes('/onboarding-tests')) return 'onboarding-tests';
+    return 'home';
+  };
+  
+  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests'>(getActiveTabFromUrl());
+
+  // Update active tab when URL changes
+  useEffect(() => {
+    setActiveTab(getActiveTabFromUrl());
+  }, [location.pathname]);
+
+  // Handle tab navigation
+  const handleTabChange = (tab: 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests') => {
+    setActiveTab(tab);
+    const basePath = '/admin';
+    const tabPath = tab === 'home' ? '' : `/${tab}`;
+    navigate(basePath + tabPath);
+  };
+
   const [showAddSentence, setShowAddSentence] = useState(false);
   const [languageFilter, setLanguageFilter] = useState<string>('all');
   const [expandedSentences, setExpandedSentences] = useState<Set<number>>(new Set());
@@ -98,6 +127,46 @@ const AdminDashboard: React.FC = () => {
   } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
+  // User Management states
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [showEditUser, setShowEditUser] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showUserDetails, setShowUserDetails] = useState(false);
+  const [userFilter, setUserFilter] = useState({
+    role: 'all',
+    active: 'all',
+    search: ''
+  });
+  const [newUser, setNewUser] = useState({
+    email: '',
+    username: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    is_active: true,
+    is_admin: false,
+    is_evaluator: false,
+    languages: ['en'],
+    skip_onboarding: false
+  });
+  const [editUser, setEditUser] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    username: '',
+    is_active: true,
+    is_admin: false,
+    is_evaluator: false,
+    languages: ['en']
+  });
+  const [usersPagination, setUsersPagination] = useState({
+    currentPage: 1,
+    itemsPerPage: 10,
+    totalUsers: 0
+  });
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
   useEffect(() => {
     loadDashboardData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -115,6 +184,18 @@ const AdminDashboard: React.FC = () => {
         if (showCSVImport) {
           setShowCSVImport(false);
         }
+        if (showAddUser) {
+          setShowAddUser(false);
+        }
+        if (showEditUser) {
+          setShowEditUser(false);
+        }
+        if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
+        }
+        if (showUserDetails) {
+          setShowUserDetails(false);
+        }
       }
     };
 
@@ -122,7 +203,7 @@ const AdminDashboard: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [showAddQuestion, showAddSentence, showCSVImport]);
+  }, [showAddQuestion, showAddSentence, showCSVImport, showAddUser, showEditUser, showDeleteConfirm, showUserDetails]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -139,7 +220,9 @@ const AdminDashboard: React.FC = () => {
       // Load real analytics data
       await loadAnalyticsData();
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      logger.apiError('loadDashboardData', error as Error, {
+        component: 'AdminDashboard'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -184,7 +267,9 @@ const AdminDashboard: React.FC = () => {
         }
       });
     } catch (error) {
-      console.error('Error loading analytics data:', error);
+      logger.apiError('loadAnalyticsData', error as Error, {
+        component: 'AdminDashboard'
+      });
       setAnalyticsError('Failed to load analytics data. Please try again.');
       // Fallback to empty data if analytics fail
       setAnalyticsData({
@@ -218,15 +303,187 @@ const AdminDashboard: React.FC = () => {
           const annotations = await adminAPI.getSentenceAnnotations(sentence.id);
           annotationsMap.set(sentence.id, annotations);
         } catch (error) {
-          console.error(`Error loading annotations for sentence ${sentence.id}:`, error);
+          logger.apiError(`loadAnnotations`, error as Error, {
+          component: 'AdminDashboard',
+          metadata: { sentenceId: sentence.id }
+        });
           annotationsMap.set(sentence.id, []);
         }
       }
       setSentenceAnnotations(annotationsMap);
     } catch (error) {
-      console.error('Error loading sentences:', error);
+      logger.apiError('loadSentences', error as Error, {
+        component: 'AdminDashboard'
+      });
     }
   }, [languageFilter]);
+
+  // Load Users with Pagination
+  const loadUsers = React.useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      const fetchedUsers = await adminAPI.getAllUsers(
+        (usersPagination.currentPage - 1) * usersPagination.itemsPerPage,
+        usersPagination.itemsPerPage,
+        userFilter.role === 'all' ? undefined : userFilter.role,
+        userFilter.active === 'all' ? undefined : userFilter.active === 'true',
+        userFilter.search || undefined
+      );
+      setUsers(fetchedUsers);
+      
+      // For now, we'll set a reasonable total based on the returned data
+      setUsersPagination(prev => ({
+        ...prev,
+        totalUsers: fetchedUsers.length >= usersPagination.itemsPerPage ? 
+          (usersPagination.currentPage * usersPagination.itemsPerPage) + 1 : 
+          (usersPagination.currentPage - 1) * usersPagination.itemsPerPage + fetchedUsers.length
+      }));
+    } catch (error) {
+      logger.apiError('loadUsers', error as Error, {
+        component: 'AdminDashboard'
+      });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [usersPagination.currentPage, usersPagination.itemsPerPage, userFilter]);
+
+  // Load users when tab changes or filters change
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers();
+    }
+  }, [activeTab, loadUsers]);
+
+  // CRUD Handlers for User Management
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await adminAPI.createUser(newUser);
+      setNewUser({
+        email: '',
+        username: '',
+        password: '',
+        first_name: '',
+        last_name: '',
+        is_active: true,
+        is_admin: false,
+        is_evaluator: false,
+        languages: ['en'],
+        skip_onboarding: false
+      });
+      setShowAddUser(false);
+      await loadUsers();
+      await loadDashboardData(); // Refresh stats
+    } catch (error) {
+      logger.apiError('createUser', error as Error, {
+        component: 'AdminDashboard',
+        metadata: { email: newUser.email }
+      });
+      alert('Failed to create user. Please check the details and try again.');
+    }
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    try {
+      await adminAPI.updateUser(selectedUser.id, editUser);
+      setShowEditUser(false);
+      setSelectedUser(null);
+      await loadUsers();
+      await loadDashboardData(); // Refresh stats
+    } catch (error) {
+      logger.apiError('updateUser', error as Error, {
+        component: 'AdminDashboard',
+        metadata: { userId: selectedUser?.id }
+      });
+      alert('Failed to update user. Please try again.');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await adminAPI.deleteUser(selectedUser.id);
+      setShowDeleteConfirm(false);
+      setSelectedUser(null);
+      await loadUsers();
+      await loadDashboardData(); // Refresh stats
+    } catch (error) {
+      logger.apiError('deleteUser', error as Error, {
+        component: 'AdminDashboard',
+        metadata: { userId: selectedUser?.id }
+      });
+      alert('Failed to delete user. Please try again.');
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setEditUser({
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      username: user.username,
+      is_active: user.is_active,
+      is_admin: user.is_admin,
+      is_evaluator: user.is_evaluator,
+      languages: user.languages || ['en']
+    });
+    setShowEditUser(true);
+  };
+
+  const handleShowDeleteConfirm = (user: User) => {
+    setSelectedUser(user);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleResetUserPassword = async (userId: number) => {
+    const newPassword = prompt('Enter new password for user:');
+    if (!newPassword) return;
+    
+    try {
+      await adminAPI.resetUserPassword(userId, newPassword);
+      alert('Password reset successfully');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert('Failed to reset password. Please try again.');
+    }
+  };
+
+  const handleDeactivateUser = async (userId: number) => {
+    const reason = prompt('Enter reason for deactivation (optional):');
+    try {
+      await adminAPI.deactivateUser(userId, reason || undefined);
+      await loadUsers();
+    } catch (error) {
+      console.error('Error deactivating user:', error);
+      alert('Failed to deactivate user. Please try again.');
+    }
+  };
+
+  // User filter handlers
+  const handleUserFilterChange = (newFilter: Partial<typeof userFilter>) => {
+    setUserFilter(prev => ({ ...prev, ...newFilter }));
+    setUsersPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
+  };
+
+  // Pagination handlers
+  const handleUserPageChange = (newPage: number) => {
+    setUsersPagination(prev => ({ ...prev, currentPage: newPage }));
+  };
+
+  // Generate secure password
+  const generateSecurePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewUser(prev => ({ ...prev, password }));
+  };
 
   useEffect(() => {
     if (activeTab === 'sentences') {
@@ -741,30 +998,60 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
         
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              { key: 'home', label: 'Home', icon: Home },
-              { key: 'overview', label: 'Overview', icon: BarChart3 },
-              { key: 'users', label: 'Users', icon: Users },
-              { key: 'sentences', label: 'Sentences', icon: FileText },
-              { key: 'onboarding-tests', label: 'Onboarding Tests', icon: BookOpen },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests')}
-                className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.key
-                    ? 'border-beauty-bush-500 text-beauty-bush-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <tab.icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
+        {/* Tab Navigation - Hidden on mobile */}
+        <div className="border-b border-gray-200 mb-6 hidden md:block">
+          <nav className="-mb-px flex overflow-x-auto scrollbar-hide">
+            <div className="flex space-x-1 sm:space-x-4 lg:space-x-8 min-w-max px-1">
+              {[
+                { key: 'home', label: 'Home', icon: Home },
+                { key: 'overview', label: 'Overview', icon: BarChart3 },
+                { key: 'users', label: 'Users', icon: Users },
+                { key: 'sentences', label: 'Sentences', icon: FileText },
+                { key: 'onboarding-tests', label: 'Tests', fullLabel: 'Onboarding Tests', icon: BookOpen },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => handleTabChange(tab.key as 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests')}
+                  className={`flex items-center space-x-1 sm:space-x-2 py-2 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors duration-200 ${
+                    activeTab === tab.key
+                      ? 'border-beauty-bush-500 text-beauty-bush-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  title={tab.fullLabel || tab.label}
+                >
+                  <tab.icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.key === 'onboarding-tests' ? 'Tests' : tab.label}</span>
+                </button>
+              ))}
+            </div>
           </nav>
+        </div>
+
+        {/* Mobile Tab Indicator */}
+        <div className="md:hidden mb-6">
+          <div className="bg-beauty-bush-50 border border-beauty-bush-200 rounded-lg p-3">
+            <div className="flex items-center space-x-2">
+              {(() => {
+                const currentTab = [
+                  { key: 'home', label: 'Home', icon: Home },
+                  { key: 'overview', label: 'Overview', icon: BarChart3 },
+                  { key: 'users', label: 'Users', icon: Users },
+                  { key: 'sentences', label: 'Sentences', icon: FileText },
+                  { key: 'onboarding-tests', label: 'Onboarding Tests', icon: BookOpen },
+                ].find(tab => tab.key === activeTab);
+                
+                if (!currentTab) return null;
+                
+                return (
+                  <>
+                    <currentTab.icon className="h-5 w-5 text-beauty-bush-600" />
+                    <span className="text-sm font-medium text-beauty-bush-900">{currentTab.label}</span>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
         </div>
 
         {/* Home Tab */}
@@ -1372,94 +1659,248 @@ const AdminDashboard: React.FC = () => {
 
         {/* Users Tab */}
         {activeTab === 'users' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Header with Actions */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">User Management</h3>
+                <p className="text-sm text-gray-600 mt-1">Create and manage users with different roles (Annotator, Evaluator, or Admin)</p>
+              </div>
+              <button
+                onClick={() => setShowAddUser(true)}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add User</span>
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white p-4 border border-gray-200 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label htmlFor="user-role-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <select
+                    id="user-role-filter"
+                    value={userFilter.role}
+                    onChange={(e) => handleUserFilterChange({ role: e.target.value })}
+                    className="select-field"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="admin">Admin</option>
+                    <option value="evaluator">Evaluator</option>
+                    <option value="annotator">Annotator</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="user-active-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    id="user-active-filter"
+                    value={userFilter.active}
+                    onChange={(e) => handleUserFilterChange({ active: e.target.value })}
+                    className="select-field"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label htmlFor="user-search" className="block text-sm font-medium text-gray-700 mb-1">
+                    Search
+                  </label>
+                  <input
+                    id="user-search"
+                    type="text"
+                    placeholder="Search by name, email, or username..."
+                    value={userFilter.search}
+                    onChange={(e) => handleUserFilterChange({ search: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Users Table */}
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Joined
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.first_name} {user.last_name}
-                            </div>
-                            <div className="text-sm text-gray-500">@{user.username}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {user.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex space-x-1">
-                          {user.is_admin && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                              Admin
-                            </span>
-                          )}
-                          {user.is_evaluator && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Evaluator
-                            </span>
-                          )}
-                          {!user.is_admin && !user.is_evaluator && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              User
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.is_active 
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {user.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleToggleEvaluatorRole(user.id)}
-                          className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                            user.is_evaluator
-                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                              : 'bg-green-100 text-green-800 hover:bg-green-200'
-                          }`}
-                        >
-                          {user.is_evaluator ? 'Remove Evaluator' : 'Make Evaluator'}
-                        </button>
-                      </td>
+              {isLoadingUsers ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-beauty-bush-600"></div>
+                  <span className="ml-2 text-gray-600">Loading users...</span>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Role
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Joined
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {users.map((user) => (
+                      <tr key={user.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {user.first_name} {user.last_name}
+                              </div>
+                              <div className="text-sm text-gray-500">@{user.username}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex space-x-1">
+                            {user.is_admin && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                Admin
+                              </span>
+                            )}
+                            {user.is_evaluator && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Evaluator
+                              </span>
+                            )}
+                            {!user.is_admin && !user.is_evaluator && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                User
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.is_active 
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-1">
+                            <button
+                              onClick={() => handleEditUser(user)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                              title="Edit User"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleToggleEvaluatorRole(user.id)}
+                              className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                user.is_evaluator
+                                  ? 'text-red-600 hover:text-red-900 hover:bg-red-50'
+                                  : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                              }`}
+                              title={user.is_evaluator ? 'Remove Evaluator Role' : 'Make Evaluator'}
+                            >
+                              <UserCheck className="h-3 w-3 mr-1" />
+                              {user.is_evaluator ? 'Remove' : 'Promote'}
+                            </button>
+                            <button
+                              onClick={() => handleResetUserPassword(user.id)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded transition-colors"
+                              title="Reset Password"
+                            >
+                              <Key className="h-3 w-3 mr-1" />
+                              Reset
+                            </button>
+                            {user.is_active ? (
+                              <button
+                                onClick={() => handleDeactivateUser(user.id)}
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 hover:text-orange-900 hover:bg-orange-50 rounded transition-colors"
+                                title="Deactivate User"
+                              >
+                                <UserX className="h-3 w-3 mr-1" />
+                                Deactivate
+                              </button>
+                            ) : null}
+                            <button
+                              onClick={() => handleShowDeleteConfirm(user)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
+                              title="Delete User"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Pagination */}
+            <div className="bg-white px-4 py-3 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-700">Showing</span>
+                  <select
+                    value={usersPagination.itemsPerPage}
+                    onChange={(e) => setUsersPagination(prev => ({ ...prev, itemsPerPage: Number(e.target.value), currentPage: 1 }))}
+                    className="select-field text-sm"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="text-sm text-gray-700">per page</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleUserPageChange(usersPagination.currentPage - 1)}
+                    disabled={usersPagination.currentPage === 1}
+                    className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-700">
+                    Page {usersPagination.currentPage}
+                  </span>
+                  <button
+                    onClick={() => handleUserPageChange(usersPagination.currentPage + 1)}
+                    disabled={users.length < usersPagination.itemsPerPage}
+                    className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1467,22 +1908,22 @@ const AdminDashboard: React.FC = () => {
         {/* Sentences Tab */}
         {activeTab === 'sentences' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">Manage Sentences</h3>
                 <p className="text-sm text-gray-600 mt-1">View and manage sentences with advanced error tagging annotations</p>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   onClick={() => setShowCSVImport(true)}
-                  className="btn-secondary flex items-center space-x-2"
+                  className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto"
                 >
                   <Upload className="h-4 w-4" />
                   <span>Import CSV</span>
                 </button>
                 <button
                   onClick={() => setShowAddSentence(true)}
-                  className="btn-primary flex items-center space-x-2"
+                  className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Add Sentence</span>
@@ -1717,29 +2158,29 @@ const AdminDashboard: React.FC = () => {
             )}
 
             {/* Search and Filter Controls */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="flex flex-col space-y-4">
                 {/* Search Bar */}
-                <div className="relative flex-1 max-w-md">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search sentences, domains, or content..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    className="w-full pl-10 pr-4 py-3 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500 text-base sm:text-sm"
                   />
                 </div>
 
                 {/* Controls Row */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {/* Language Filter */}
                   <div className="flex items-center space-x-2">
-                    <Filter className="h-4 w-4 text-gray-400" />
+                    <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <select
                       value={languageFilter}
                       onChange={(e) => setLanguageFilter(e.target.value)}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                      className="flex-1 border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                     >
                       <option value="all">All Languages</option>
                       <option value="tagalog">Tagalog (Filipino)</option>
@@ -1752,7 +2193,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'most_annotated' | 'least_annotated')}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
@@ -1764,7 +2205,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={itemsPerPage}
                     onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value={5}>5 per page</option>
                     <option value={10}>10 per page</option>
@@ -1776,7 +2217,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
                     <button
                       onClick={() => setViewMode('compact')}
-                      className={`px-3 py-2 text-sm flex items-center space-x-1 ${
+                      className={`flex-1 px-3 py-3 sm:py-2 text-base sm:text-sm flex items-center justify-center space-x-2 ${
                         viewMode === 'compact' 
                           ? 'bg-beauty-bush-500 text-white' 
                           : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -1787,7 +2228,7 @@ const AdminDashboard: React.FC = () => {
                     </button>
                     <button
                       onClick={() => setViewMode('detailed')}
-                      className={`px-3 py-2 text-sm flex items-center space-x-1 ${
+                      className={`flex-1 px-3 py-3 sm:py-2 text-base sm:text-sm flex items-center justify-center space-x-2 ${
                         viewMode === 'detailed' 
                           ? 'bg-beauty-bush-500 text-white' 
                           : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -1801,7 +2242,7 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Results Summary */}
-              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-3">
+              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-4">
                 <span>
                   Showing {paginatedSentences.length} of {filteredAndSortedSentences.length} sentences
                   {searchQuery && (
@@ -1992,32 +2433,32 @@ const AdminDashboard: React.FC = () => {
                     return (
                       <div key={sentence.id} className="hover:bg-gray-50 transition-colors duration-200">
                         {/* Compact Header */}
-                        <div className="p-4">
-                          <div className="flex items-center justify-between mb-3">
+                        <div className="p-4 sm:p-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-3 sm:space-y-0">
                             <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center">
+                              <div className="w-10 h-10 sm:w-8 sm:h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center flex-shrink-0">
                                 <span className="text-sm font-bold text-beauty-bush-700">#{sentence.id}</span>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                                    <span className="text-xs px-2 py-1 bg-beauty-bush-500 text-white rounded font-medium">
-                      {sentence.source_language.toUpperCase()} → {sentence.target_language.toUpperCase()}
-                    </span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-beauty-bush-500 text-white rounded-full font-medium">
+                                  {sentence.source_language.toUpperCase()} → {sentence.target_language.toUpperCase()}
+                                </span>
                                 {sentence.domain && (
-                                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                                  <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-gray-100 text-gray-700 rounded-full">
                                     {sentence.domain}
                                   </span>
                                 )}
                               </div>
                             </div>
                             
-                            <div className="flex items-center space-x-3">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                               {annotations.length > 0 && (
-                                <div className="flex items-center space-x-2 text-xs">
-                                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded font-medium">
+                                <div className="flex flex-wrap items-center gap-2 text-xs">
+                                  <span className="px-3 py-2 sm:px-2 sm:py-1 bg-green-100 text-green-800 rounded-full font-medium">
                                     {annotations.length} annotations
                                   </span>
                                   {allHighlights.length > 0 && (
-                                    <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded font-medium">
+                                    <span className="px-3 py-2 sm:px-2 sm:py-1 bg-purple-100 text-purple-800 rounded-full font-medium">
                                       {allHighlights.length} tags
                                     </span>
                                   )}
@@ -2025,7 +2466,7 @@ const AdminDashboard: React.FC = () => {
                               )}
                               <button
                                 onClick={() => toggleSentenceExpansion(sentence.id)}
-                                className="flex items-center space-x-1 text-sm text-beauty-bush-600 hover:text-beauty-bush-800 font-medium"
+                                className="flex items-center space-x-2 text-sm text-beauty-bush-600 hover:text-beauty-bush-800 font-medium px-3 py-2 rounded-lg hover:bg-beauty-bush-50 transition-all"
                               >
                                 <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
                                 <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -2035,13 +2476,13 @@ const AdminDashboard: React.FC = () => {
 
                           {/* Compact Content Preview */}
                           {viewMode === 'compact' && !isExpanded && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-700 line-clamp-2">
-                                <strong>Source:</strong> {sentence.source_text.substring(0, 100)}
+                            <div className="space-y-3 mt-2">
+                              <div className="text-sm sm:text-base text-gray-700 line-clamp-2 leading-relaxed">
+                                <strong className="text-gray-900">Source:</strong> {sentence.source_text.substring(0, 100)}
                                 {sentence.source_text.length > 100 && '...'}
                               </div>
-                              <div className="text-sm text-gray-700 line-clamp-2">
-                                <strong>Translation:</strong> {sentence.machine_translation.substring(0, 100)}
+                              <div className="text-sm sm:text-base text-gray-700 line-clamp-2 leading-relaxed">
+                                <strong className="text-gray-900">Translation:</strong> {sentence.machine_translation.substring(0, 100)}
                                 {sentence.machine_translation.length > 100 && '...'}
                               </div>
                             </div>
@@ -2049,42 +2490,42 @@ const AdminDashboard: React.FC = () => {
 
                           {/* Detailed Content */}
                           {(viewMode === 'detailed' || isExpanded) && (
-                            <div className="space-y-4 border-t pt-4">
+                            <div className="space-y-5 sm:space-y-4 border-t pt-5 sm:pt-4 mt-2">
                               {/* Source Text */}
-                              <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-3 rounded-r-lg">
-                                <h5 className="text-xs font-medium text-beauty-bush-900 mb-2 uppercase tracking-wide">
+                              <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-4 sm:p-3 rounded-r-lg">
+                                <h5 className="text-xs font-medium text-beauty-bush-900 mb-3 sm:mb-2 uppercase tracking-wide">
                                   Source Text ({sentence.source_language.toUpperCase()})
                                 </h5>
-                                <p className="text-sm text-gray-900 leading-relaxed">{sentence.source_text}</p>
+                                <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{sentence.source_text}</p>
                               </div>
 
                               {/* Tagalog Source (if available) */}
                               {sentence.tagalog_source_text && (
-                                <div className="bg-emerald-50 border-l-4 border-emerald-400 p-3 rounded-r-lg">
-                                  <h5 className="text-xs font-medium text-emerald-900 mb-2 uppercase tracking-wide">
+                                <div className="bg-emerald-50 border-l-4 border-emerald-400 p-4 sm:p-3 rounded-r-lg">
+                                  <h5 className="text-xs font-medium text-emerald-900 mb-3 sm:mb-2 uppercase tracking-wide">
                                     Tagalog Source Text
                                   </h5>
-                                  <p className="text-sm text-gray-900 leading-relaxed">{sentence.tagalog_source_text}</p>
+                                  <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{sentence.tagalog_source_text}</p>
                                 </div>
                               )}
 
                               {/* Machine Translation with Tags */}
-                              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-3">
-                                <div className="flex items-center space-x-2 mb-2">
+                              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4 sm:p-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-3 sm:mb-2">
                                   <h5 className="text-xs font-medium text-purple-900 uppercase tracking-wide">
                                     Machine Translation with Error Tags
                                   </h5>
                                   {allHighlights.length > 0 && (
-                                    <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                                    <span className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 sm:px-2 sm:py-1 rounded-full self-start sm:self-auto">
                                       {allHighlights.length} annotations
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-sm text-gray-900 leading-relaxed bg-white border border-purple-100 rounded p-3">
+                                <div className="text-base sm:text-sm text-gray-900 leading-relaxed bg-white border border-purple-100 rounded p-4 sm:p-3">
                                   {renderHighlightedText(sentence.machine_translation, allHighlights, 'machine')}
                                 </div>
                                 {allHighlights.length === 0 && (
-                                  <div className="mt-2 text-xs text-gray-500 italic">
+                                  <div className="mt-3 sm:mt-2 text-xs text-gray-500 italic">
                                     No error annotations yet.
                                   </div>
                                 )}
@@ -2092,8 +2533,8 @@ const AdminDashboard: React.FC = () => {
 
                               {/* Annotations Summary - Only if expanded */}
                               {isExpanded && annotations.length > 0 && (
-                                <div className="bg-white border border-gray-300 rounded-lg p-4">
-                                  <div className="flex items-center justify-between mb-3">
+                                <div className="bg-white border border-gray-300 rounded-lg p-5 sm:p-4">
+                                  <div className="flex items-center justify-between mb-4 sm:mb-3">
                                     <h5 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center">
                                       <MessageCircle className="h-4 w-4 mr-2 text-gray-600" />
                                       Advanced Error Annotations ({annotations.length})
@@ -2101,34 +2542,34 @@ const AdminDashboard: React.FC = () => {
                                   </div>
                                   
                                   {/* Quick Stats */}
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                                                              <div className="text-center p-2 bg-beauty-bush-50 rounded">
-                            <div className="text-xs text-gray-600">Completed</div>
-                            <div className="text-sm font-bold text-beauty-bush-600">
-                              {annotations.filter(a => a.annotation_status === 'completed').length}
-                            </div>
-                          </div>
-                                    <div className="text-center p-2 bg-yellow-50 rounded">
-                                      <div className="text-xs text-gray-600">In Progress</div>
-                                      <div className="text-sm font-bold text-yellow-600">
+                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3 mb-5 sm:mb-4">
+                                    <div className="text-center p-3 sm:p-2 bg-beauty-bush-50 rounded-lg">
+                                      <div className="text-xs text-gray-600 mb-1">Completed</div>
+                                      <div className="text-base sm:text-sm font-bold text-beauty-bush-600">
+                                        {annotations.filter(a => a.annotation_status === 'completed').length}
+                                      </div>
+                                    </div>
+                                    <div className="text-center p-3 sm:p-2 bg-yellow-50 rounded-lg">
+                                      <div className="text-xs text-gray-600 mb-1">In Progress</div>
+                                      <div className="text-base sm:text-sm font-bold text-yellow-600">
                                         {annotations.filter(a => a.annotation_status === 'in_progress').length}
                                       </div>
                                     </div>
-                                    <div className="text-center p-2 bg-green-50 rounded">
-                                      <div className="text-xs text-gray-600">Avg Quality</div>
+                                    <div className="text-center p-3 sm:p-2 bg-green-50 rounded-lg">
+                                      <div className="text-xs text-gray-600 mb-1">Avg Quality</div>
                                       {annotations.filter(a => a.overall_quality).length > 0 ? (
-                                        <div className={`text-sm font-bold ${getScoreColor((annotations.reduce((sum, a) => sum + (a.overall_quality || 0), 0) / annotations.filter(a => a.overall_quality).length))}`}>
+                                        <div className={`text-base sm:text-sm font-bold ${getScoreColor((annotations.reduce((sum, a) => sum + (a.overall_quality || 0), 0) / annotations.filter(a => a.overall_quality).length))}`}>
                                           {(annotations.reduce((sum, a) => sum + (a.overall_quality || 0), 0) / annotations.filter(a => a.overall_quality).length).toFixed(1)}
                                         </div>
                                       ) : (
-                                        <div className="text-sm font-bold text-gray-600">
+                                        <div className="text-base sm:text-sm font-bold text-gray-600">
                                           N/A
                                         </div>
                                       )}
                                     </div>
-                                    <div className="text-center p-2 bg-purple-50 rounded">
-                                      <div className="text-xs text-gray-600">Error Tags</div>
-                                      <div className="text-sm font-bold text-purple-600">
+                                    <div className="text-center p-3 sm:p-2 bg-purple-50 rounded-lg">
+                                      <div className="text-xs text-gray-600 mb-1">Error Tags</div>
+                                      <div className="text-base sm:text-sm font-bold text-purple-600">
                                         {allHighlights.length}
                                       </div>
                                     </div>
@@ -2136,9 +2577,9 @@ const AdminDashboard: React.FC = () => {
 
                                   {/* Error Type Distribution */}
                                   {allHighlights.length > 0 && (
-                                    <div className="mb-4">
-                                      <h6 className="text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">Error Type Distribution</h6>
-                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    <div className="mb-5 sm:mb-4">
+                                      <h6 className="text-xs font-medium text-gray-700 mb-3 sm:mb-2 uppercase tracking-wide">Error Type Distribution</h6>
+                                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-2">
                                         {(() => {
                                           const errorTypeCounts = allHighlights.reduce((acc, h) => {
                                             const type = h.error_type || 'MI_SE';
@@ -2147,7 +2588,7 @@ const AdminDashboard: React.FC = () => {
                                           }, {} as {[key: string]: number});
 
                                           return Object.entries(errorTypeCounts).map(([type, count]) => (
-                                            <div key={type} className="text-center p-2 rounded-lg border-2 transition-all hover:shadow-md" 
+                                            <div key={type} className="text-center p-3 sm:p-2 rounded-lg border-2 transition-all hover:shadow-md" 
                                                  style={{
                                                    backgroundColor: getErrorTypeStyle(type).includes('orange') ? '#fff7ed' :
                                                                   getErrorTypeStyle(type).includes('blue') ? '#eff6ff' :
@@ -2158,8 +2599,8 @@ const AdminDashboard: React.FC = () => {
                                                                getErrorTypeStyle(type).includes('red') ? '#f87171' :
                                                                getErrorTypeStyle(type).includes('purple') ? '#c084fc' : '#9ca3af'
                                                  }}>
-                                              <div className="text-xs text-gray-600 font-medium">[{type}]</div>
-                                              <div className="text-lg font-bold" style={{
+                                              <div className="text-xs text-gray-600 font-medium mb-1">[{type}]</div>
+                                              <div className="text-xl sm:text-lg font-bold mb-1" style={{
                                                 color: getErrorTypeStyle(type).includes('orange') ? '#ea580c' :
                                                        getErrorTypeStyle(type).includes('blue') ? '#2563eb' :
                                                        getErrorTypeStyle(type).includes('red') ? '#dc2626' :
@@ -2346,27 +2787,27 @@ const AdminDashboard: React.FC = () => {
             )}
 
             {/* Search and Filter Controls */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="flex flex-col space-y-4">
                 {/* Search Bar */}
-                <div className="relative flex-1 max-w-md">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search questions, explanations, or options..."
                     value={questionSearchQuery}
                     onChange={(e) => setQuestionSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    className="w-full pl-10 pr-4 py-3 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500 text-base sm:text-sm"
                   />
                 </div>
 
                 {/* Controls Row */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                   {/* Language Filter */}
                   <select
                     value={questionLanguageFilter}
                     onChange={(e) => setQuestionLanguageFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="all">All Languages</option>
                     <option value="tagalog">Tagalog (Filipino)</option>
@@ -2378,7 +2819,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={questionTypeFilter}
                     onChange={(e) => setQuestionTypeFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="all">All Types</option>
                     <option value="grammar">Grammar</option>
@@ -2392,7 +2833,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={questionDifficultyFilter}
                     onChange={(e) => setQuestionDifficultyFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="all">All Difficulties</option>
                     <option value="basic">Basic</option>
@@ -2404,7 +2845,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={questionSortBy}
                     onChange={(e) => setQuestionSortBy(e.target.value as 'newest' | 'oldest' | 'difficulty' | 'language')}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
@@ -2416,7 +2857,7 @@ const AdminDashboard: React.FC = () => {
                   <select
                     value={questionItemsPerPage}
                     onChange={(e) => setQuestionItemsPerPage(Number(e.target.value))}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                   >
                     <option value={5}>5 per page</option>
                     <option value={10}>10 per page</option>
@@ -2427,7 +2868,7 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Results Summary */}
-              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-3">
+              <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-4">
                 <span>
                   Showing {paginatedQuestions.length} of {filteredAndSortedQuestions.length} questions
                   {questionSearchQuery && (
@@ -2609,7 +3050,7 @@ const AdminDashboard: React.FC = () => {
               {paginatedQuestions.length > 0 ? (
                 <div className="divide-y divide-gray-200">
                   {paginatedQuestions.map((question) => (
-                    <div key={question.id} className="p-6 hover:bg-gray-50">
+                    <div key={question.id} className="p-5 sm:p-6 hover:bg-gray-50">
                       {editingQuestion?.id === question.id ? (
                         // Edit Mode
                         <div className="space-y-4">
@@ -2730,66 +3171,68 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       ) : (
                         // View Mode
-                        <div className="space-y-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center">
+                        <div className="space-y-5 sm:space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-3 sm:space-y-0">
+                            <div className="flex items-start space-x-3">
+                              <div className="w-10 h-10 sm:w-8 sm:h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center flex-shrink-0">
                                 <span className="text-sm font-bold text-beauty-bush-700">#{question.id}</span>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs px-2 py-1 bg-beauty-bush-500 text-white rounded font-medium">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-beauty-bush-500 text-white rounded-full font-medium">
                                   {question.language}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded font-medium ${getQuestionTypeColor(question.type)}`}>
+                                <span className={`text-xs px-3 py-2 sm:px-2 sm:py-1 rounded-full font-medium ${getQuestionTypeColor(question.type)}`}>
                                   {question.type}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded font-medium ${getDifficultyColor(question.difficulty)}`}>
+                                <span className={`text-xs px-3 py-2 sm:px-2 sm:py-1 rounded-full font-medium ${getDifficultyColor(question.difficulty)}`}>
                                   {question.difficulty}
                                 </span>
                                 {question.is_active ? (
-                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded font-medium">
+                                  <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-green-100 text-green-800 rounded-full font-medium">
                                     Active
                                   </span>
                                 ) : (
-                                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded font-medium">
+                                  <span className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-gray-100 text-gray-800 rounded-full font-medium">
                                     Inactive
                                   </span>
                                 )}
                               </div>
                             </div>
                             
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-3 self-start sm:self-auto">
                               <button
                                 onClick={() => setEditingQuestion(question)}
-                                className="text-blue-600 hover:text-blue-800 p-1"
+                                className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 px-3 py-2 rounded-lg hover:bg-blue-50 transition-all"
                               >
                                 <Edit className="h-4 w-4" />
+                                <span className="text-sm">Edit</span>
                               </button>
                               <button
                                 onClick={() => handleDeleteQuestion(question.id)}
-                                className="text-red-600 hover:text-red-800 p-1"
+                                className="flex items-center space-x-2 text-red-600 hover:text-red-800 px-3 py-2 rounded-lg hover:bg-red-50 transition-all"
                               >
                                 <Trash2 className="h-4 w-4" />
+                                <span className="text-sm">Delete</span>
                               </button>
                             </div>
                           </div>
                           
-                          <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-3 rounded-r-lg">
-                            <h5 className="text-sm font-medium text-beauty-bush-900 mb-2">Question</h5>
-                            <p className="text-gray-900">{question.question}</p>
+                          <div className="bg-beauty-bush-50 border-l-4 border-beauty-bush-400 p-4 sm:p-3 rounded-r-lg">
+                            <h5 className="text-sm font-medium text-beauty-bush-900 mb-3 sm:mb-2">Question</h5>
+                            <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{question.question}</p>
                           </div>
                           
                           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">Answer Options</h5>
-                            <div className="space-y-2">
+                            <h5 className="text-sm font-medium text-gray-700 mb-4 sm:mb-3">Answer Options</h5>
+                            <div className="space-y-3 sm:space-y-2">
                               {question.options.map((option, index) => (
-                                <div key={index} className={`flex items-center space-x-2 p-2 rounded ${
+                                <div key={index} className={`flex items-start space-x-3 p-3 sm:p-2 rounded-lg ${
                                   index === question.correct_answer ? 'bg-green-100 border border-green-300' : 'bg-white border border-gray-200'
                                 }`}>
-                                  <span className="text-sm font-medium text-gray-700 w-8">{String.fromCharCode(65 + index)}.</span>
-                                  <span className="text-sm text-gray-900">{option}</span>
+                                  <span className="text-sm font-medium text-gray-700 w-8 flex-shrink-0 mt-0.5 sm:mt-0">{String.fromCharCode(65 + index)}.</span>
+                                  <span className="text-base sm:text-sm text-gray-900 leading-relaxed flex-1">{option}</span>
                                   {index === question.correct_answer && (
-                                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-medium">
+                                    <span className="text-xs bg-green-500 text-white px-3 py-1 sm:px-2 sm:py-1 rounded-full font-medium flex-shrink-0">
                                       Correct
                                     </span>
                                   )}
@@ -2798,13 +3241,13 @@ const AdminDashboard: React.FC = () => {
                             </div>
                           </div>
                           
-                          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r-lg">
-                            <h5 className="text-sm font-medium text-yellow-900 mb-2">Explanation</h5>
-                            <p className="text-gray-900">{question.explanation}</p>
+                          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 sm:p-3 rounded-r-lg">
+                            <h5 className="text-sm font-medium text-yellow-900 mb-3 sm:mb-2">Explanation</h5>
+                            <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{question.explanation}</p>
                           </div>
                           
                           {question.created_at && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
                               Created: {new Date(question.created_at).toLocaleString()}
                             </div>
                           )}
@@ -2908,6 +3351,759 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Add User Modal */}
+      {showAddUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg shadow-xl border w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-medium text-gray-900">Add New User</h3>
+                <button
+                  onClick={() => setShowAddUser(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+                              <form onSubmit={handleCreateUser} className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="add-first-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      id="add-first-name"
+                      type="text"
+                      required
+                      value={newUser.first_name}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, first_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="add-last-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      id="add-last-name"
+                      type="text"
+                      required
+                      value={newUser.last_name}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, last_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="add-email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    id="add-email"
+                    type="email"
+                    required
+                    value={newUser.email}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="add-username" className="block text-sm font-medium text-gray-700 mb-1">
+                    Username
+                  </label>
+                  <input
+                    id="add-username"
+                    type="text"
+                    required
+                    value={newUser.username}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="add-password" className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <div className="flex space-x-2">
+                    <input
+                      id="add-password"
+                      type="text"
+                      required
+                      value={newUser.password}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={generateSecurePassword}
+                      className="px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                    >
+                      Generate
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Languages
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input
+                        id="add-lang-en"
+                        type="checkbox"
+                        value="en"
+                        checked={newUser.languages.includes('en')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'en'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'en')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-lang-en" className="ml-2 block text-sm text-gray-700">
+                        English
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="add-lang-tagalog"
+                        type="checkbox"
+                        value="tagalog"
+                        checked={newUser.languages.includes('tagalog')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'tagalog'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'tagalog')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-lang-tagalog" className="ml-2 block text-sm text-gray-700">
+                        Tagalog
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="add-lang-cebuano"
+                        type="checkbox"
+                        value="cebuano"
+                        checked={newUser.languages.includes('cebuano')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'cebuano'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'cebuano')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-lang-cebuano" className="ml-2 block text-sm text-gray-700">
+                        Cebuano
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="add-lang-ilocano"
+                        type="checkbox"
+                        value="ilocano"
+                        checked={newUser.languages.includes('ilocano')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'ilocano'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setNewUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'ilocano')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-lang-ilocano" className="ml-2 block text-sm text-gray-700">
+                        Ilocano
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    User Role & Settings
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input
+                        id="add-is-active"
+                        type="checkbox"
+                        checked={newUser.is_active}
+                        onChange={(e) => setNewUser(prev => ({ ...prev, is_active: e.target.checked }))}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-is-active" className="ml-2 block text-sm text-gray-700">
+                        Active user
+                      </label>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-3 rounded-lg border">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Role Permissions:</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <input
+                            id="add-is-admin"
+                            type="checkbox"
+                            checked={newUser.is_admin}
+                            onChange={(e) => setNewUser(prev => ({ ...prev, is_admin: e.target.checked }))}
+                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="add-is-admin" className="ml-2 block text-sm text-gray-700">
+                            <span className="font-medium text-purple-700">Administrator</span> - Full system access
+                          </label>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <input
+                            id="add-is-evaluator"
+                            type="checkbox"
+                            checked={newUser.is_evaluator}
+                            onChange={(e) => setNewUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="add-is-evaluator" className="ml-2 block text-sm text-gray-700">
+                            <span className="font-medium text-blue-700">Evaluator</span> - Can evaluate annotations
+                          </label>
+                        </div>
+                        
+                        <div className="text-xs text-gray-500 mt-2">
+                          Note: Users without special roles are Annotators by default
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="add-skip-onboarding"
+                        type="checkbox"
+                        checked={newUser.skip_onboarding}
+                        onChange={(e) => setNewUser(prev => ({ ...prev, skip_onboarding: e.target.checked }))}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="add-skip-onboarding" className="ml-2 block text-sm text-gray-700">
+                        Skip onboarding test
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                                  <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddUser(false)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700 transition-colors"
+                    >
+                      Create User
+                    </button>
+                  </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditUser && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
+                <button
+                  onClick={() => setShowEditUser(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleUpdateUser} className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="edit-first-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      id="edit-first-name"
+                      type="text"
+                      required
+                      value={editUser.first_name}
+                      onChange={(e) => setEditUser(prev => ({ ...prev, first_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-last-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      id="edit-last-name"
+                      type="text"
+                      required
+                      value={editUser.last_name}
+                      onChange={(e) => setEditUser(prev => ({ ...prev, last_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    id="edit-email"
+                    type="email"
+                    required
+                    value={editUser.email}
+                    onChange={(e) => setEditUser(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="edit-username" className="block text-sm font-medium text-gray-700 mb-1">
+                    Username
+                  </label>
+                  <input
+                    id="edit-username"
+                    type="text"
+                    required
+                    value={editUser.username}
+                    onChange={(e) => setEditUser(prev => ({ ...prev, username: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Languages
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input
+                        id="edit-lang-en"
+                        type="checkbox"
+                        value="en"
+                        checked={editUser.languages.includes('en')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'en'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'en')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-lang-en" className="ml-2 block text-sm text-gray-700">
+                        English
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="edit-lang-tagalog"
+                        type="checkbox"
+                        value="tagalog"
+                        checked={editUser.languages.includes('tagalog')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'tagalog'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'tagalog')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-lang-tagalog" className="ml-2 block text-sm text-gray-700">
+                        Tagalog
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="edit-lang-cebuano"
+                        type="checkbox"
+                        value="cebuano"
+                        checked={editUser.languages.includes('cebuano')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'cebuano'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'cebuano')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-lang-cebuano" className="ml-2 block text-sm text-gray-700">
+                        Cebuano
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="edit-lang-ilocano"
+                        type="checkbox"
+                        value="ilocano"
+                        checked={editUser.languages.includes('ilocano')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: [...prev.languages, 'ilocano'].filter((v, i, a) => a.indexOf(v) === i)
+                            }));
+                          } else {
+                            setEditUser(prev => ({ 
+                              ...prev, 
+                              languages: prev.languages.filter(lang => lang !== 'ilocano')
+                            }));
+                          }
+                        }}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-lang-ilocano" className="ml-2 block text-sm text-gray-700">
+                        Ilocano
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    User Role & Settings
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input
+                        id="edit-is-active"
+                        type="checkbox"
+                        checked={editUser.is_active}
+                        onChange={(e) => setEditUser(prev => ({ ...prev, is_active: e.target.checked }))}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-is-active" className="ml-2 block text-sm text-gray-700">
+                        Active user
+                      </label>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-3 rounded-lg border">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Role Permissions:</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <input
+                            id="edit-is-admin"
+                            type="checkbox"
+                            checked={editUser.is_admin}
+                            onChange={(e) => setEditUser(prev => ({ ...prev, is_admin: e.target.checked }))}
+                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="edit-is-admin" className="ml-2 block text-sm text-gray-700">
+                            <span className="font-medium text-purple-700">Administrator</span> - Full system access
+                          </label>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <input
+                            id="edit-is-evaluator"
+                            type="checkbox"
+                            checked={editUser.is_evaluator}
+                            onChange={(e) => setEditUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="edit-is-evaluator" className="ml-2 block text-sm text-gray-700">
+                            <span className="font-medium text-blue-700">Evaluator</span> - Can evaluate annotations
+                          </label>
+                        </div>
+                        
+                        <div className="text-xs text-gray-500 mt-2">
+                          Note: Users without special roles are Annotators by default
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditUser(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700 transition-colors"
+                  >
+                    Update User
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-medium text-gray-900">Delete User</h3>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600">
+                  Are you sure you want to delete the user <span className="font-medium">{selectedUser.first_name} {selectedUser.last_name}</span>? 
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteUser}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Delete User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showUserDetails && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">User Details</h3>
+                <button
+                  onClick={() => setShowUserDetails(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Personal Information */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Personal Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Full Name</label>
+                      <p className="mt-1 text-base text-gray-900 font-medium">{selectedUser.first_name} {selectedUser.last_name}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Username</label>
+                      <p className="mt-1 text-base text-gray-900 font-mono">@{selectedUser.username}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600">Email Address</label>
+                      <p className="mt-1 text-base text-gray-900">{selectedUser.email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Account Status */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Account Status</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Status</label>
+                      <div className="mt-1">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          selectedUser.is_active 
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {selectedUser.is_active ? '✓ Active' : '✗ Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Member Since</label>
+                      <p className="mt-1 text-base text-gray-900">{new Date(selectedUser.created_at).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Last Updated</label>
+                      <p className="mt-1 text-base text-gray-900">
+                        {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        }) : 'Never'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Roles & Permissions */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Roles & Permissions</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUser.is_admin && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                        👑 Administrator
+                      </span>
+                    )}
+                    {selectedUser.is_evaluator && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                        🔍 Evaluator
+                      </span>
+                    )}
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200">
+                      ✏️ Annotator
+                    </span>
+                    {!selectedUser.is_admin && !selectedUser.is_evaluator && (
+                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-gray-500 bg-gray-100 border border-gray-200">
+                        Basic User
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Languages */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Languages</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUser.languages && selectedUser.languages.length > 0 ? (
+                      selectedUser.languages.map((lang) => (
+                        <span key={lang} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                          🌐 {lang.charAt(0).toUpperCase() + lang.slice(1)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-500 italic">No languages specified</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Account Information */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Account Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
+                      <div className="text-lg font-bold text-blue-600">
+                        #{selectedUser.id}
+                      </div>
+                      <div className="text-sm text-gray-600">User ID</div>
+                    </div>
+                    <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
+                      <div className="text-lg font-bold text-green-600">
+                        {selectedUser.languages?.length || 0}
+                      </div>
+                      <div className="text-sm text-gray-600">Languages</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+                <div className="text-xs text-gray-500">
+                  ID: {selectedUser.id} • Created: {new Date(selectedUser.created_at).toLocaleString()}
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowUserDetails(false);
+                      handleEditUser(selectedUser);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+                  >
+                    Edit User
+                  </button>
+                  <button
+                    onClick={() => setShowUserDetails(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

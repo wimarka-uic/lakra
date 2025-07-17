@@ -8,3 +8,6 @@
 /env.test
 /env.production
 .DS_Store
+.env
+/backend/.env
+*.pyc

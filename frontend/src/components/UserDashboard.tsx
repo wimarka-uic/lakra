@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { annotationsAPI, sentencesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import type { Annotation } from '../types';
+import type { Annotation, User as UserType } from '../types';
+import { logger } from '../utils/logger';
+
+
 import { 
   FileText, 
   Clock, 
@@ -39,7 +42,7 @@ interface OnboardingStep {
 }
 
 const UserDashboard: React.FC = () => {
-  const { user, markGuidelinesSeen } = useAuth();
+  const { user, markGuidelinesSeen, forceRefreshUser } = useAuth();
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,10 +71,25 @@ const UserDashboard: React.FC = () => {
           : step
       ));
     } catch (error) {
-      console.error('Error marking guidelines as seen:', error);
+      logger.apiError('markGuidelinesSeen', error as Error, {
+        component: 'UserDashboard',
+        userId: user?.id
+      });
       // Still close the modal even if the API call fails
       setShowGuidelines(false);
     }
+  };
+
+  // Helper function to check if profile is complete
+  const isProfileComplete = (user: UserType | null): boolean => {
+    if (!user) return false;
+    return !!(
+      user.first_name && 
+      user.last_name && 
+      user.preferred_language && 
+      user.languages && 
+      user.languages.length > 0
+    );
   };
 
   // User onboarding journey steps
@@ -110,7 +128,7 @@ const UserDashboard: React.FC = () => {
       icon: User,
       buttonText: 'Update Profile',
       buttonLink: '/profile',
-      completed: false
+      completed: isProfileComplete(user)
     }
   ]);
 
@@ -138,6 +156,62 @@ const UserDashboard: React.FC = () => {
       );
     }
   }, [stats]);
+
+  useEffect(() => {
+    // Update onboarding step completion status when user data changes
+    if (user) {
+      logger.debug('User data updated in dashboard', {
+        component: 'UserDashboard',
+        userId: user.id,
+        metadata: { onboardingStatus: user.onboarding_status }
+      });
+      setOnboardingSteps(currentSteps => 
+        currentSteps.map(step => {
+          if (step.id === 'qualification_test') {
+            const completed = user.onboarding_status === 'completed';
+            logger.debug('Updated qualification test state', {
+              component: 'UserDashboard',
+              userId: user.id,
+              metadata: { qualificationCompleted: completed }
+            });
+            return {...step, completed};
+          }
+          if (step.id === 'read_guidelines') {
+            return {...step, completed: user.guidelines_seen || false};
+          }
+          if (step.id === 'profile_setup') {
+            return {...step, completed: isProfileComplete(user)};
+          }
+          return step;
+        })
+      );
+    }
+  }, [user]);
+
+  // Force refresh user data when component becomes visible (e.g., user returns from onboarding test)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        logger.debug('Tab became visible, refreshing user data', {
+          component: 'UserDashboard',
+          userId: user?.id
+        });
+        try {
+          await forceRefreshUser();
+        } catch (error) {
+          logger.error('Failed to refresh user data on visibility change', {
+            component: 'UserDashboard',
+            userId: user?.id
+          }, error as Error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [forceRefreshUser, user?.id]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -183,16 +257,28 @@ const UserDashboard: React.FC = () => {
       }
       
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      logger.apiError('loadDashboardData', error as Error, {
+        component: 'UserDashboard',
+        userId: user?.id
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Manual refresh function for dashboard data
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadDashboardData();
-    setTimeout(() => setRefreshing(false), 500);
+    try {
+      await loadDashboardData();
+    } catch (error) {
+      logger.apiError('refreshDashboardData', error as Error, {
+        component: 'UserDashboard',
+        userId: user?.id
+      });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const formatTime = (seconds: number): string => {
@@ -268,7 +354,8 @@ const UserDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
+    <>
+      <div className="min-h-screen bg-gray-50 pb-12">
       {/* Welcome message that disappears after a few seconds */}
       {showWelcome && (
         <div className="bg-primary-50 border-l-4 border-primary-500 p-4 fixed top-20 right-4 z-10 max-w-md shadow-lg rounded-lg animate-fadeIn">
@@ -295,18 +382,31 @@ const UserDashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+        {/* Mobile Page Indicator */}
+        <div className="md:hidden mb-6">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
+            <div className="flex items-center space-x-2">
+              <User className="h-5 w-5 text-primary-600" />
+              <span className="text-sm font-medium text-primary-900">User Dashboard</span>
+              <div className="ml-auto text-xs text-primary-600">
+                Use menu for quick navigation
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Header with refresh button */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Your Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Your Dashboard</h1>
             <p className="mt-1 text-sm text-gray-500">
               Track your progress and manage your annotation work
             </p>
           </div>
           <button 
             onClick={handleRefresh} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all"
+            className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all w-full sm:w-auto min-h-[44px]"
           >
             <RefreshCcw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -314,16 +414,16 @@ const UserDashboard: React.FC = () => {
         </div>
 
         {/* User Progress Overview */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="p-4 sm:p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <User className="h-5 w-5 text-primary-500" />
-                    <h2 className="text-lg font-semibold text-gray-800">{user?.first_name} {user?.last_name}</h2>
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-800">{user?.first_name} {user?.last_name}</h2>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="bg-primary-100 text-primary-800 text-xs font-medium px-2.5 py-1 rounded-full">
                       {userLevel.title}
                     </span>
@@ -346,69 +446,69 @@ const UserDashboard: React.FC = () => {
                     <p className="mt-1 text-xs text-gray-500">
                       {stats?.completedAnnotations || 0} / {userLevel.nextMilestone} annotations completed
                     </p>
-                  </div>
+                    </div>
                 </div>
                 
                 <div className="lg:col-span-2">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <FileText className="h-5 w-5 text-blue-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Total Annotations</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <FileText className="h-5 w-5 text-blue-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Total Annotations</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{stats?.totalAnnotations || 0}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.totalAnnotations || 0}</p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Completed</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <CheckCircle className="h-5 w-5 text-green-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Completed</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{stats?.completedAnnotations || 0}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.completedAnnotations || 0}</p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Clock className="h-5 w-5 text-amber-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Time Spent</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <Clock className="h-5 w-5 text-amber-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Time Spent</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">
                         {formatTime(stats?.totalTimeSpent || 0)}
                       </p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Calendar className="h-5 w-5 text-purple-500" />
-                        <h3 className="text-sm font-medium text-gray-700">This Week</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <Calendar className="h-5 w-5 text-purple-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">This Week</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{stats?.annotationsThisWeek || 0}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.annotationsThisWeek || 0}</p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Star className="h-5 w-5 text-yellow-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Avg. Quality</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <Star className="h-5 w-5 text-yellow-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Avg. Quality</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">
                         {stats?.averageQualityScore ? stats.averageQualityScore.toFixed(1) : 'N/A'}
                       </p>
                     </div>
                     
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <TrendingUp className="h-5 w-5 text-indigo-500" />
-                        <h3 className="text-sm font-medium text-gray-700">Available</h3>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                        <TrendingUp className="h-5 w-5 text-indigo-500 mb-1 sm:mb-0" />
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-700">Available</h3>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{availableSentences}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{availableSentences}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                 <div className="flex items-center">
                   <span className="text-sm text-gray-500">
                     {getProgressPercentage()}% of your annotations are completed
@@ -417,7 +517,7 @@ const UserDashboard: React.FC = () => {
                 <div>
                   <Link 
                     to="/annotate" 
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
+                    className="inline-flex items-center justify-center w-full sm:w-auto px-4 py-3 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-all min-h-[44px] hover:scale-105 active:scale-95"
                   >
                     Start Annotating
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -430,9 +530,9 @@ const UserDashboard: React.FC = () => {
         
         {/* User onboarding journey */}
         {onboardingSteps.some(step => !step.completed) && (
-          <div className="mb-8 animate-fadeIn">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Get Started with Annotation</h2>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-6">
+          <div className="mb-6 sm:mb-8 animate-fadeIn">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Get Started with Annotation</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-4 sm:p-6">
               <div className="space-y-4">
                 {onboardingSteps.map((step, index) => (
                   <div key={step.id} className={`
@@ -463,7 +563,7 @@ const UserDashboard: React.FC = () => {
                             step.buttonLink === 'guidelines' ? (
                               <button
                                 onClick={handleShowGuidelines}
-                                className="inline-flex items-center text-xs font-medium text-primary-600 hover:text-primary-500"
+                                className="inline-flex items-center px-3 py-2 text-xs font-medium text-primary-600 hover:text-primary-500 hover:bg-primary-50 rounded-md transition-all min-h-[36px]"
                               >
                                 {step.buttonText}
                                 <ChevronRight className="ml-1 h-3 w-3" />
@@ -471,7 +571,7 @@ const UserDashboard: React.FC = () => {
                             ) : (
                               <Link 
                                 to={step.buttonLink} 
-                                className="inline-flex items-center text-xs font-medium text-primary-600 hover:text-primary-500"
+                                className="inline-flex items-center px-3 py-2 text-xs font-medium text-primary-600 hover:text-primary-500 hover:bg-primary-50 rounded-md transition-all min-h-[36px]"
                               >
                                 {step.buttonText}
                                 <ChevronRight className="ml-1 h-3 w-3" />
@@ -553,7 +653,7 @@ const UserDashboard: React.FC = () => {
               <p className="text-gray-500">No recent annotations found</p>
               <Link 
                 to="/annotate" 
-                className="inline-flex items-center mt-4 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
+                className="inline-flex items-center mt-4 px-4 py-3 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-all min-h-[44px] hover:scale-105 active:scale-95"
               >
                 Start Annotating
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -569,7 +669,8 @@ const UserDashboard: React.FC = () => {
         onClose={handleGuidelinesClose}
         onAccept={handleGuidelinesAccept}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

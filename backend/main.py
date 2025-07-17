@@ -27,14 +27,13 @@ from schemas import (
     UserCreate, 
     UserLogin, 
     UserResponse, 
+    UserProfileUpdate,
     Token,
     SentenceCreate,
     SentenceResponse,
     AnnotationCreate,
     AnnotationUpdate,
     AnnotationResponse,
-    LegacyAnnotationCreate,
-    LegacyAnnotationResponse,
     TextHighlightCreate,
     TextHighlightResponse,
     EvaluationCreate,
@@ -56,7 +55,8 @@ from schemas import (
     LanguageProficiencyQuestionCreate,
     LanguageProficiencyQuestionUpdate,
     LanguageProficiencyQuestionResponse,
-    OnboardingTestResults
+    OnboardingTestResults,
+    AdminUserCreate
 )
 
 app = FastAPI(title="Lakra - Annotation Tool for WiMarka", version="1.0.0")
@@ -167,10 +167,7 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
         "user": user_data
     }
 
-def get_user_languages(db: Session, user_id: int):
-    """Helper function to get a user's languages"""
-    languages = db.query(UserLanguage.language).filter(UserLanguage.user_id == user_id).all()
-    return [language[0] for language in languages]
+
 
 def convert_user_to_response(db: Session, user: User) -> UserResponse:
     """Helper function to convert a User model to UserResponse with proper language strings"""
@@ -179,8 +176,19 @@ def convert_user_to_response(db: Session, user: User) -> UserResponse:
 
 @app.get("/api/me", response_model=UserResponse)
 def get_current_user_info(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Fresh query to ensure we get the latest data from database
+    fresh_user = db.query(User).filter(User.id == current_user.id).first()
+    if not fresh_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Refresh the session to ensure we get latest data
+    db.refresh(fresh_user)
+    
     # Return user data with properly extracted languages
-    return UserResponse.from_orm(current_user)
+    return UserResponse.from_orm(fresh_user)
 
 @app.put("/api/me/guidelines-seen", response_model=UserResponse)
 def mark_guidelines_seen(
@@ -193,6 +201,64 @@ def mark_guidelines_seen(
     
     # Process the user to ensure languages are properly handled
     return convert_user_to_response(db, current_user)
+
+@app.put("/api/me/profile", response_model=UserResponse)
+def update_user_profile(
+    profile_update: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Update profile fields if provided
+    if profile_update.first_name is not None:
+        current_user.first_name = profile_update.first_name
+    
+    if profile_update.last_name is not None:
+        current_user.last_name = profile_update.last_name
+    
+    if profile_update.preferred_language is not None:
+        current_user.preferred_language = profile_update.preferred_language
+    
+    # Handle languages update
+    if profile_update.languages is not None:
+        # Get existing language associations
+        existing_languages = db.query(UserLanguage).filter(UserLanguage.user_id == current_user.id).all()
+        existing_language_names = {lang.language for lang in existing_languages}
+        new_language_names = set(profile_update.languages)
+        
+        # Remove languages that are no longer in the list
+        languages_to_remove = existing_language_names - new_language_names
+        if languages_to_remove:
+            db.query(UserLanguage).filter(
+                UserLanguage.user_id == current_user.id,
+                UserLanguage.language.in_(languages_to_remove)
+            ).delete(synchronize_session=False)
+        
+        # Add new languages that don't already exist
+        languages_to_add = new_language_names - existing_language_names
+        for language in languages_to_add:
+            user_language = UserLanguage(user_id=current_user.id, language=language)
+            db.add(user_language)
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    # Process the user to ensure languages are properly handled
+    return convert_user_to_response(db, current_user)
+
+# Helper function to check onboarding completion
+def check_onboarding_completed(user: User):
+    """Check if user has completed onboarding test and raise exception if not"""
+    if user.onboarding_status != 'completed':
+        status_messages = {
+            'pending': 'You need to complete the onboarding test before you can access annotation features.',
+            'in_progress': 'Please complete your onboarding test to access annotation features.',
+            'failed': 'You need to pass the onboarding test before you can access annotation features. Please retake the test.'
+        }
+        message = status_messages.get(user.onboarding_status, 'Please complete your onboarding test.')
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=message
+        )
 
 # Sentence management endpoints
 @app.post("/api/sentences", response_model=SentenceResponse)
@@ -223,6 +289,9 @@ def get_next_sentence(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     # Find sentences that haven't been annotated by this user and match their preferred language
     next_sentence = db.query(Sentence).filter(
         Sentence.is_active == True,
@@ -244,6 +313,9 @@ def get_unannotated_sentences(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     # Find sentences that haven't been annotated by this user and match their preferred language
     unannotated_sentences = db.query(Sentence).filter(
         Sentence.is_active == True,
@@ -275,6 +347,9 @@ def create_annotation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     # Check if user already annotated this sentence
     existing_annotation = db.query(Annotation).filter(
         Annotation.sentence_id == annotation_data.sentence_id,
@@ -342,54 +417,7 @@ def create_annotation(
         "highlights": db_annotation.highlights or []
     }
 
-# Legacy annotation endpoint for backward compatibility
-@app.post("/api/annotations/legacy", response_model=LegacyAnnotationResponse)
-def create_legacy_annotation(
-    annotation_data: LegacyAnnotationCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Check if user already annotated this sentence
-    existing_annotation = db.query(Annotation).filter(
-        Annotation.sentence_id == annotation_data.sentence_id,
-        Annotation.annotator_id == current_user.id
-    ).first()
-    
-    if existing_annotation:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You have already annotated this sentence"
-        )
-    
-    db_annotation = Annotation(
-        **annotation_data.model_dump(),
-        annotator_id=current_user.id,
-        annotation_status="completed"
-    )
-    
-    db.add(db_annotation)    
-    db.commit()
-    db.refresh(db_annotation)
-    
-    # Return properly formatted response
-    return {
-        "id": db_annotation.id,
-        "sentence_id": db_annotation.sentence_id,
-        "annotator_id": db_annotation.annotator_id,
-        "annotation_status": db_annotation.annotation_status,
-        "created_at": db_annotation.created_at,
-        "updated_at": db_annotation.updated_at,
-        "fluency_score": db_annotation.fluency_score,
-        "adequacy_score": db_annotation.adequacy_score,
-        "overall_quality": db_annotation.overall_quality,
-        "errors_found": db_annotation.errors_found,
-        "suggested_correction": db_annotation.suggested_correction,
-        "comments": db_annotation.comments,
-        "final_form": db_annotation.final_form,
-        "time_spent_seconds": db_annotation.time_spent_seconds,
-        "sentence": db_annotation.sentence,
-        "annotator": UserResponse.from_orm(db_annotation.annotator)
-    }
+
 
 @app.put("/api/annotations/{annotation_id}", response_model=AnnotationResponse)
 def update_annotation(
@@ -398,6 +426,9 @@ def update_annotation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
+    
     annotation = db.query(Annotation).filter(
         Annotation.id == annotation_id,
         Annotation.annotator_id == current_user.id
@@ -603,6 +634,52 @@ def get_all_users(
         response_users.append(UserResponse.from_orm(user))
     
     return response_users
+
+@app.post("/api/admin/users", response_model=UserResponse)
+def create_admin_user(
+    user_data: AdminUserCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Create a new user with specified roles (admin access required)"""
+    # Check if user already exists
+    existing_user = db.query(User).filter(
+        (User.email == user_data.email) | (User.username == user_data.username)
+    ).first()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email or username already registered"
+        )
+    
+    # Create new user
+    hashed_password = get_password_hash(user_data.password)
+    db_user = User(
+        email=user_data.email,
+        username=user_data.username,
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
+        preferred_language=user_data.preferred_language if user_data.preferred_language else user_data.languages[0] if user_data.languages else "en",
+        hashed_password=hashed_password,
+        is_active=user_data.is_active,
+        is_admin=user_data.is_admin,
+        is_evaluator=user_data.is_evaluator,
+        onboarding_status='completed' if user_data.skip_onboarding else 'pending'
+    )
+    
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    
+    # Add user languages if specified
+    if user_data.languages and len(user_data.languages) > 0:
+        for language in user_data.languages:
+            user_language = UserLanguage(user_id=db_user.id, language=language)
+            db.add(user_language)
+        db.commit()
+    
+    return UserResponse.from_orm(db_user)
 
 @app.put("/api/admin/users/{user_id}/toggle-evaluator", response_model=UserResponse)
 def toggle_user_evaluator_role(
@@ -1584,30 +1661,7 @@ def get_annotation_evaluations(
     
     return response_evaluations
 
-@app.get("/api/me/languages", response_model=List[str])
-def get_user_languages_endpoint(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Get the current user's languages"""
-    return get_user_languages(db, current_user.id)
 
-@app.post("/api/me/languages", response_model=List[str])
-def update_user_languages(languages: List[str], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Update the current user's languages"""
-    # Delete existing languages
-    db.query(UserLanguage).filter(UserLanguage.user_id == current_user.id).delete()
-    
-    # Add new languages
-    for language in languages:
-        user_language = UserLanguage(user_id=current_user.id, language=language)
-        db.add(user_language)
-    
-    # Update preferred_language for backward compatibility
-    if languages:
-        current_user.preferred_language = languages[0]
-        db.add(current_user)
-    
-    db.commit()
-    
-    return languages
 
 @app.post("/api/annotations/upload-voice")
 async def upload_voice_recording(
@@ -1617,6 +1671,9 @@ async def upload_voice_recording(
     current_user: User = Depends(get_current_user)
 ):
     """Upload voice recording for annotation final form"""
+    
+    # Check if user has completed onboarding
+    check_onboarding_completed(current_user)
     
     # Validate file type
     if not audio_file.content_type or not audio_file.content_type.startswith('audio/'):
@@ -1739,95 +1796,7 @@ def create_onboarding_test(
     
     return OnboardingTestResponse.from_orm(onboarding_test)
 
-@app.post("/api/onboarding-tests/{test_id}/submit", response_model=dict)
-def submit_onboarding_test(
-    test_id: int,
-    submission: OnboardingTestSubmission,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Submit answers for an onboarding test and calculate score"""
-    
-    # Get the test
-    test = db.query(OnboardingTest).filter(
-        OnboardingTest.id == test_id,
-        OnboardingTest.user_id == current_user.id
-    ).first()
-    
-    if not test:
-        raise HTTPException(status_code=404, detail="Test not found")
-    
-    if test.status != 'in_progress':
-        raise HTTPException(status_code=400, detail="Test already completed")
-    
-    # Calculate score
-    questions = test.test_data.get("questions", [])
-    total_score = 0
-    max_score = 0
-    
-    for question in questions:
-        user_answer = next((a for a in submission.answers if a.get("question_id") == question["id"]), None)
-        if not user_answer:
-            continue
-            
-        max_score += 20  # 20 points per question
-        
-        # Score fluency (max 5 points)
-        fluency_diff = abs(user_answer.get("fluency_score", 0) - question["correct_fluency_score"])
-        fluency_score = max(0, 5 - fluency_diff)
-        
-        # Score adequacy (max 5 points) 
-        adequacy_diff = abs(user_answer.get("adequacy_score", 0) - question["correct_adequacy_score"])
-        adequacy_score = max(0, 5 - adequacy_diff)
-        
-        # Score error identification (max 10 points)
-        correct_errors = question.get("error_types", [])
-        identified_errors = user_answer.get("identified_errors", [])
-        error_score = 0
-        
-        if len(correct_errors) == 0 and len(identified_errors) == 0:
-            error_score = 10  # Perfect - no errors to find and none found
-        elif len(correct_errors) > 0:
-            correctly_identified = len([e for e in correct_errors if e in identified_errors])
-            false_positives = len([e for e in identified_errors if e not in correct_errors])
-            error_score = max(0, (correctly_identified / len(correct_errors)) * 10 - false_positives * 2)
-        
-        total_score += fluency_score + adequacy_score + error_score
-    
-    # Calculate percentage
-    final_score = (total_score / max_score) * 100 if max_score > 0 else 0
-    passed = final_score >= 70
-    
-    # Update test
-    test.score = final_score
-    test.status = 'completed' if passed else 'failed'
-    test.completed_at = datetime.utcnow()
-    test.test_data["submission"] = submission.answers
-    test.test_data["detailed_scores"] = {
-        "total_score": total_score,
-        "max_score": max_score,
-        "percentage": final_score
-    }
-    
-    # Update user onboarding status
-    user = db.query(User).filter(User.id == current_user.id).first()
-    if user:
-        if passed:
-            user.onboarding_status = 'completed'
-            user.onboarding_score = final_score
-            user.onboarding_completed_at = datetime.utcnow()
-        else:
-            user.onboarding_status = 'failed'
-            user.onboarding_score = final_score
-    
-    db.commit()
-    
-    return {
-        "score": final_score,
-        "passed": passed,
-        "status": test.status,
-        "message": "Congratulations! You passed the onboarding test." if passed else "Please review the guidelines and try again."
-    }
+
 
 @app.get("/api/onboarding-tests/my-tests", response_model=List[OnboardingTestResponse])
 def get_my_onboarding_tests(
@@ -1912,6 +1881,33 @@ def submit_language_proficiency_answers(
     score = (correct_count / total_questions * 100) if total_questions > 0 else 0
     passed = score >= 70.0
     
+    # Update user onboarding status if passed
+    if passed:
+        current_user.onboarding_status = 'completed'
+        current_user.onboarding_score = score
+        current_user.onboarding_completed_at = datetime.utcnow()
+        
+        # Ensure we're working with the same session
+        db.add(current_user)
+        db.commit()
+        
+        # Force refresh from database
+        db.refresh(current_user)
+        
+        # Additional verification - query fresh from database with explicit session
+        fresh_user = db.query(User).filter(User.id == current_user.id).first()
+        
+        # Close and recreate session to ensure no caching
+        db.expunge_all()
+        fresh_user2 = db.query(User).filter(User.id == current_user.id).first()
+        
+    else:
+        current_user.onboarding_status = 'failed'
+        current_user.onboarding_score = score
+        db.add(current_user)
+        db.commit()
+        db.refresh(current_user)
+    
     # Create results breakdown by language
     questions_by_language = {}
     for language in submission.languages:
@@ -1939,7 +1935,8 @@ def submit_language_proficiency_answers(
         score=score,
         passed=passed,
         questions_by_language=questions_by_language,
-        session_id=submission.test_session_id
+        session_id=submission.test_session_id,
+        updated_user=UserResponse.from_orm(fresh_user2) if passed else None
     )
 
 # Admin endpoints for language proficiency questions
@@ -2239,6 +2236,107 @@ def get_quality_metrics_analytics(
         'averageAdequacy': round(avg_adequacy, 1),
         'completionRate': round(completion_rate, 1)
     }
+
+@app.put("/api/admin/users/{user_id}", response_model=UserResponse)
+def update_admin_user(
+    user_id: int,
+    user_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Update user information (admin access required)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update user fields
+    if 'first_name' in user_data:
+        user.first_name = user_data['first_name']
+    if 'last_name' in user_data:
+        user.last_name = user_data['last_name']
+    if 'email' in user_data:
+        user.email = user_data['email']
+    if 'username' in user_data:
+        user.username = user_data['username']
+    if 'is_active' in user_data:
+        user.is_active = user_data['is_active']
+    if 'is_evaluator' in user_data:
+        user.is_evaluator = user_data['is_evaluator']
+    
+    # Update languages if provided
+    if 'languages' in user_data:
+        # Remove existing languages
+        db.query(UserLanguage).filter(UserLanguage.user_id == user_id).delete()
+        
+        # Add new languages
+        for language in user_data['languages']:
+            user_language = UserLanguage(user_id=user_id, language=language)
+            db.add(user_language)
+    
+    db.commit()
+    db.refresh(user)
+    
+    return UserResponse.from_orm(user)
+
+@app.delete("/api/admin/users/{user_id}")
+def delete_admin_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Delete a user (admin access required)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent deleting yourself
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    db.delete(user)
+    db.commit()
+    
+    return {"message": "User deleted successfully"}
+
+@app.post("/api/admin/users/{user_id}/reset-password")
+def reset_user_password(
+    user_id: int,
+    password_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Reset user password (admin access required)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update password
+    user.hashed_password = get_password_hash(password_data['new_password'])
+    db.commit()
+    
+    return {"message": "Password reset successfully"}
+
+@app.put("/api/admin/users/{user_id}/deactivate")
+def deactivate_user(
+    user_id: int,
+    deactivation_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Deactivate a user (admin access required)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent deactivating yourself
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+    
+    user.is_active = False
+    db.commit()
+    db.refresh(user)
+    
+    return UserResponse.from_orm(user)
 
 if __name__ == "__main__":
     import uvicorn

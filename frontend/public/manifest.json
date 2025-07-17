@@ -1,0 +1,80 @@
+{
+  "name": "Lakra - Smart Annotation Tool for WiMarka",
+  "short_name": "Lakra",
+  "description": "Smart annotation tool for WiMarka project with AI-powered evaluation, error detection, and comprehensive quality analysis capabilities.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d26168",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/lakra.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/seo-image.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "label": "Lakra Platform Interface"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "iarc_rating_id": "e58c174a-81d2-5c3c-32cc-34b8de4a52e9",
+  "shortcuts": [
+    {
+      "name": "New Annotation",
+      "short_name": "Annotate",
+      "description": "Start a new annotation task",
+      "url": "/annotate",
+      "icons": [
+        {
+          "src": "/favicon.svg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "My Annotations",
+      "short_name": "My Work",
+      "description": "View your annotation history",
+      "url": "/my-annotations",
+      "icons": [
+        {
+          "src": "/favicon.svg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Go to your dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/favicon.svg",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { sentencesAPI, annotationsAPI } from '../services/api';
 import type { Sentence, AnnotationCreate, AnnotationUpdate, TextHighlight } from '../types';
+import { logger } from '../utils/logger';
 import { ChevronRight, Check, AlertCircle, Clock, MessageCircle, Trash2, Plus, Highlighter, BookOpen } from 'lucide-react';
 import VoiceRecorder from './VoiceRecorder';
 import { useAuth } from '../contexts/AuthContext';
@@ -56,56 +57,6 @@ const AnnotationInterface: React.FC = () => {
   const [pendingSubmitSentenceId, setPendingSubmitSentenceId] = useState<number | null>(null);
   
   const textRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-
-  // Check if user has completed onboarding test
-  if (user && user.onboarding_status !== 'completed') {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-8 text-center">
-          <div className="flex justify-center mb-4">
-            <BookOpen className="h-16 w-16 text-amber-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-amber-800 mb-4">
-            Qualification Test Required
-          </h1>
-          <p className="text-amber-700 mb-6 text-lg">
-            You need to complete the qualification test before you can start annotating sentences.
-          </p>
-          <div className="space-y-3 mb-6">
-            {user.onboarding_status === 'pending' && (
-              <p className="text-amber-600">
-                ⏳ You haven't started your qualification test yet.
-              </p>
-            )}
-            {user.onboarding_status === 'in_progress' && (
-              <p className="text-amber-600">
-                📝 Your qualification test is in progress. Please complete it to start annotating.
-              </p>
-            )}
-            {user.onboarding_status === 'failed' && (
-              <p className="text-red-600">
-                ❌ You didn't pass the qualification test. Please retake it to start annotating.
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={() => navigate('/onboarding-test')}
-              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium"
-            >
-              {user.onboarding_status === 'failed' ? 'Retake Qualification Test' : 'Take Qualification Test'}
-            </button>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   useEffect(() => {
     const loadSentences = async () => {
@@ -177,7 +128,11 @@ const AnnotationInterface: React.FC = () => {
               setExpandedSentences(new Set([specificSentence.id]));
             }
           } catch (error) {
-            console.error('Error loading specific sentence:', error);
+            logger.apiError('loadSpecificSentence', error as Error, {
+            component: 'AnnotationInterface',
+            userId: user?.id,
+            metadata: { sentenceId }
+          });
             setMessage('Error loading the requested sentence. Loading available sentences instead.');
             // Fall back to loading unannotated sentences
             loadedSentences = await sentencesAPI.getUnannotatedSentences(0, 50);
@@ -213,7 +168,10 @@ const AnnotationInterface: React.FC = () => {
           setMessage('Great! You have completed all available sentences. More will be added soon.');
         }
       } catch (error) {
-        console.error('Error loading sentences:', error);
+        logger.apiError('loadSentences', error as Error, {
+          component: 'AnnotationInterface',
+          userId: user?.id
+        });
         setMessage('Error loading sentences. Please try again.');
       } finally {
         setIsLoading(false);
@@ -607,9 +565,17 @@ const AnnotationInterface: React.FC = () => {
             annotation.voice_recording_blob,
             savedAnnotation.id
           );
-          console.log('Voice recording uploaded:', voiceResult);
-        } catch (voiceError) {
-          console.error('Failed to upload voice recording:', voiceError);
+                  logger.info('Voice recording uploaded successfully', {
+          component: 'AnnotationInterface',
+          userId: user?.id,
+          metadata: { sentenceId, recordingUrl: voiceResult.voice_recording_url }
+        });
+      } catch (voiceError) {
+        logger.error('Failed to upload voice recording', {
+          component: 'AnnotationInterface',
+          userId: user?.id,
+          metadata: { sentenceId }
+        }, voiceError as Error);
           // Don't fail the whole submission for voice recording issues
         }
       }
@@ -731,6 +697,56 @@ const AnnotationInterface: React.FC = () => {
     </div>
   );
 
+  // Check if user has completed onboarding test
+  if (user && user.onboarding_status !== 'completed') {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-8 text-center">
+          <div className="flex justify-center mb-4">
+            <BookOpen className="h-16 w-16 text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-amber-800 mb-4">
+            Qualification Test Required
+          </h1>
+          <p className="text-amber-700 mb-6 text-lg">
+            You need to complete the qualification test before you can start annotating sentences.
+          </p>
+          <div className="space-y-3 mb-6">
+            {user.onboarding_status === 'pending' && (
+              <p className="text-amber-600">
+                ⏳ You haven't started your qualification test yet.
+              </p>
+            )}
+            {user.onboarding_status === 'in_progress' && (
+              <p className="text-amber-600">
+                📝 Your qualification test is in progress. Please complete it to start annotating.
+              </p>
+            )}
+            {user.onboarding_status === 'failed' && (
+              <p className="text-red-600">
+                ❌ You didn't pass the qualification test. Please retake it to start annotating.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigate('/onboarding-test')}
+              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium"
+            >
+              {user.onboarding_status === 'failed' ? 'Retake Qualification Test' : 'Take Qualification Test'}
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -753,34 +769,35 @@ const AnnotationInterface: React.FC = () => {
   }
 
   return (
-    <div className="max-w-full mx-auto space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Sentence Annotators</h1>
+    <div className="max-w-full mx-auto space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Sentence Annotation</h1>
           <div className="flex items-center space-x-4"> 
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
               <Highlighter className="h-4 w-4" />
-              <span>Select text to highlight and annotate</span>
+              <span className="hidden sm:inline">Select text to highlight and annotate</span>
+              <span className="sm:hidden">Tap to highlight</span>
             </div>
           </div>
         </div>
 
         {/* Instructions Panel */}
-        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+        <div className="mb-4 sm:mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 sm:p-4">
           <h3 className="text-sm font-semibold text-blue-900 mb-2">📋 How to annotate:</h3>
-          <div className="grid md:grid-cols-3 gap-4 text-xs text-blue-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 text-xs text-blue-800">
             <div className="flex items-start space-x-2">
-              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold mt-0.5">1</div>
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold mt-0.5 flex-shrink-0">1</div>
               <div>
                 <p className="font-medium">Highlight Problems (if any)</p>
-                <p className="text-blue-700">Click and drag to select text that has errors, then describe the issue</p>
+                <p className="text-blue-700">Tap and drag to select text that has errors, then describe the issue</p>
               </div>
             </div>
             <div className="flex items-start space-x-2">
-              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold mt-0.5">2</div>
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold mt-0.5 flex-shrink-0">2</div>
               <div>
                 <p className="font-medium">Rate the Quality</p>
-                <p className="text-blue-700">Click a number from 1 (poor) to 5 (excellent) for at least one category</p>
+                <p className="text-blue-700">Tap a number from 1 (poor) to 5 (excellent) for at least one category</p>
               </div>
             </div>
             <div className="flex items-start space-x-2">

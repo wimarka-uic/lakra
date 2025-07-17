@@ -326,7 +326,7 @@ const MTQualityInterface: React.FC = () => {
                       <select
                         value={overrideScores.fluency || ''}
                         onChange={(e) => setOverrideScores(prev => ({ ...prev, fluency: e.target.value ? parseFloat(e.target.value) : null }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        className="select-field text-sm"
                       >
                         <option value="">AI Score</option>
                         <option value="1">1.0</option>
@@ -341,7 +341,7 @@ const MTQualityInterface: React.FC = () => {
                       <select
                         value={overrideScores.adequacy || ''}
                         onChange={(e) => setOverrideScores(prev => ({ ...prev, adequacy: e.target.value ? parseFloat(e.target.value) : null }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        className="select-field text-sm"
                       >
                         <option value="">AI Score</option>
                         <option value="1">1.0</option>
@@ -356,7 +356,7 @@ const MTQualityInterface: React.FC = () => {
                       <select
                         value={overrideScores.overall || ''}
                         onChange={(e) => setOverrideScores(prev => ({ ...prev, overall: e.target.value ? parseFloat(e.target.value) : null }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        className="select-field text-sm"
                       >
                         <option value="">AI Score</option>
                         <option value="1">1.0</option>

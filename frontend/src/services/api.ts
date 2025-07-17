@@ -23,7 +23,7 @@ import type {
   UserQuestionAnswer,
 } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -85,12 +85,31 @@ export const authAPI = {
   },
 
   getCurrentUser: async (): Promise<User> => {
-    const response = await api.get('/me');
+    // Add cache-busting parameters to ensure we get fresh data
+    const response = await api.get('/me', {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      params: {
+        _t: Date.now() // Cache buster
+      }
+    });
     return response.data;
   },
 
   markGuidelinesSeen: async (): Promise<User> => {
     const response = await api.put('/me/guidelines-seen');
+    return response.data;
+  },
+
+  updateProfile: async (profileData: {
+    first_name?: string;
+    last_name?: string;
+    preferred_language?: string;
+    languages?: string[];
+  }): Promise<User> => {
+    const response = await api.put('/me/profile', profileData);
     return response.data;
   },
 };
@@ -196,8 +215,68 @@ export const adminAPI = {
     return response.data;
   },
 
-  getAllUsers: async (skip = 0, limit = 100): Promise<User[]> => {
-    const response = await api.get(`/admin/users?skip=${skip}&limit=${limit}`);
+  getAllUsers: async (skip = 0, limit = 100, role?: string, active?: boolean, search?: string): Promise<User[]> => {
+    let url = `/admin/users?skip=${skip}&limit=${limit}`;
+    if (role) url += `&role=${role}`;
+    if (active !== undefined) url += `&active=${active}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  getUserDetails: async (userId: number): Promise<User> => {
+    const response = await api.get(`/admin/users/${userId}`);
+    return response.data;
+  },
+
+  createUser: async (userData: {
+    email: string;
+    username: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    is_active?: boolean;
+    is_admin?: boolean;
+    is_evaluator?: boolean;
+    languages?: string[];
+    skip_onboarding?: boolean;
+  }): Promise<User> => {
+    const response = await api.post('/admin/users', userData);
+    return response.data;
+  },
+
+  updateUser: async (userId: number, userData: Partial<{
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+    is_active: boolean;
+    is_evaluator: boolean;
+    languages: string[];
+  }>): Promise<User> => {
+    const response = await api.put(`/admin/users/${userId}`, userData);
+    return response.data;
+  },
+
+  deactivateUser: async (userId: number, reason?: string): Promise<User> => {
+    const response = await api.put(`/admin/users/${userId}/deactivate`, {
+      reason: reason || 'Admin deactivation',
+      notify_user: false
+    });
+    return response.data;
+  },
+
+  resetUserPassword: async (userId: number, newPassword: string, forceChange = true): Promise<{ message: string }> => {
+    const response = await api.post(`/admin/users/${userId}/reset-password`, {
+      new_password: newPassword,
+      force_change: forceChange,
+      notify_user: false
+    });
+    return response.data;
+  },
+
+  deleteUser: async (userId: number): Promise<{ message: string }> => {
+    const response = await api.delete(`/admin/users/${userId}`);
     return response.data;
   },
 

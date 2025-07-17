@@ -70,7 +70,7 @@ export interface AuthToken {
 }
 
 export interface LoginCredentials {
-  email: string;
+  email: string; // Accepts both email and username
   password: string;
 }
 
@@ -277,6 +277,7 @@ export interface OnboardingTestResult {
   passed: boolean; // True if score >= 70
   questions_by_language: Record<string, any>; // Results breakdown by language
   session_id: string;
+  updated_user?: User; // Updated user data after quiz completion
 }
 
 // Evaluation interfaces

@@ -15,8 +15,21 @@ class UserCreate(UserBase):
     password: str
     is_evaluator: Optional[bool] = False
 
+class AdminUserCreate(UserBase):
+    password: str
+    is_active: Optional[bool] = True
+    is_admin: Optional[bool] = False
+    is_evaluator: Optional[bool] = False
+    skip_onboarding: Optional[bool] = False
+
+class UserProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    preferred_language: Optional[str] = None
+    languages: Optional[List[str]] = None
+
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str  # Changed from EmailStr to str to accept both email and username
     password: str
 
 class UserLanguageBase(BaseModel):
@@ -62,6 +75,9 @@ class UserResponse(UserBase):
             "is_admin": getattr(obj, "is_admin", False),
             "is_evaluator": getattr(obj, "is_evaluator", False),
             "guidelines_seen": getattr(obj, "guidelines_seen", False),
+            "onboarding_status": getattr(obj, "onboarding_status", "pending"),
+            "onboarding_score": getattr(obj, "onboarding_score", None),
+            "onboarding_completed_at": getattr(obj, "onboarding_completed_at", None),
             "created_at": getattr(obj, "created_at", datetime.utcnow())
         }
         
@@ -161,19 +177,7 @@ class AnnotationResponse(AnnotationBase):
         "from_attributes": True
     }
 
-# Legacy annotation schemas for backward compatibility
-class LegacyAnnotationCreate(AnnotationBase):
-    sentence_id: int
 
-class LegacyAnnotationResponse(AnnotationBase):
-    id: int
-    sentence_id: int
-    annotator_id: int
-    annotation_status: str
-    created_at: datetime
-    updated_at: datetime
-    sentence: SentenceResponse
-    annotator: UserResponse
 
     model_config = {
         "from_attributes": True
@@ -344,9 +348,7 @@ class OnboardingTestQuestion(BaseModel):
 class OnboardingTestCreate(BaseModel):
     language: str
 
-class OnboardingTestSubmission(BaseModel):
-    test_id: int
-    answers: List[dict]  # User's answers to test questions
+
 
 class OnboardingTestResponse(BaseModel):
     id: int
@@ -442,3 +444,4 @@ class OnboardingTestResults(BaseModel):
     passed: bool  # True if score >= 70
     questions_by_language: dict  # Results breakdown by language
     session_id: str
+    updated_user: Optional[UserResponse] = None  # Updated user data when passed

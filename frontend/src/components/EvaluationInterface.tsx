@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { evaluationsAPI } from '../services/api';
 import type { Annotation, EvaluationCreate, TextHighlight } from '../types';
+import { logger } from '../utils/logger';
 import { 
   ChevronLeft, 
   Clock, 
@@ -78,7 +79,10 @@ const EvaluationInterface: React.FC = () => {
         navigate('/evaluator');
       }
     } catch (error) {
-      console.error('Error loading annotation:', error);
+      logger.apiError('loadAnnotation', error as Error, {
+        component: 'EvaluationInterface',
+        metadata: { annotationId }
+      });
       setMessage('Error loading annotation');
     } finally {
       setIsLoading(false);
@@ -98,7 +102,9 @@ const EvaluationInterface: React.FC = () => {
         navigate('/evaluator');
       }
     } catch (error) {
-      console.error('Error loading next annotation:', error);
+      logger.apiError('loadNextAnnotation', error as Error, {
+        component: 'EvaluationInterface'
+      });
       setMessage('Error loading annotation');
     } finally {
       setIsLoading(false);
@@ -154,7 +160,10 @@ const EvaluationInterface: React.FC = () => {
       }, 1500);
       
     } catch (error) {
-      console.error('Error submitting evaluation:', error);
+      logger.apiError('submitEvaluation', error as Error, {
+        component: 'EvaluationInterface',
+        metadata: { annotationId: currentAnnotation?.id }
+      });
       setMessage('Error submitting evaluation. Please try again.');
       setTimeout(() => setMessage(''), 5000);
     } finally {
