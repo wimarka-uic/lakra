@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { languageProficiencyAPI, onboardingAPI, authStorage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Clock, Brain, AlertTriangle, ArrowRight, Globe, BookOpen } from 'lucide-react';
-import type { UserQuestionAnswer, LanguageProficiencyQuestion, OnboardingTest } from '../types';
+import type { UserQuestionAnswer, LanguageProficiencyQuestion, OnboardingTest as OnboardingTestType } from '../types';
 import QuizSuccessModal from './QuizSuccessModal';
 import QuizFailureModal from './QuizFailureModal';
 
@@ -71,7 +71,7 @@ const OnboardingTest: React.FC = () => {
         // Check for completed tests via API if user status is not completed
         try {
           const tests = await onboardingAPI.getMyTests();
-          const completedTest = tests.find((test: OnboardingTest) => test.status === 'completed');
+          const completedTest = tests.find((test: OnboardingTestType) => test.status === 'completed');
           
           if (completedTest) {
             setOnboardingComplete(true);
