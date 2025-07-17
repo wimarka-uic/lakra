@@ -4,7 +4,8 @@ import Logo from './Logo';
 
 const About: React.FC = () => {
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <>
+      <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm border p-8">
         <div className="text-center">
@@ -165,7 +166,8 @@ const About: React.FC = () => {
           This tool is part of ongoing academic research in machine translation evaluation for Philippine languages.
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

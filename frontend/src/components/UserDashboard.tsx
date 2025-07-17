@@ -4,6 +4,8 @@ import { annotationsAPI, sentencesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { Annotation, User as UserType } from '../types';
 import { logger } from '../utils/logger';
+
+
 import { 
   FileText, 
   Clock, 
@@ -209,7 +211,7 @@ const UserDashboard: React.FC = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [forceRefreshUser]);
+  }, [forceRefreshUser, user?.id]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -352,7 +354,8 @@ const UserDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
+    <>
+      <div className="min-h-screen bg-gray-50 pb-12">
       {/* Welcome message that disappears after a few seconds */}
       {showWelcome && (
         <div className="bg-primary-50 border-l-4 border-primary-500 p-4 fixed top-20 right-4 z-10 max-w-md shadow-lg rounded-lg animate-fadeIn">
@@ -666,7 +669,8 @@ const UserDashboard: React.FC = () => {
         onClose={handleGuidelinesClose}
         onAccept={handleGuidelinesAccept}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

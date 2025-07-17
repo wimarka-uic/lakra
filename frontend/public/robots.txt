@@ -1,0 +1,28 @@
+# Robots.txt for Lakra - Smart Annotation Tool for WiMarka
+# This is a research platform with restricted access
+
+User-agent: *
+Disallow: /
+
+# Allow access to public assets
+Allow: /seo-image.jpg
+Allow: /favicon.svg
+Allow: /lakra.svg
+Allow: *.css
+Allow: *.js
+
+# Sitemap location (when ready for production)
+# Sitemap: /sitemap.xml
+
+# Security and privacy focused crawl-delay
+Crawl-delay: 10
+
+# Block common bot patterns
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /

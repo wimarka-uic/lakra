@@ -16,6 +16,7 @@ import EvaluationInterface from './components/EvaluationInterface';
 import MyEvaluations from './components/MyEvaluations';
 import MTQualityInterface from './components/MTQualityInterface';
 import OnboardingTest from './components/OnboardingTest';
+import { PWABanner } from './components/PWABanner';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ 
@@ -326,6 +327,9 @@ const AppContent: React.FC = () => {
           onClose={handleGuidelinesClose}
           onAccept={handleGuidelinesAccept}
         />
+        
+        {/* PWA Banner */}
+        <PWABanner />
       </Layout>
     </Router>
   );
