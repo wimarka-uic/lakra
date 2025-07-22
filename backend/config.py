@@ -30,7 +30,10 @@ class Settings(BaseModel):
     debug: bool = os.getenv('DEBUG', 'True').lower() == 'true'
     
     # CORS
-    allowed_origins: List[str] = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
+    allowed_origins: List[str] = [
+        origin.strip() for origin in 
+        os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
+    ]
     
     # File uploads
     max_file_size_mb: int = int(os.getenv('MAX_FILE_SIZE_MB', '10'))

@@ -13,6 +13,7 @@ from pathlib import Path
 from evaluator import DistilBERTMTEvaluator, evaluate_mt_quality
 
 from database import get_db, create_tables, User, Sentence, Annotation, TextHighlight, UserLanguage, Evaluation, MTQualityAssessment, OnboardingTest, LanguageProficiencyQuestion, UserQuestionAnswer
+from config import settings
 from auth import (
     authenticate_user, 
     create_access_token, 
@@ -62,9 +63,10 @@ from schemas import (
 app = FastAPI(title="Lakra - Annotation Tool for WiMarka", version="1.0.0")
 
 # CORS middleware
+print(f"CORS - Allowed origins: {settings.allowed_origins}")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Vite default port
+    allow_origins=settings.allowed_origins,  # Use config from environment
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
