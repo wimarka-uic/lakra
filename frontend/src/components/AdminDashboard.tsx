@@ -2255,15 +2255,21 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             {showAddSentence && (
-              <div 
-                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 extension-safe-modal"
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2147483647] pointer-events-auto"
                 onClick={(e) => {
                   if (e.target === e.currentTarget) {
                     setShowAddSentence(false);
                   }
                 }}
+                style={{ zIndex: 2147483647, pointerEvents: 'auto' }}
               >
-                <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto extension-safe-form">
+                <div
+                  className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto z-[2147483647] pointer-events-auto"
+                  onClick={e => e.stopPropagation()}
+                  style={{ zIndex: 2147483647, pointerEvents: 'auto' }}
+                  tabIndex={0}
+                >
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium text-gray-900">Add New Sentence</h3>
                     <button
