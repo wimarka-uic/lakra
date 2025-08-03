@@ -109,14 +109,14 @@ const Register: React.FC = () => {
     setIsSubmittingTest(true);
     
     try {
-      // Submit answers to API first
+      // Submit answers to API first (using registration endpoint)
       const userAnswers = onboardingAnswers.map(answer => ({
         question_id: answer.question_id,
         selected_answer: answer.selected_answer,
         test_session_id: testSessionId
       }));
 
-      const result = await languageProficiencyAPI.submitAnswers(userAnswers, testSessionId, formData.languages);
+      const result = await languageProficiencyAPI.submitAnswersRegistration(userAnswers, testSessionId, formData.languages);
       
       if (result.passed) {
         // Test passed, now complete the registration
@@ -129,7 +129,8 @@ const Register: React.FC = () => {
           preferred_language: formData.preferred_language,
           languages: formData.languages,
           is_evaluator: false, // annotator
-          user_type: formData.user_type
+          user_type: formData.user_type,
+          onboarding_passed: true // Indicate that user passed onboarding test
         };
         
         await register(registerData);
@@ -621,12 +622,12 @@ const Register: React.FC = () => {
                       {[
                         { id: 'tagalog', name: 'Tagalog' },
                         { id: 'cebuano', name: 'Cebuano' },
-                        { id: 'ilocano', name: 'Ilocano' },
-                        { id: 'hiligaynon', name: 'Hiligaynon' },
-                        { id: 'bicolano', name: 'Bicolano' },
-                        { id: 'waray', name: 'Waray' },
-                        { id: 'pampangan', name: 'Pampangan' },
-                        { id: 'pangasinan', name: 'Pangasinan' }
+                        { id: 'ilocano', name: 'Ilocano' }
+                        //{ id: 'hiligaynon', name: 'Hiligaynon' },
+                        //{ id: 'bicolano', name: 'Bicolano' },
+                        //{ id: 'waray', name: 'Waray' },
+                        //{ id: 'pampangan', name: 'Pampangan' },
+                        //{ id: 'pangasinan', name: 'Pangasinan' }
                       ].map((language) => (
                         <div
                           key={language.id}

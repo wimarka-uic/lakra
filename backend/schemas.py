@@ -14,6 +14,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     is_evaluator: Optional[bool] = False
+    onboarding_passed: Optional[bool] = False  # Indicates if user passed onboarding test during registration
 
 class AdminUserCreate(UserBase):
     password: str

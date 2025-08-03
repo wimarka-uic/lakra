@@ -98,6 +98,10 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email or username already registered"
         )
     
+    # Check if user passed onboarding test during registration
+    onboarding_passed = getattr(user_data, 'onboarding_passed', False)
+    print(f"DEBUG: Registration - User {user_data.email} onboarding_passed: {onboarding_passed}")
+    
     # Create new user
     hashed_password = get_password_hash(user_data.password)
     db_user = User(
@@ -107,8 +111,12 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         last_name=user_data.last_name,
         preferred_language=user_data.preferred_language if user_data.preferred_language else user_data.languages[0] if user_data.languages else "tagalog",
         hashed_password=hashed_password,
-        is_evaluator=getattr(user_data, 'is_evaluator', False)
+        is_evaluator=getattr(user_data, 'is_evaluator', False),
+        onboarding_status='completed' if onboarding_passed else 'pending',
+        onboarding_score=100.0 if onboarding_passed else None,
+        onboarding_completed_at=datetime.utcnow() if onboarding_passed else None
     )
+    print(f"DEBUG: Registration - Created user with onboarding_status: {db_user.onboarding_status}")
     
     db.add(db_user)
     db.commit()
@@ -189,6 +197,8 @@ def get_current_user_info(current_user: User = Depends(get_current_user), db: Se
     # Refresh the session to ensure we get latest data
     db.refresh(fresh_user)
     
+    print(f"DEBUG: /api/me - User {fresh_user.id} ({fresh_user.email}) onboarding status: {fresh_user.onboarding_status}")
+    
     # Return user data with properly extracted languages
     return UserResponse.from_orm(fresh_user)
 
@@ -250,6 +260,7 @@ def update_user_profile(
 # Helper function to check onboarding completion
 def check_onboarding_completed(user: User):
     """Check if user has completed onboarding test and raise exception if not"""
+    print(f"DEBUG: Checking onboarding status for user {user.id} ({user.email}): {user.onboarding_status}")
     if user.onboarding_status != 'completed':
         status_messages = {
             'pending': 'You need to complete the onboarding test before you can access annotation features.',
@@ -257,10 +268,12 @@ def check_onboarding_completed(user: User):
             'failed': 'You need to pass the onboarding test before you can access annotation features. Please retake the test.'
         }
         message = status_messages.get(user.onboarding_status, 'Please complete your onboarding test.')
+        print(f"DEBUG: User {user.id} onboarding not completed. Status: {user.onboarding_status}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=message
         )
+    print(f"DEBUG: User {user.id} onboarding completed successfully")
 
 # Sentence management endpoints
 @app.post("/api/sentences", response_model=SentenceResponse)
@@ -620,6 +633,78 @@ def get_sentence_counts_by_language(
     counts['all'] = total
     
     return counts
+
+@app.put("/api/admin/sentences/{sentence_id}", response_model=SentenceResponse)
+def update_admin_sentence(
+    sentence_id: int,
+    sentence_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Update a sentence (admin access required)"""
+    # Find the sentence
+    sentence = db.query(Sentence).filter(Sentence.id == sentence_id).first()
+    if not sentence:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sentence not found"
+        )
+    
+    # Update fields if provided
+    if 'source_text' in sentence_data:
+        sentence.source_text = sentence_data['source_text']
+    if 'machine_translation' in sentence_data:
+        sentence.machine_translation = sentence_data['machine_translation']
+    if 'tagalog_source_text' in sentence_data:
+        sentence.tagalog_source_text = sentence_data['tagalog_source_text']
+    if 'source_language' in sentence_data:
+        sentence.source_language = sentence_data['source_language']
+    if 'target_language' in sentence_data:
+        sentence.target_language = sentence_data['target_language']
+    if 'domain' in sentence_data:
+        sentence.domain = sentence_data['domain']
+    if 'is_active' in sentence_data:
+        sentence.is_active = sentence_data['is_active']
+    
+    # Update the updated_at timestamp
+    sentence.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(sentence)
+    
+    return sentence
+
+@app.delete("/api/admin/sentences/{sentence_id}")
+def delete_admin_sentence(
+    sentence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Delete a sentence and all its annotations (admin access required)"""
+    # Find the sentence
+    sentence = db.query(Sentence).filter(Sentence.id == sentence_id).first()
+    if not sentence:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sentence not found"
+        )
+    
+    # Delete all annotations for this sentence first
+    annotations = db.query(Annotation).filter(Annotation.sentence_id == sentence_id).all()
+    for annotation in annotations:
+        # Delete evaluations for this annotation
+        evaluations = db.query(Evaluation).filter(Evaluation.annotation_id == annotation.id).all()
+        for evaluation in evaluations:
+            db.delete(evaluation)
+        
+        # Delete the annotation
+        db.delete(annotation)
+    
+    # Delete the sentence
+    db.delete(sentence)
+    db.commit()
+    
+    return {"message": "Sentence and all associated annotations deleted successfully"}
 
 @app.get("/api/admin/users", response_model=List[UserResponse])
 def get_all_users(
@@ -1852,8 +1937,13 @@ def submit_language_proficiency_answers(
     db: Session = Depends(get_db)
 ):
     """Submit language proficiency test answers"""
+    print(f"Received submission from user {current_user.id} ({current_user.email})")
+    print(f"Submission data: {submission}")
+    
     correct_count = 0
     total_questions = len(submission.answers)
+    
+    print(f"Processing {total_questions} answers")
     
     # Store each answer and calculate score
     for answer in submission.answers:
@@ -1876,6 +1966,8 @@ def submit_language_proficiency_answers(
                 test_session_id=submission.test_session_id
             )
             db.add(user_answer)
+        else:
+            print(f"Warning: Question {answer.question_id} not found")
     
     db.commit()
     
@@ -1883,8 +1975,11 @@ def submit_language_proficiency_answers(
     score = (correct_count / total_questions * 100) if total_questions > 0 else 0
     passed = score >= 70.0
     
+    print(f"Test results: {correct_count}/{total_questions} correct, score: {score}%, passed: {passed}")
+    
     # Update user onboarding status if passed
     if passed:
+        print(f"DEBUG: User {current_user.id} passed test with score {score}%. Updating onboarding status...")
         current_user.onboarding_status = 'completed'
         current_user.onboarding_score = score
         current_user.onboarding_completed_at = datetime.utcnow()
@@ -1895,15 +1990,17 @@ def submit_language_proficiency_answers(
         
         # Force refresh from database
         db.refresh(current_user)
+        print(f"DEBUG: After commit and refresh - User {current_user.id} status: {current_user.onboarding_status}")
         
         # Additional verification - query fresh from database with explicit session
         fresh_user = db.query(User).filter(User.id == current_user.id).first()
+        print(f"DEBUG: Fresh user query - User {fresh_user.id if fresh_user else 'None'} status: {fresh_user.onboarding_status if fresh_user else 'None'}")
         
-        # Close and recreate session to ensure no caching
-        db.expunge_all()
-        fresh_user2 = db.query(User).filter(User.id == current_user.id).first()
+        # Use fresh_user as the updated user data
+        fresh_user2 = fresh_user
         
     else:
+        print(f"DEBUG: User {current_user.id} failed test with score {score}%. Setting status to failed.")
         current_user.onboarding_status = 'failed'
         current_user.onboarding_score = score
         db.add(current_user)
@@ -1931,15 +2028,31 @@ def submit_language_proficiency_answers(
             "score": (lang_correct / len(lang_answers) * 100) if len(lang_answers) > 0 else 0
         }
     
-    return OnboardingTestResults(
+    # Ensure we have a valid user object for the response
+    updated_user = None
+    if passed:
+        # Use fresh_user2 if available, otherwise fall back to fresh_user, then current_user
+        if fresh_user2:
+            updated_user = UserResponse.from_orm(fresh_user2)
+        elif fresh_user:
+            updated_user = UserResponse.from_orm(fresh_user)
+        else:
+            # Fallback to current_user after refresh
+            db.refresh(current_user)
+            updated_user = UserResponse.from_orm(current_user)
+    
+    result = OnboardingTestResults(
         total_questions=total_questions,
         correct_answers=correct_count,
         score=score,
         passed=passed,
         questions_by_language=questions_by_language,
         session_id=submission.test_session_id,
-        updated_user=UserResponse.from_orm(fresh_user2) if passed else None
+        updated_user=updated_user
     )
+    
+    print(f"Returning result: {result}")
+    return result
 
 # Admin endpoints for language proficiency questions
 @app.get("/api/admin/language-proficiency-questions", response_model=List[LanguageProficiencyQuestionResponse])
@@ -2339,6 +2452,89 @@ def deactivate_user(
     db.refresh(user)
     
     return UserResponse.from_orm(user)
+
+# Test endpoint to check authentication
+@app.get("/api/test-auth")
+def test_auth(current_user: User = Depends(get_current_user)):
+    """Test endpoint to check if authentication is working"""
+    return {
+        "message": "Authentication working",
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "onboarding_status": current_user.onboarding_status
+    }
+
+# Registration-time language proficiency test submission (no auth required)
+@app.post("/api/language-proficiency-questions/submit-registration")
+def submit_language_proficiency_answers_registration(
+    submission: OnboardingTestSubmission,
+    db: Session = Depends(get_db)
+):
+    """Submit language proficiency test answers during registration (no auth required)"""
+    print(f"Received registration submission")
+    print(f"Submission data: {submission}")
+    
+    correct_count = 0
+    total_questions = len(submission.answers)
+    
+    print(f"Processing {total_questions} answers")
+    
+    # Store each answer and calculate score (without user_id for now)
+    for answer in submission.answers:
+        # Get the question to check correct answer
+        question = db.query(LanguageProficiencyQuestion).filter(
+            LanguageProficiencyQuestion.id == answer.question_id
+        ).first()
+        
+        if question:
+            is_correct = answer.selected_answer == question.correct_answer
+            if is_correct:
+                correct_count += 1
+            
+            # Note: We don't store the answer in the database during registration
+            # as we don't have a user_id yet. The answers will be stored after registration.
+        else:
+            print(f"Warning: Question {answer.question_id} not found")
+    
+    # Calculate score
+    score = (correct_count / total_questions * 100) if total_questions > 0 else 0
+    passed = score >= 70.0
+    
+    print(f"Registration test results: {correct_count}/{total_questions} correct, score: {score}%, passed: {passed}")
+    
+    # Create results breakdown by language
+    questions_by_language = {}
+    for language in submission.languages:
+        lang_questions = db.query(LanguageProficiencyQuestion).filter(
+            LanguageProficiencyQuestion.language == language
+        ).all()
+        lang_question_ids = [q.id for q in lang_questions]
+        
+        lang_answers = [a for a in submission.answers if a.question_id in lang_question_ids]
+        lang_correct = sum(1 for a in lang_answers 
+                          if db.query(LanguageProficiencyQuestion).filter(
+                              LanguageProficiencyQuestion.id == a.question_id,
+                              LanguageProficiencyQuestion.correct_answer == a.selected_answer
+                          ).first())
+        
+        questions_by_language[language] = {
+            "total": len(lang_answers),
+            "correct": lang_correct,
+            "score": (lang_correct / len(lang_answers) * 100) if len(lang_answers) > 0 else 0
+        }
+    
+    result = OnboardingTestResults(
+        total_questions=total_questions,
+        correct_answers=correct_count,
+        score=score,
+        passed=passed,
+        questions_by_language=questions_by_language,
+        session_id=submission.test_session_id,
+        updated_user=None  # No user yet during registration
+    )
+    
+    print(f"Returning registration result: {result}")
+    return result
 
 if __name__ == "__main__":
     import uvicorn

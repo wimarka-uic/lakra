@@ -39,7 +39,7 @@ export const PWABanner: React.FC = () => {
 
       {/* Install banner */}
       {showInstallBanner && (
-        <div className="fixed bottom-4 left-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-40 max-w-md mx-auto">
+        <div className="fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-40 max-w-sm">
           <div className="flex items-start gap-3">
             <div className="bg-rose-100 p-2 rounded-lg">
               <Download className="w-5 h-5 text-rose-600" />
@@ -76,7 +76,7 @@ export const PWABanner: React.FC = () => {
 
       {/* Update banner */}
       {showUpdateBanner && (
-        <div className="fixed bottom-4 left-4 right-4 bg-blue-50 border border-blue-200 rounded-lg shadow-lg p-4 z-40 max-w-md mx-auto">
+        <div className="fixed top-4 right-4 bg-blue-50 border border-blue-200 rounded-lg shadow-lg p-4 z-40 max-w-sm">
           <div className="flex items-start gap-3">
             <div className="bg-blue-100 p-2 rounded-lg">
               <RefreshCw className="w-5 h-5 text-blue-600" />

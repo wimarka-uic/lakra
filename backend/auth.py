@@ -58,13 +58,17 @@ def verify_token(token: str):
         )
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    print(f"Authenticating user with token: {credentials.credentials[:20]}...")
     email = verify_token(credentials.credentials)
+    print(f"Token verified for email: {email}")
     user = db.query(User).filter(User.email == email).first()
     if user is None:
+        print(f"User not found for email: {email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
+    print(f"User authenticated: {user.id} ({user.email})")
     return user
 
 def get_current_admin_user(current_user: User = Depends(get_current_user)):

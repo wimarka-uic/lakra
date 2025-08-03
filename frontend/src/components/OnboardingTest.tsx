@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { languageProficiencyAPI, onboardingAPI, authStorage } from '../services/api';
+import { languageProficiencyAPI, onboardingAPI, authStorage, authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Clock, Brain, AlertTriangle, ArrowRight, Globe, BookOpen } from 'lucide-react';
 import type { UserQuestionAnswer, LanguageProficiencyQuestion, OnboardingTest as OnboardingTestType } from '../types';
@@ -9,7 +9,7 @@ import QuizFailureModal from './QuizFailureModal';
 
 const OnboardingTest: React.FC = () => {
   const navigate = useNavigate();
-  const { user, forceRefreshUser } = useAuth();
+  const { user, forceRefreshUser, isLoading } = useAuth();
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserQuestionAnswer[]>([]);
@@ -55,6 +55,16 @@ const OnboardingTest: React.FC = () => {
       return false;
     }
   }, [forceRefreshUser]);
+
+  // Check if user is authenticated
+  useEffect(() => {
+    console.log('Auth state:', { user: !!user, isLoading, token: !!authStorage.getToken() });
+    if (!user && !isLoading) {
+      console.log('User not authenticated, redirecting to login');
+      navigate('/login');
+      return;
+    }
+  }, [user, isLoading, navigate]);
 
   // Check if user has already completed onboarding
   useEffect(() => {
@@ -234,13 +244,34 @@ const OnboardingTest: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      // Test authentication first
+      console.log('Testing authentication...');
+      try {
+        const authTest = await authAPI.testAuth();
+        console.log('Auth test result:', authTest);
+      } catch (authError: any) {
+        console.error('Auth test failed:', authError);
+        alert('Authentication test failed. Please log in again.');
+        return;
+      }
+      
       // Calculate score
       const correctAnswers = answers.filter(a => a.is_correct).length;
       const totalQuestions = questions.length;
       const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
       
+      console.log('Submitting test with:', {
+        answers: answers.length,
+        questions: questions.length,
+        sessionId,
+        selectedLanguages,
+        score
+      });
+      
       // Submit to backend
       const result = await languageProficiencyAPI.submitAnswers(answers, sessionId, selectedLanguages);
+      
+      console.log('Test submission result:', result);
       
       if (result.passed || score >= 70) {
         // Show success modal and mark as just completed
@@ -262,8 +293,26 @@ const OnboardingTest: React.FC = () => {
         setFinalScore(score);
         setShowFailureModal(true);
       }
-    } catch {
-      alert('Error submitting quiz. Please try again.');
+    } catch (error: any) {
+      console.error('Error submitting quiz:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      
+      // Show more specific error message
+      let errorMessage = 'Error submitting quiz. Please try again.';
+      if (error.response?.status === 403) {
+        errorMessage = 'Access denied. Please check your permissions or try logging in again.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response?.data?.detail) {
+        errorMessage = `Server error: ${error.response.data.detail}`;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -317,6 +366,36 @@ const OnboardingTest: React.FC = () => {
         <div className="text-center">
           <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
           <p className="text-gray-600">Checking onboarding status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">You need to be logged in to take the onboarding test.</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Go to Login
+          </button>
         </div>
       </div>
     );
