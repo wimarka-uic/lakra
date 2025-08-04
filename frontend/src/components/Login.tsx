@@ -7,7 +7,7 @@ import Logo from './Logo';
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
-    email: '', // This field now accepts both email and username
+    email: '', // This field accepts both email and username
     password: '',
   });
   const [error, setError] = useState('');
@@ -28,7 +28,7 @@ const Login: React.FC = () => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    });
+  });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -119,6 +119,9 @@ const Login: React.FC = () => {
                   placeholder="Enter your email or username"
                 />
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                You can sign in with your email address or username
+              </p>
             </div>
 
             <div className="relative">
@@ -141,16 +144,24 @@ const Login: React.FC = () => {
                   placeholder="Enter your password"
                 />
               </div>
-              <div className="flex items-center mt-2">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-xs text-gray-900">
-                  Remember me
-                </label>
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-xs text-gray-900">
+                    Remember me
+                  </label>
+                </div>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-primary-600 hover:text-primary-500 transition-colors"
+                >
+                  Forgot password?
+                </Link>
               </div>
             </div>
           </div>

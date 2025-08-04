@@ -26,6 +26,7 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 
 ### User Management & Roles
 - **Multi-Role System**: Administrators, Annotators, and Evaluators
+- **Flexible Authentication**: Sign in with email or username
 - **Language Preferences**: User-specific language settings and preferences
 - **Onboarding System**: Comprehensive onboarding tests for quality assurance
 - **Progress Tracking**: Individual and system-wide progress monitoring
@@ -182,7 +183,7 @@ After running the database initialization script, you can log in with:
 
 **Authentication:**
 - `POST /api/register` - User registration
-- `POST /api/login` - User login
+- `POST /api/login` - User login (supports both email and username)
 - `GET /api/me` - Get current user info
 - `PUT /api/me/guidelines-seen` - Mark guidelines as seen
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { sentencesAPI, annotationsAPI } from '../services/api';
+import { sentencesAPI, annotationsAPI } from '../services/supabase-api';
 import type { Sentence, AnnotationCreate, AnnotationUpdate, TextHighlight } from '../types';
 import { logger } from '../utils/logger';
 import { ChevronRight, Check, AlertCircle, Clock, MessageCircle, Trash2, Plus, Highlighter, BookOpen } from 'lucide-react';

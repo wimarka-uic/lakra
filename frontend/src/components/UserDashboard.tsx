@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { annotationsAPI, sentencesAPI } from '../services/api';
+import { annotationsAPI, sentencesAPI } from '../services/supabase-api';
 import { useAuth } from '../contexts/AuthContext';
 import type { Annotation, User as UserType } from '../types';
 import { logger } from '../utils/logger';
