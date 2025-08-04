@@ -13,13 +13,12 @@ import type {
   AdminStats,
   Evaluation,
   EvaluationCreate,
-  EvaluationUpdate,
+
   EvaluatorStats,
   MTQualityAssessment,
   MTQualityCreate,
   MTQualityUpdate,
   OnboardingTest,
-  OnboardingTestAnswer,
   OnboardingTestResult,
   LanguageProficiencyQuestion,
   UserQuestionAnswer,
@@ -668,6 +667,95 @@ export const annotationsAPI = {
 
     return { message: 'Annotation deleted successfully' };
   },
+
+  updateAnnotation: async (id: number, updateData: AnnotationUpdate): Promise<Annotation> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    // Update annotation
+    const { data: annotation, error } = await supabase
+      .from('annotations')
+      .update({
+        ...updateData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('annotator_id', user.id)
+      .select(`
+        *,
+        sentence:sentences(*),
+        highlights:text_highlights(*)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    // Update highlights if provided
+    if (updateData.highlights && updateData.highlights.length > 0) {
+      // Delete existing highlights
+      await supabase
+        .from('text_highlights')
+        .delete()
+        .eq('annotation_id', id);
+
+      // Insert new highlights
+      const highlightsData = updateData.highlights.map(h => ({
+        annotation_id: id,
+        highlighted_text: h.highlighted_text,
+        start_index: h.start_index,
+        end_index: h.end_index,
+        text_type: h.text_type,
+        comment: h.comment,
+        error_type: h.error_type,
+      }));
+
+      await supabase
+        .from('text_highlights')
+        .insert(highlightsData);
+    }
+
+    return annotation;
+  },
+
+  uploadVoiceRecording: async (annotationId: number, audioBlob: Blob, duration: number): Promise<{ voice_recording_url: string }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    // Generate unique filename
+    const fileName = `voice-recordings/${user.id}/${annotationId}-${Date.now()}.webm`;
+    
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('annotations')
+      .upload(fileName, audioBlob, {
+        contentType: 'audio/webm',
+        cacheControl: '3600',
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('annotations')
+      .getPublicUrl(fileName);
+
+    // Update annotation with voice recording URL and duration
+    const { error: updateError } = await supabase
+      .from('annotations')
+      .update({
+        voice_recording_url: publicUrl,
+        voice_recording_duration: duration,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', annotationId)
+      .eq('annotator_id', user.id);
+
+    if (updateError) throw updateError;
+
+    return { voice_recording_url: publicUrl };
+  },
 };
 
 // Admin API
@@ -744,7 +832,7 @@ export const adminAPI = {
       if (!authData.user) throw new Error('Failed to create user');
 
       // Create user profile in our users table
-      const { data: profileData, error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('users')
         .insert({
           id: authData.user.id,
@@ -804,7 +892,7 @@ export const adminAPI = {
   },
 
   updateUser: async (userId: number, userData: any): Promise<User> => {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('users')
       .update({
         first_name: userData.first_name,
@@ -886,7 +974,7 @@ export const adminAPI = {
     // In a production environment, this should be handled by a server-side API
     try {
       // Get user email
-      const { data: user, error: getError } = await supabase
+      const { error: getError } = await supabase
         .from('users')
         .select('email')
         .eq('id', userId)
@@ -934,7 +1022,7 @@ export const adminAPI = {
     if (getError) throw getError;
 
     // Toggle evaluator role
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('users')
       .update({ is_evaluator: !user.is_evaluator })
       .eq('id', userId)
@@ -1571,6 +1659,147 @@ export const mtQualityAPI = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  getAssessmentBySentence: async (sentenceId: number): Promise<MTQualityAssessment | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    const { data, error } = await supabase
+      .from('mt_quality_assessments')
+      .select(`
+        *,
+        sentence:sentences(*),
+        evaluator:users(*)
+      `)
+      .eq('sentence_id', sentenceId)
+      .eq('evaluator_id', user.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "not found"
+    return data;
+  },
+
+  updateAssessment: async (id: number, updateData: MTQualityUpdate): Promise<MTQualityAssessment> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    const { data, error } = await supabase
+      .from('mt_quality_assessments')
+      .update({
+        ...updateData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('evaluator_id', user.id)
+      .select(`
+        *,
+        sentence:sentences(*),
+        evaluator:users(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  getEvaluatorStats: async (): Promise<EvaluatorStats> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    // Get basic evaluation stats
+    const { data: evaluations, error: evalError } = await supabase
+      .from('evaluations')
+      .select('*')
+      .eq('evaluator_id', user.id);
+
+    if (evalError) throw evalError;
+
+    // Get MT quality assessment stats
+    const { data: assessments, error: assessError } = await supabase
+      .from('mt_quality_assessments')
+      .select('*')
+      .eq('evaluator_id', user.id);
+
+    if (assessError) throw assessError;
+
+    // Calculate stats
+    const totalEvaluations = evaluations?.length || 0;
+    const completedEvaluations = evaluations?.filter(e => e.evaluation_status === 'completed').length || 0;
+    const pendingEvaluations = evaluations?.filter(e => e.evaluation_status === 'pending').length || 0;
+    
+    const totalAssessments = assessments?.length || 0;
+    const completedAssessments = assessments?.filter(a => a.evaluation_status === 'completed').length || 0;
+    const pendingAssessments = assessments?.filter(a => a.evaluation_status === 'pending').length || 0;
+
+    // Calculate averages
+    const avgRating = evaluations?.length > 0 
+      ? evaluations.reduce((sum, e) => sum + (e.overall_rating || 0), 0) / evaluations.length 
+      : 0;
+
+    const avgOverallScore = assessments?.length > 0
+      ? assessments.reduce((sum, a) => sum + (a.overall_quality_score || 0), 0) / assessments.length
+      : 0;
+
+    const avgFluencyScore = assessments?.length > 0
+      ? assessments.reduce((sum, a) => sum + (a.fluency_score || 0), 0) / assessments.length
+      : 0;
+
+    const avgAdequacyScore = assessments?.length > 0
+      ? assessments.reduce((sum, a) => sum + (a.adequacy_score || 0), 0) / assessments.length
+      : 0;
+
+    // Calculate total time spent
+    const totalTimeSpent = (evaluations?.reduce((sum, e) => sum + (e.time_spent_seconds || 0), 0) || 0) +
+                          (assessments?.reduce((sum, a) => sum + (a.time_spent_seconds || 0), 0) || 0);
+
+    // Get today's evaluations
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const evaluationsToday = evaluations?.filter(e => 
+      new Date(e.created_at) >= today
+    ).length || 0;
+
+    // Weekly progress (last 7 days)
+    const weeklyProgress = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      const dayCount = evaluations?.filter(e => {
+        const evalDate = new Date(e.created_at);
+        return evalDate >= date && evalDate < nextDate;
+      }).length || 0;
+      
+      weeklyProgress.push(dayCount);
+    }
+
+    return {
+      total_evaluations: totalEvaluations,
+      completed_evaluations: completedEvaluations,
+      pending_evaluations: pendingEvaluations,
+      average_rating: avgRating,
+      total_time_spent: totalTimeSpent,
+      evaluations_today: evaluationsToday,
+      weekly_progress: weeklyProgress,
+      total_assessments: totalAssessments,
+      completed_assessments: completedAssessments,
+      pending_assessments: pendingAssessments,
+      average_overall_score: avgOverallScore,
+      average_fluency_score: avgFluencyScore,
+      average_adequacy_score: avgAdequacyScore,
+      average_time_per_assessment: totalAssessments > 0 ? totalTimeSpent / totalAssessments : 0,
+      human_agreement_rate: 0, // This would need to be calculated based on agreement with AI
+      total_syntax_errors_found: 0, // This would need to be calculated from error details
+      total_semantic_errors_found: 0, // This would need to be calculated from error details
+      average_model_confidence: 0, // This would need to be calculated from AI confidence data
+    };
   },
 };
 

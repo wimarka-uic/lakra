@@ -562,8 +562,9 @@ const AnnotationInterface: React.FC = () => {
       if (annotation.voice_recording_blob && savedAnnotation) {
         try {
           const voiceResult = await annotationsAPI.uploadVoiceRecording(
+            savedAnnotation.id,
             annotation.voice_recording_blob,
-            savedAnnotation.id
+            annotation.voice_recording_duration || 0
           );
                   logger.info('Voice recording uploaded successfully', {
           component: 'AnnotationInterface',
