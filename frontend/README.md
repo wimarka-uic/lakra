@@ -1,6 +1,77 @@
-# React + TypeScript + Vite
+# Lakra - Smart Annotation Tool
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + TypeScript + Vite application for smart annotation and evaluation of translation quality.
+
+## Deployment
+
+This application is configured to work on various hosting platforms. The following files handle SPA routing:
+
+- `public/_redirects` - For Netlify and similar platforms
+- `_redirects` - Alternative location for some platforms
+
+### Platform-Specific Configuration
+
+#### Netlify
+The `public/_redirects` file is automatically detected and used.
+
+#### Vercel
+Create a `vercel.json` file in the frontend directory:
+```json
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+```
+
+#### Firebase Hosting
+Create a `firebase.json` file:
+```json
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
+```
+
+#### Apache
+Create a `.htaccess` file in the `dist` directory after building:
+```apache
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+```
+
+#### Nginx
+Add to your nginx configuration:
+```nginx
+location / {
+  try_files $uri $uri/ /index.html;
+}
+```
+
+### Build and Deploy
+
+```bash
+npm run build
+# or
+bun run build
+```
+
+The built files will be in the `dist` directory.
 
 Currently, two official plugins are available:
 

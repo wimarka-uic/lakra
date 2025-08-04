@@ -107,6 +107,42 @@ const SmartRedirect: React.FC = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+// 404 Not Found component
+const NotFound: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
+        <h2 className="text-2xl font-semibold text-gray-700 mb-4">Page Not Found</h2>
+        <p className="text-gray-600 mb-8">The page you're looking for doesn't exist.</p>
+        <button
+          onClick={() => window.history.back()}
+          className="bg-primary-500 hover:bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+        >
+          Go Back
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Public Route Component (redirects to appropriate dashboard if already authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -338,7 +374,7 @@ const AppContent: React.FC = () => {
           
           {/* Default redirects */}
           <Route path="/" element={<SmartRedirect />} />
-          <Route path="*" element={<SmartRedirect />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
         
         {/* Guidelines Modal */}
