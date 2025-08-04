@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { sentencesAPI, annotationsAPI } from '../services/api';
+import { sentencesAPI, annotationsAPI } from '../services/supabase-api';
 import type { Sentence, AnnotationCreate, AnnotationUpdate, TextHighlight } from '../types';
 import { logger } from '../utils/logger';
 import { ChevronRight, Check, AlertCircle, Clock, MessageCircle, Trash2, Plus, Highlighter, BookOpen } from 'lucide-react';
@@ -562,8 +562,9 @@ const AnnotationInterface: React.FC = () => {
       if (annotation.voice_recording_blob && savedAnnotation) {
         try {
           const voiceResult = await annotationsAPI.uploadVoiceRecording(
+            savedAnnotation.id,
             annotation.voice_recording_blob,
-            savedAnnotation.id
+            annotation.voice_recording_duration || 0
           );
                   logger.info('Voice recording uploaded successfully', {
           component: 'AnnotationInterface',

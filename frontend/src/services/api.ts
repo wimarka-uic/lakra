@@ -47,6 +47,9 @@ api.interceptors.request.use((config) => {
   const token = authStorage.getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log('Request interceptor: Added auth token for', config.url);
+  } else {
+    console.log('Request interceptor: No auth token found for', config.url);
   }
   return config;
 });
@@ -55,6 +58,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.log('Response interceptor: Error occurred:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data
+    });
+    
     if (error.response?.status === 401) {
       // Only redirect to login if not already on login/register pages
       const currentPath = window.location.pathname;
@@ -110,6 +120,12 @@ export const authAPI = {
     languages?: string[];
   }): Promise<User> => {
     const response = await api.put('/me/profile', profileData);
+    return response.data;
+  },
+
+  // Test authentication
+  testAuth: async (): Promise<any> => {
+    const response = await api.get('/test-auth');
     return response.data;
   },
 };
@@ -298,6 +314,16 @@ export const adminAPI = {
     return response.data;
   },
 
+  updateSentence: async (sentenceId: number, sentenceData: Partial<Sentence>): Promise<Sentence> => {
+    const response = await api.put(`/admin/sentences/${sentenceId}`, sentenceData);
+    return response.data;
+  },
+
+  deleteSentence: async (sentenceId: number): Promise<{ message: string }> => {
+    const response = await api.delete(`/admin/sentences/${sentenceId}`);
+    return response.data;
+  },
+
   toggleEvaluatorRole: async (userId: number): Promise<User> => {
     const response = await api.put(`/admin/users/${userId}/toggle-evaluator`);
     return response.data;
@@ -472,7 +498,8 @@ export const languageProficiencyAPI = {
   submitAnswers: async (answers: UserQuestionAnswer[], sessionId: string, languages: string[]): Promise<OnboardingTestResult> => {
     // Capitalize language names to match database format
     const capitalizedLanguages = languages.map(lang => lang.charAt(0).toUpperCase() + lang.slice(1));
-    const response = await api.post('/language-proficiency-questions/submit', {
+    
+    const requestData = {
       test_session_id: sessionId,
       answers: answers.map(answer => ({
         question_id: answer.question_id,
@@ -480,7 +507,38 @@ export const languageProficiencyAPI = {
         test_session_id: sessionId
       })),
       languages: capitalizedLanguages
+    };
+    
+    console.log('Submitting answers with data:', requestData);
+    console.log('Auth token:', authStorage.getToken() ? 'Present' : 'Missing');
+    
+    const response = await api.post('/language-proficiency-questions/submit', requestData);
+    return response.data;
+  },
+
+  // Submit answers during registration (no auth required)
+  submitAnswersRegistration: async (answers: UserQuestionAnswer[], sessionId: string, languages: string[]): Promise<OnboardingTestResult> => {
+    // Capitalize language names to match database format
+    const capitalizedLanguages = languages.map(lang => lang.charAt(0).toUpperCase() + lang.slice(1));
+    
+    const requestData = {
+      test_session_id: sessionId,
+      answers: answers.map(answer => ({
+        question_id: answer.question_id,
+        selected_answer: answer.selected_answer,
+        test_session_id: sessionId
+      })),
+      languages: capitalizedLanguages
+    };
+    
+    console.log('Submitting registration answers with data:', requestData);
+    
+    // Use a separate axios instance without auth interceptor for registration
+    const registrationApi = axios.create({
+      baseURL: API_BASE_URL,
     });
+    
+    const response = await registrationApi.post('/language-proficiency-questions/submit-registration', requestData);
     return response.data;
   },
 

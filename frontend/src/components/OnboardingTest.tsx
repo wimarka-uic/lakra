@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { languageProficiencyAPI, onboardingAPI, authStorage } from '../services/api';
+import { languageProficiencyAPI, onboardingAPI, authStorage } from '../services/supabase-api';
 import { useAuth } from '../contexts/AuthContext';
 import { Clock, Brain, AlertTriangle, ArrowRight, Globe, BookOpen } from 'lucide-react';
 import type { UserQuestionAnswer, LanguageProficiencyQuestion, OnboardingTest as OnboardingTestType } from '../types';
@@ -9,7 +9,7 @@ import QuizFailureModal from './QuizFailureModal';
 
 const OnboardingTest: React.FC = () => {
   const navigate = useNavigate();
-  const { user, forceRefreshUser } = useAuth();
+  const { user, forceRefreshUser, isLoading } = useAuth();
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserQuestionAnswer[]>([]);
@@ -55,6 +55,16 @@ const OnboardingTest: React.FC = () => {
       return false;
     }
   }, [forceRefreshUser]);
+
+  // Check if user is authenticated
+  useEffect(() => {
+    console.log('Auth state:', { user: !!user, isLoading, token: !!authStorage.getToken() });
+    if (!user && !isLoading) {
+      console.log('User not authenticated, redirecting to login');
+      navigate('/login');
+      return;
+    }
+  }, [user, isLoading, navigate]);
 
   // Check if user has already completed onboarding
   useEffect(() => {
@@ -110,14 +120,19 @@ const OnboardingTest: React.FC = () => {
           if (fetchedQuestions && fetchedQuestions.length > 0) {
             setQuestions(fetchedQuestions);
           } else {
-            setQuestionsError('No questions available for your selected languages. Please contact support.');
+            setQuestionsError('No proficiency test questions are currently available for your selected languages. Please try selecting different languages or contact support for assistance.');
           }
-        } catch {
+        } catch (error) {
+          console.error('Error fetching questions:', error);
           setQuestionsError('Failed to load test questions. Please try again.');
         } finally {
           setLoadingQuestions(false);
         }
-      }
+              } else if (testStarted && selectedLanguages.length === 0) {
+          // If test is started but no languages are selected
+          setQuestionsError('No languages selected. Please update your profile to select languages before taking the proficiency test. Go to your profile and select at least one language you are proficient in.');
+          setQuestionsFetched(true);
+        }
     };
 
     fetchQuestions();
@@ -129,7 +144,7 @@ const OnboardingTest: React.FC = () => {
       setShowInstructions(false);
       setTestStarted(true);
     } else {
-      alert('Please update your profile to select your languages before taking the proficiency quiz.');
+      alert('Please update your profile to select your languages before taking the proficiency quiz. You need to select at least one language to take the test.');
       navigate('/profile');
     }
   };
@@ -137,11 +152,11 @@ const OnboardingTest: React.FC = () => {
   const updateAnswer = (selectedAnswer: number) => {
     if (!currentQuestion) return;
     
-    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+    // Only store the selected answer, don't calculate correctness during the test
     const newAnswer: UserQuestionAnswer = {
       question_id: currentQuestion.id,
-      selected_answer: selectedAnswer,
-      is_correct: isCorrect
+      selected_answer: selectedAnswer
+      // is_correct will be calculated only when submitting the test
     };
     
     setAnswers(prev => {
@@ -234,17 +249,25 @@ const OnboardingTest: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Calculate score
-      const correctAnswers = answers.filter(a => a.is_correct).length;
-      const totalQuestions = questions.length;
-      const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+      
+      // Don't calculate score here - let the backend handle it
+      // The backend will calculate correctness by comparing selected_answer with correct_answer
+      
+      console.log('Submitting test with:', {
+        answers: answers.length,
+        questions: questions.length,
+        sessionId,
+        selectedLanguages
+      });
       
       // Submit to backend
       const result = await languageProficiencyAPI.submitAnswers(answers, sessionId, selectedLanguages);
       
-      if (result.passed || score >= 70) {
+      console.log('Test submission result:', result);
+      
+      if (result.passed || result.score >= 70) {
         // Show success modal and mark as just completed
-        setFinalScore(score);
+        setFinalScore(result.score);
         setJustCompletedQuiz(true);
         
         // Update user data if returned from backend
@@ -259,11 +282,29 @@ const OnboardingTest: React.FC = () => {
         setShowSuccessModal(true);
       } else {
         // Show failure modal
-        setFinalScore(score);
+        setFinalScore(result.score);
         setShowFailureModal(true);
       }
-    } catch {
-      alert('Error submitting quiz. Please try again.');
+    } catch (error: unknown) {
+      console.error('Error submitting quiz:', error);
+      
+      // Show more specific error message
+      let errorMessage = 'Error submitting quiz. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message || 'Error submitting quiz. Please try again.';
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const apiError = error as { response?: { data?: { detail?: string }, status?: number } };
+        if (apiError.response?.status === 403) {
+          errorMessage = 'Access denied. Please check your permissions or try logging in again.';
+        } else if (apiError.response?.status === 401) {
+          errorMessage = 'Authentication failed. Please log in again.';
+        } else if (apiError.response?.data?.detail) {
+          errorMessage = `Server error: ${apiError.response.data.detail}`;
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -317,6 +358,36 @@ const OnboardingTest: React.FC = () => {
         <div className="text-center">
           <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
           <p className="text-gray-600">Checking onboarding status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Brain className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">You need to be logged in to take the onboarding test.</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Go to Login
+          </button>
         </div>
       </div>
     );
@@ -518,26 +589,45 @@ const OnboardingTest: React.FC = () => {
               <AlertTriangle className="h-16 w-16 text-red-400 mx-auto mb-4" />
               <p className="text-red-600 mb-4">{questionsError}</p>
               <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setQuestionsError('');
-                    setQuestionsFetched(false);
-                    setQuestions([]);
-                    setLoadingQuestions(false);
-                    // Reset test state for retry
-                    setCurrentQuestionIndex(0);
-                    setAnswers([]);
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-3"
-                >
-                  Try Again
-                </button>
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-                >
-                  Return to Dashboard
-                </button>
+                {questionsError.includes('No languages selected') ? (
+                  <>
+                    <button
+                      onClick={() => navigate('/profile')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-3"
+                    >
+                      Go to Profile
+                    </button>
+                    <button
+                      onClick={() => navigate('/dashboard')}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                    >
+                      Return to Dashboard
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setQuestionsError('');
+                        setQuestionsFetched(false);
+                        setQuestions([]);
+                        setLoadingQuestions(false);
+                        // Reset test state for retry
+                        setCurrentQuestionIndex(0);
+                        setAnswers([]);
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-3"
+                    >
+                      Try Again
+                    </button>
+                    <button
+                      onClick={() => navigate('/dashboard')}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                    >
+                      Return to Dashboard
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ) : testStarted && questionsFetched && questions.length === 0 ? (

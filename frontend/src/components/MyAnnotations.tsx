@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { annotationsAPI } from '../services/api';
+import { annotationsAPI } from '../services/supabase-api';
 import type { Annotation, TextHighlight, AnnotationUpdate } from '../types';
 import { BarChart3, Calendar, Clock, Star, MessageCircle, Edit, AlertTriangle, Plus, Trash2, ChevronRight, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';

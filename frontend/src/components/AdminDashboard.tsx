@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI, sentencesAPI, languageProficiencyAPI } from '../services/api';
+import { adminAPI, sentencesAPI, languageProficiencyAPI } from '../services/supabase-api';
 import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion } from '../types';
 import { logger } from '../utils/logger';
 import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download, UserCheck, UserX, Key } from 'lucide-react';
@@ -57,6 +57,10 @@ const AdminDashboard: React.FC = () => {
   };
 
   const [showAddSentence, setShowAddSentence] = useState(false);
+  const [showEditSentence, setShowEditSentence] = useState(false);
+  const [editingSentence, setEditingSentence] = useState<Sentence | null>(null);
+  const [showDeleteSentenceConfirm, setShowDeleteSentenceConfirm] = useState(false);
+  const [deletingSentence, setDeletingSentence] = useState<Sentence | null>(null);
   const [languageFilter, setLanguageFilter] = useState<string>('all');
   const [expandedSentences, setExpandedSentences] = useState<Set<number>>(new Set());
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -88,9 +92,12 @@ const AdminDashboard: React.FC = () => {
     source_text: '',
     machine_translation: '',
     tagalog_source_text: '',
+    back_translation: '',
     source_language: 'en',
-    target_language: 'tagalog',
+    target_language: 'tgl',
     domain: '',
+    domains: 'conversational',
+    custom_domain: '',
   });
 
   // Onboarding Test Questions state
@@ -128,7 +135,6 @@ const AdminDashboard: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
 
   // User Management states
-  const [showAddUser, setShowAddUser] = useState(false);
   const [showEditUser, setShowEditUser] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -137,18 +143,6 @@ const AdminDashboard: React.FC = () => {
     role: 'all',
     active: 'all',
     search: ''
-  });
-  const [newUser, setNewUser] = useState({
-    email: '',
-    username: '',
-    password: '',
-    first_name: '',
-    last_name: '',
-    is_active: true,
-    is_admin: false,
-    is_evaluator: false,
-    languages: ['en'],
-    skip_onboarding: false
   });
   const [editUser, setEditUser] = useState({
     first_name: '',
@@ -181,12 +175,18 @@ const AdminDashboard: React.FC = () => {
         if (showAddSentence) {
           setShowAddSentence(false);
         }
+        if (showEditSentence) {
+          setShowEditSentence(false);
+          setEditingSentence(null);
+        }
+        if (showDeleteSentenceConfirm) {
+          setShowDeleteSentenceConfirm(false);
+          setDeletingSentence(null);
+        }
         if (showCSVImport) {
           setShowCSVImport(false);
         }
-        if (showAddUser) {
-          setShowAddUser(false);
-        }
+
         if (showEditUser) {
           setShowEditUser(false);
         }
@@ -203,7 +203,7 @@ const AdminDashboard: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [showAddQuestion, showAddSentence, showCSVImport, showAddUser, showEditUser, showDeleteConfirm, showUserDetails]);
+  }, [showAddQuestion, showAddSentence, showEditSentence, showDeleteSentenceConfirm, showCSVImport, showEditUser, showDeleteConfirm, showUserDetails]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -355,33 +355,6 @@ const AdminDashboard: React.FC = () => {
   }, [activeTab, loadUsers]);
 
   // CRUD Handlers for User Management
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await adminAPI.createUser(newUser);
-      setNewUser({
-        email: '',
-        username: '',
-        password: '',
-        first_name: '',
-        last_name: '',
-        is_active: true,
-        is_admin: false,
-        is_evaluator: false,
-        languages: ['en'],
-        skip_onboarding: false
-      });
-      setShowAddUser(false);
-      await loadUsers();
-      await loadDashboardData(); // Refresh stats
-    } catch (error) {
-      logger.apiError('createUser', error as Error, {
-        component: 'AdminDashboard',
-        metadata: { email: newUser.email }
-      });
-      alert('Failed to create user. Please check the details and try again.');
-    }
-  };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -476,14 +449,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Generate secure password
-  const generateSecurePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setNewUser(prev => ({ ...prev, password }));
-  };
+
 
   useEffect(() => {
     if (activeTab === 'sentences') {
@@ -494,14 +460,23 @@ const AdminDashboard: React.FC = () => {
   const handleAddSentence = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await sentencesAPI.createSentence(newSentence);
+      // Use custom domain if "other" is selected
+      const sentenceData = {
+        ...newSentence,
+        domain: newSentence.domains === 'other' ? newSentence.custom_domain : newSentence.domains,
+        domains: newSentence.domains === 'other' ? newSentence.custom_domain : newSentence.domains
+      };
+      await sentencesAPI.createSentence(sentenceData);
       setNewSentence({
         source_text: '',
         machine_translation: '',
         tagalog_source_text: '',
+        back_translation: '',
         source_language: 'en',
-        target_language: 'tagalog',
+        target_language: 'tgl',
         domain: '',
+        domains: 'conversational',
+        custom_domain: '',
       });
       setShowAddSentence(false);
       await loadDashboardData();
@@ -510,6 +485,58 @@ const AdminDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error adding sentence:', error);
+    }
+  };
+
+  const handleEditSentence = (sentence: Sentence) => {
+    setEditingSentence(sentence);
+    setShowEditSentence(true);
+  };
+
+  const handleUpdateSentence = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSentence) return;
+    
+    try {
+      await adminAPI.updateSentence(editingSentence.id, {
+        source_text: editingSentence.source_text,
+        machine_translation: editingSentence.machine_translation,
+        tagalog_source_text: editingSentence.tagalog_source_text,
+        source_language: editingSentence.source_language,
+        target_language: editingSentence.target_language,
+        domain: editingSentence.domain,
+        is_active: editingSentence.is_active,
+      });
+      
+      setShowEditSentence(false);
+      setEditingSentence(null);
+      await loadDashboardData();
+      if (activeTab === 'sentences') {
+        await loadSentences();
+      }
+    } catch (error) {
+      console.error('Error updating sentence:', error);
+    }
+  };
+
+  const handleShowDeleteSentenceConfirm = (sentence: Sentence) => {
+    setDeletingSentence(sentence);
+    setShowDeleteSentenceConfirm(true);
+  };
+
+  const handleDeleteSentence = async () => {
+    if (!deletingSentence) return;
+    
+    try {
+      await adminAPI.deleteSentence(deletingSentence.id);
+      setShowDeleteSentenceConfirm(false);
+      setDeletingSentence(null);
+      await loadDashboardData();
+      if (activeTab === 'sentences') {
+        await loadSentences();
+      }
+    } catch (error) {
+      console.error('Error deleting sentence:', error);
     }
   };
 
@@ -555,14 +582,13 @@ const AdminDashboard: React.FC = () => {
   };
 
   const downloadCSVTemplate = () => {
-    const csvContent = `source_text,machine_translation,source_language,target_language,domain
-"Hello world","Kumusta mundo","en","tagalog","general"
-"How are you?","Kumusta ka?","en","tagalog","conversation"
-"Where is the hospital?","Nasaan ang ospital?","en","tagalog","medical"
-"Good morning","Maayong buntag","en","cebuano","greetings"
-"Where is the market?","Asa ang merkado?","en","cebuano","directions"
-"Thank you very much","Agyamanak unay","en","ilocano","polite"
-"The food is delicious","Naimas ti kanen","en","ilocano","food"`;
+    const csvContent = `Source,Source_Language,Translation,Translation_Language,Back_Translation,Domain,Domains
+"I am your mother, Jerry!","en","Lolo niya ako, Jerry.","tgl","","conversational","conversational"
+"Nanay mo ako, Jerry!","tgl","Siak ti inam, Jerry!","ilo","I am your mother, Jerry!","conversational","news"
+"Where is the hospital?","en","Nasaan ang ospital?","tgl","","medical","medical"
+"Good morning","en","Maayong buntag","ceb","","greetings","conversational"
+"Thank you very much","en","Agyamanak unay","ilo","","polite","conversational"
+"The food is delicious","en","Naimas ti kanen","ilo","","food","conversational"`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -1666,13 +1692,6 @@ const AdminDashboard: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900">User Management</h3>
                 <p className="text-sm text-gray-600 mt-1">Create and manage users with different roles (Annotator, Evaluator, or Admin)</p>
               </div>
-              <button
-                onClick={() => setShowAddUser(true)}
-                className="btn-primary flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add User</span>
-              </button>
             </div>
 
             {/* Filters */}
@@ -1968,10 +1987,11 @@ const AdminDashboard: React.FC = () => {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                     <h4 className="text-sm font-semibold text-blue-900 mb-2">CSV Format Requirements</h4>
                     <div className="text-sm text-blue-800 space-y-2">
-                      <p><strong>Required columns:</strong> source_text, machine_translation, source_language, target_language</p>
-                      <p><strong>Optional columns:</strong> domain</p>
-                      <p><strong>Supported source languages:</strong> en (English only)</p>
-                      <p><strong>Supported target languages:</strong> tagalog (Filipino), cebuano, ilocano</p>
+                      <p><strong>Required columns:</strong> Source, Source_Language, Translation, Translation_Language</p>
+                      <p><strong>Optional columns:</strong> Back_Translation, Domain, Domains</p>
+                      <p><strong>Supported source languages:</strong> en (English), tgl (Tagalog), ilo (Ilocano), ceb (Cebuano)</p>
+                      <p><strong>Supported target languages:</strong> tgl (Tagalog), ilo (Ilocano), ceb (Cebuano), en (English)</p>
+                      <p><strong>Available domains:</strong> conversational, news, legal, medical, educational</p>
                     </div>
                     <button
                       onClick={downloadCSVTemplate}
@@ -2185,7 +2205,7 @@ const AdminDashboard: React.FC = () => {
                       <option value="all">All Languages</option>
                       <option value="tagalog">Tagalog (Filipino)</option>
                       <option value="cebuano">Cebuano</option>
-                      <option value="ilocano">Ilocano</option>
+                      <option value="ilokano">Ilokano</option>
                     </select>
                   </div>
 
@@ -2294,6 +2314,9 @@ const AdminDashboard: React.FC = () => {
                           required
                         >
                           <option value="en">English</option>
+                          <option value="tgl">Tagalog</option>
+                          <option value="ilo">Ilocano</option>
+                          <option value="ceb">Cebuano</option>
                         </select>
                       </div>
                       
@@ -2307,9 +2330,10 @@ const AdminDashboard: React.FC = () => {
                           className="input-field autocomplete-off"
                           required
                         >
-                          <option value="tagalog">Tagalog (Filipino)</option>
-                          <option value="cebuano">Cebuano</option>
-                          <option value="ilocano">Ilocano</option>
+                          <option value="tgl">Tagalog</option>
+                          <option value="ilo">Ilocano</option>
+                          <option value="ceb">Cebuano</option>
+                          <option value="en">English</option>
                         </select>
                       </div>
                     </div>
@@ -2342,13 +2366,13 @@ const AdminDashboard: React.FC = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tagalog Source Text (Optional)
+                        Back Translation (Optional)
                       </label>
                       <textarea
-                        value={newSentence.tagalog_source_text}
-                        onChange={(e) => setNewSentence({...newSentence, tagalog_source_text: e.target.value})}
+                        value={newSentence.back_translation}
+                        onChange={(e) => setNewSentence({...newSentence, back_translation: e.target.value})}
                         className="textarea-field autocomplete-off"
-                        placeholder="Enter the Tagalog source text if available..."
+                        placeholder="Enter the back translation if available..."
                       />
                     </div>
 
@@ -2356,14 +2380,36 @@ const AdminDashboard: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Domain (Optional)
                       </label>
-                      <input
-                        type="text"
-                        value={newSentence.domain}
-                        onChange={(e) => setNewSentence({...newSentence, domain: e.target.value})}
+                      <select
+                        value={newSentence.domains}
+                        onChange={(e) => setNewSentence({...newSentence, domains: e.target.value})}
                         className="input-field autocomplete-off"
-                        placeholder="e.g., Technology, Education, Healthcare..."
-                      />
+                      >
+                        <option value="">-- Select Domain --</option>
+                        <option value="conversational">Conversational</option>
+                        <option value="news">News</option>
+                        <option value="legal">Legal</option>
+                        <option value="medical">Medical</option>
+                        <option value="educational">Educational</option>
+                        <option value="other">Other (Custom)</option>
+                      </select>
                     </div>
+
+                    {newSentence.domains === 'other' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Custom Domain
+                        </label>
+                        <input
+                          type="text"
+                          value={newSentence.custom_domain || ''}
+                          onChange={(e) => setNewSentence({...newSentence, custom_domain: e.target.value})}
+                          className="input-field autocomplete-off"
+                          placeholder="Enter custom domain (e.g., technology, sports, business)..."
+                          required
+                        />
+                      </div>
+                    )}
 
                     <div className="flex justify-end space-x-3 pt-4">
                       <button
@@ -2381,6 +2427,226 @@ const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Sentence Modal */}
+            {showEditSentence && editingSentence && (
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2147483647] pointer-events-auto"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setShowEditSentence(false);
+                    setEditingSentence(null);
+                  }
+                }}
+                style={{ zIndex: 2147483647, pointerEvents: 'auto' }}
+              >
+                <div
+                  className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto z-[2147483647] pointer-events-auto"
+                  onClick={e => e.stopPropagation()}
+                  style={{ zIndex: 2147483647, pointerEvents: 'auto' }}
+                  tabIndex={0}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">Edit Sentence #{editingSentence.id}</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEditSentence(false);
+                        setEditingSentence(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  
+                  <form onSubmit={handleUpdateSentence} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Source Language
+                        </label>
+                        <select
+                          value={editingSentence.source_language}
+                          onChange={(e) => setEditingSentence({...editingSentence, source_language: e.target.value})}
+                          className="input-field autocomplete-off"
+                          required
+                        >
+                          <option value="en">English</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Target Language
+                        </label>
+                        <select
+                          value={editingSentence.target_language}
+                          onChange={(e) => setEditingSentence({...editingSentence, target_language: e.target.value})}
+                          className="input-field autocomplete-off"
+                          required
+                        >
+                          <option value="tagalog">Tagalog (Filipino)</option>
+                          <option value="cebuano">Cebuano</option>
+                          <option value="ilokano">Ilokano</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Source Text
+                      </label>
+                      <textarea
+                        value={editingSentence.source_text}
+                        onChange={(e) => setEditingSentence({...editingSentence, source_text: e.target.value})}
+                        className="textarea-field autocomplete-off"
+                        required
+                        placeholder="Enter the source text..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Machine Translation
+                      </label>
+                      <textarea
+                        value={editingSentence.machine_translation}
+                        onChange={(e) => setEditingSentence({...editingSentence, machine_translation: e.target.value})}
+                        className="textarea-field autocomplete-off"
+                        required
+                        placeholder="Enter the machine translation..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tagalog Source Text (Optional)
+                      </label>
+                      <textarea
+                        value={editingSentence.tagalog_source_text || ''}
+                        onChange={(e) => setEditingSentence({...editingSentence, tagalog_source_text: e.target.value})}
+                        className="textarea-field autocomplete-off"
+                        placeholder="Enter the Tagalog source text if available..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Domain (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={editingSentence.domain || ''}
+                        onChange={(e) => setEditingSentence({...editingSentence, domain: e.target.value})}
+                        className="input-field autocomplete-off"
+                        placeholder="e.g., Technology, Education, Healthcare..."
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={editingSentence.is_active}
+                        onChange={(e) => setEditingSentence({...editingSentence, is_active: e.target.checked})}
+                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+                        Active (available for annotation)
+                      </label>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEditSentence(false);
+                          setEditingSentence(null);
+                        }}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                      >
+                        Update Sentence
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Delete Sentence Confirmation Modal */}
+            {showDeleteSentenceConfirm && deletingSentence && (
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2147483647] pointer-events-auto"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setShowDeleteSentenceConfirm(false);
+                    setDeletingSentence(null);
+                  }
+                }}
+                style={{ zIndex: 2147483647, pointerEvents: 'auto' }}
+              >
+                <div
+                  className="bg-white rounded-lg p-6 w-full max-w-md z-[2147483647] pointer-events-auto"
+                  onClick={e => e.stopPropagation()}
+                  style={{ zIndex: 2147483647, pointerEvents: 'auto' }}
+                  tabIndex={0}
+                >
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                        <Trash2 className="h-5 w-5 text-red-600" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">Delete Sentence</h3>
+                      <p className="text-sm text-gray-500">This action cannot be undone.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-700 mb-3">
+                      Are you sure you want to delete sentence #{deletingSentence.id}?
+                    </p>
+                    <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                      <p className="font-medium text-gray-900 mb-1">Source:</p>
+                      <p className="text-gray-700 mb-2">{deletingSentence.source_text.substring(0, 100)}{deletingSentence.source_text.length > 100 && '...'}</p>
+                      <p className="font-medium text-gray-900 mb-1">Translation:</p>
+                      <p className="text-gray-700">{deletingSentence.machine_translation.substring(0, 100)}{deletingSentence.machine_translation.length > 100 && '...'}</p>
+                    </div>
+                    <p className="text-xs text-red-600 mt-2">
+                      This will also delete all associated annotations and evaluations.
+                    </p>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDeleteSentenceConfirm(false);
+                        setDeletingSentence(null);
+                      }}
+                      className="btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteSentence}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Delete Sentence
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -2470,13 +2736,31 @@ const AdminDashboard: React.FC = () => {
                                   )}
                                 </div>
                               )}
-                              <button
-                                onClick={() => toggleSentenceExpansion(sentence.id)}
-                                className="flex items-center space-x-2 text-sm text-beauty-bush-600 hover:text-beauty-bush-800 font-medium px-3 py-2 rounded-lg hover:bg-beauty-bush-50 transition-all"
-                              >
-                                <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
-                                <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                              </button>
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => handleEditSentence(sentence)}
+                                  className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded-lg hover:bg-blue-50 transition-all"
+                                  title="Edit sentence"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                  <span className="hidden sm:inline">Edit</span>
+                                </button>
+                                <button
+                                  onClick={() => handleShowDeleteSentenceConfirm(sentence)}
+                                  className="flex items-center space-x-1 text-sm text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded-lg hover:bg-red-50 transition-all"
+                                  title="Delete sentence"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                  <span className="hidden sm:inline">Delete</span>
+                                </button>
+                                <button
+                                  onClick={() => toggleSentenceExpansion(sentence.id)}
+                                  className="flex items-center space-x-2 text-sm text-beauty-bush-600 hover:text-beauty-bush-800 font-medium px-3 py-2 rounded-lg hover:bg-beauty-bush-50 transition-all"
+                                >
+                                  <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                </button>
+                              </div>
                             </div>
                           </div>
 
@@ -2818,7 +3102,7 @@ const AdminDashboard: React.FC = () => {
                     <option value="all">All Languages</option>
                     <option value="tagalog">Tagalog (Filipino)</option>
                     <option value="cebuano">Cebuano</option>
-                    <option value="ilocano">Ilocano</option>
+                    <option value="ilokano">Ilokano</option>
                   </select>
 
                   {/* Type Filter */}
@@ -2922,7 +3206,7 @@ const AdminDashboard: React.FC = () => {
                         >
                           <option value="Tagalog">Tagalog (Filipino)</option>
                           <option value="Cebuano">Cebuano</option>
-                          <option value="Ilocano">Ilocano</option>
+                          <option value="Ilokano">Ilokano</option>
                         </select>
                       </div>
                       
@@ -3070,7 +3354,7 @@ const AdminDashboard: React.FC = () => {
                               >
                                 <option value="Tagalog">Tagalog (Filipino)</option>
                                 <option value="Cebuano">Cebuano</option>
-                                <option value="Ilocano">Ilocano</option>
+                                <option value="Ilokano">Ilokano</option>
                               </select>
                             </div>
                             <div>
@@ -3358,300 +3642,7 @@ const AdminDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Add User Modal */}
-      {showAddUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                      <div className="bg-white rounded-lg shadow-xl border w-full max-w-md max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-medium text-gray-900">Add New User</h3>
-                <button
-                  onClick={() => setShowAddUser(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-                              <form onSubmit={handleCreateUser} className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="add-first-name" className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name
-                    </label>
-                    <input
-                      id="add-first-name"
-                      type="text"
-                      required
-                      value={newUser.first_name}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, first_name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="add-last-name" className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name
-                    </label>
-                    <input
-                      id="add-last-name"
-                      type="text"
-                      required
-                      value={newUser.last_name}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, last_name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="add-email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    id="add-email"
-                    type="email"
-                    required
-                    value={newUser.email}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="add-username" className="block text-sm font-medium text-gray-700 mb-1">
-                    Username
-                  </label>
-                  <input
-                    id="add-username"
-                    type="text"
-                    required
-                    value={newUser.username}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="add-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Password
-                  </label>
-                  <div className="flex space-x-2">
-                    <input
-                      id="add-password"
-                      type="text"
-                      required
-                      value={newUser.password}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={generateSecurePassword}
-                      className="px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                    >
-                      Generate
-                    </button>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Languages
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input
-                        id="add-lang-en"
-                        type="checkbox"
-                        value="en"
-                        checked={newUser.languages.includes('en')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setNewUser(prev => ({ 
-                              ...prev, 
-                              languages: [...prev.languages, 'en'].filter((v, i, a) => a.indexOf(v) === i)
-                            }));
-                          } else {
-                            setNewUser(prev => ({ 
-                              ...prev, 
-                              languages: prev.languages.filter(lang => lang !== 'en')
-                            }));
-                          }
-                        }}
-                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="add-lang-en" className="ml-2 block text-sm text-gray-700">
-                        English
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="add-lang-tagalog"
-                        type="checkbox"
-                        value="tagalog"
-                        checked={newUser.languages.includes('tagalog')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setNewUser(prev => ({ 
-                              ...prev, 
-                              languages: [...prev.languages, 'tagalog'].filter((v, i, a) => a.indexOf(v) === i)
-                            }));
-                          } else {
-                            setNewUser(prev => ({ 
-                              ...prev, 
-                              languages: prev.languages.filter(lang => lang !== 'tagalog')
-                            }));
-                          }
-                        }}
-                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="add-lang-tagalog" className="ml-2 block text-sm text-gray-700">
-                        Tagalog
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="add-lang-cebuano"
-                        type="checkbox"
-                        value="cebuano"
-                        checked={newUser.languages.includes('cebuano')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setNewUser(prev => ({ 
-                              ...prev, 
-                              languages: [...prev.languages, 'cebuano'].filter((v, i, a) => a.indexOf(v) === i)
-                            }));
-                          } else {
-                            setNewUser(prev => ({ 
-                              ...prev, 
-                              languages: prev.languages.filter(lang => lang !== 'cebuano')
-                            }));
-                          }
-                        }}
-                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="add-lang-cebuano" className="ml-2 block text-sm text-gray-700">
-                        Cebuano
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="add-lang-ilocano"
-                        type="checkbox"
-                        value="ilocano"
-                        checked={newUser.languages.includes('ilocano')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setNewUser(prev => ({ 
-                              ...prev, 
-                              languages: [...prev.languages, 'ilocano'].filter((v, i, a) => a.indexOf(v) === i)
-                            }));
-                          } else {
-                            setNewUser(prev => ({ 
-                              ...prev, 
-                              languages: prev.languages.filter(lang => lang !== 'ilocano')
-                            }));
-                          }
-                        }}
-                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="add-lang-ilocano" className="ml-2 block text-sm text-gray-700">
-                        Ilocano
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    User Role & Settings
-                  </label>
-                  <div className="space-y-3">
-                    <div className="flex items-center">
-                      <input
-                        id="add-is-active"
-                        type="checkbox"
-                        checked={newUser.is_active}
-                        onChange={(e) => setNewUser(prev => ({ ...prev, is_active: e.target.checked }))}
-                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="add-is-active" className="ml-2 block text-sm text-gray-700">
-                        Active user
-                      </label>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded-lg border">
-                      <div className="text-sm font-medium text-gray-700 mb-2">Role Permissions:</div>
-                      <div className="space-y-2">
-                        <div className="flex items-center">
-                          <input
-                            id="add-is-admin"
-                            type="checkbox"
-                            checked={newUser.is_admin}
-                            onChange={(e) => setNewUser(prev => ({ ...prev, is_admin: e.target.checked }))}
-                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                          />
-                          <label htmlFor="add-is-admin" className="ml-2 block text-sm text-gray-700">
-                            <span className="font-medium text-purple-700">Administrator</span> - Full system access
-                          </label>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <input
-                            id="add-is-evaluator"
-                            type="checkbox"
-                            checked={newUser.is_evaluator}
-                            onChange={(e) => setNewUser(prev => ({ ...prev, is_evaluator: e.target.checked }))}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                          <label htmlFor="add-is-evaluator" className="ml-2 block text-sm text-gray-700">
-                            <span className="font-medium text-blue-700">Evaluator</span> - Can evaluate annotations
-                          </label>
-                        </div>
-                        
-                        <div className="text-xs text-gray-500 mt-2">
-                          Note: Users without special roles are Annotators by default
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="add-skip-onboarding"
-                        type="checkbox"
-                        checked={newUser.skip_onboarding}
-                        onChange={(e) => setNewUser(prev => ({ ...prev, skip_onboarding: e.target.checked }))}
-                        className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="add-skip-onboarding" className="ml-2 block text-sm text-gray-700">
-                        Skip onboarding test
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                
-                                  <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddUser(false)}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-sm font-medium text-white bg-beauty-bush-600 border border-transparent rounded-md hover:bg-beauty-bush-700 transition-colors"
-                    >
-                      Create User
-                    </button>
-                  </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Edit User Modal */}
       {showEditUser && selectedUser && (
@@ -3810,27 +3801,27 @@ const AdminDashboard: React.FC = () => {
                     
                     <div className="flex items-center">
                       <input
-                        id="edit-lang-ilocano"
+                        id="edit-lang-ilokano"
                         type="checkbox"
-                        value="ilocano"
-                        checked={editUser.languages.includes('ilocano')}
+                        value="ilokano"
+                        checked={editUser.languages.includes('ilokano')}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setEditUser(prev => ({ 
                               ...prev, 
-                              languages: [...prev.languages, 'ilocano'].filter((v, i, a) => a.indexOf(v) === i)
+                              languages: [...prev.languages, 'ilokano'].filter((v, i, a) => a.indexOf(v) === i)
                             }));
                           } else {
                             setEditUser(prev => ({ 
                               ...prev, 
-                              languages: prev.languages.filter(lang => lang !== 'ilocano')
+                              languages: prev.languages.filter(lang => lang !== 'ilokano')
                             }));
                           }
                         }}
                         className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="edit-lang-ilocano" className="ml-2 block text-sm text-gray-700">
-                        Ilocano
+                      <label htmlFor="edit-lang-ilokano" className="ml-2 block text-sm text-gray-700">
+                        Ilokano
                       </label>
                     </div>
                   </div>

@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { languageProficiencyAPI } from '../services/api';
+import { languageProficiencyAPI } from '../services/supabase-api';
+
 import { FileText, AlertCircle, Check, Loader2, UserCheck, Users, Clock, Brain, ArrowRight, Globe } from 'lucide-react';
 import type { LanguageProficiencyQuestion } from '../types';
 import Logo from './Logo';
@@ -9,7 +10,7 @@ import Logo from './Logo';
 interface UserAnswer {
   question_id: number;
   selected_answer: number;
-  is_correct: boolean;
+  is_correct?: boolean; // Optional since we don't calculate it during the test
 }
 
 const Register: React.FC = () => {
@@ -25,10 +26,12 @@ const Register: React.FC = () => {
     user_type: 'annotator', // New field for user type
   });
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1); // 1: User Type, 2: Personal Info, 3: Account Details, 4: Onboarding Test (for annotators)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
   
   // Onboarding test state
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -78,11 +81,11 @@ const Register: React.FC = () => {
   const updateOnboardingAnswer = (selectedAnswer: number) => {
     if (!currentQuestion) return;
     
-    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+    // Only store the selected answer, don't calculate correctness during the test
     const newAnswer: UserAnswer = {
       question_id: currentQuestion.id,
-      selected_answer: selectedAnswer,
-      is_correct: isCorrect
+      selected_answer: selectedAnswer
+      // is_correct will be calculated only when submitting the test
     };
     
     setOnboardingAnswers(prev => {
@@ -109,7 +112,7 @@ const Register: React.FC = () => {
     setIsSubmittingTest(true);
     
     try {
-      // Submit answers to API first
+      // Submit answers to API first (using registration endpoint)
       const userAnswers = onboardingAnswers.map(answer => ({
         question_id: answer.question_id,
         selected_answer: answer.selected_answer,
@@ -129,14 +132,18 @@ const Register: React.FC = () => {
           preferred_language: formData.preferred_language,
           languages: formData.languages,
           is_evaluator: false, // annotator
-          user_type: formData.user_type
+          user_type: formData.user_type,
+          onboarding_passed: true // Indicate that user passed onboarding test
         };
         
         await register(registerData);
+        
         setRegistrationSuccess(true);
+        setSuccessMessage('Registration successful! You can now log in and start annotating.');
+        setError(''); // Clear any error messages
         setTimeout(() => {
-          navigate('/');
-        }, 2000);
+          navigate('/login');
+        }, 3000);
       } else {
         setError(`You scored ${result.score.toFixed(1)}% on the proficiency test. You need at least 70% to pass. Don't worry - you can retake the test after reviewing the materials. Please go back and try again when you're ready.`);
         setCurrentStep(3); // Go back to account creation step
@@ -151,7 +158,20 @@ const Register: React.FC = () => {
       }
     } catch (error) {
       console.error('Error submitting test:', error);
-      setError('Error submitting proficiency test. Please try again.');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Error submitting proficiency test. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Registration failed')) {
+          errorMessage = 'Registration failed. Please try again.';
+        } else {
+          errorMessage = error.message || errorMessage;
+        }
+      }
+      
+      setError(errorMessage);
+      setSuccessMessage(''); // Clear any success message
       // Reset state on error so user can retry
       questionsLoadedRef.current = '';
       setQuestions([]);
@@ -352,6 +372,8 @@ const Register: React.FC = () => {
             }
             questionsLoadedRef.current = formData.languages.sort().join(',');
             
+
+            
             // For annotators, move to onboarding test step
             setCurrentStep(4);
             setTestStarted(true);
@@ -380,6 +402,7 @@ const Register: React.FC = () => {
           };
           
           await register(registerData);
+          
           setRegistrationSuccess(true);
           setTimeout(() => navigate('/'), 1500);
         }
@@ -478,14 +501,16 @@ const Register: React.FC = () => {
               </div>
               <h3 className="text-xl font-medium text-green-800 mb-2">Registration successful!</h3>
               <p className="text-sm text-green-600 mb-4">
-                Your account has been created successfully as a{' '}
-                <span className="font-semibold">{formData.user_type}</span>.
+                {successMessage || `Your account has been created successfully as a ${formData.user_type}.`}
               </p>
               
-              <p className="text-gray-500 text-sm">Redirecting to login page...</p>
-              <div className="mt-4 w-24 h-1 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-green-500 animate-pulse"></div>
-              </div>
+                          <p className="text-sm text-green-700 mb-3">
+              ✅ Registration successful! Kindly confirm your email address and start using the application.
+            </p>
+            <p className="text-gray-500 text-sm">Redirecting to login...</p>
+            <div className="mt-4 w-24 h-1 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 animate-pulse"></div>
+            </div>
             </div>
           </div>
         ) : (
@@ -621,12 +646,12 @@ const Register: React.FC = () => {
                       {[
                         { id: 'tagalog', name: 'Tagalog' },
                         { id: 'cebuano', name: 'Cebuano' },
-                        { id: 'ilocano', name: 'Ilocano' },
-                        { id: 'hiligaynon', name: 'Hiligaynon' },
-                        { id: 'bicolano', name: 'Bicolano' },
-                        { id: 'waray', name: 'Waray' },
-                        { id: 'pampangan', name: 'Pampangan' },
-                        { id: 'pangasinan', name: 'Pangasinan' }
+                        { id: 'ilokano', name: 'Ilokano' }
+                        //{ id: 'hiligaynon', name: 'Hiligaynon' },
+                        //{ id: 'bicolano', name: 'Bicolano' },
+                        //{ id: 'waray', name: 'Waray' },
+                        //{ id: 'pampangan', name: 'Pampangan' },
+                        //{ id: 'pangasinan', name: 'Pangasinan' }
                       ].map((language) => (
                         <div
                           key={language.id}
@@ -930,34 +955,7 @@ const Register: React.FC = () => {
                        ))}
                      </div>
 
-                     {/* Show explanation if answer is selected */}
-                     {currentAnswer && (
-                       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                         <div className="flex items-start">
-                           <div className="flex-shrink-0 mr-3">
-                             <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                               currentAnswer.is_correct ? 'bg-green-100' : 'bg-orange-100'
-                             }`}>
-                               {currentAnswer.is_correct ? (
-                                 <Check className="h-4 w-4 text-green-600" />
-                               ) : (
-                                 <AlertCircle className="h-4 w-4 text-orange-600" />
-                               )}
-                             </div>
-                           </div>
-                           <div>
-                             <p className={`text-sm font-medium mb-1 ${
-                               currentAnswer.is_correct ? 'text-green-900' : 'text-orange-900'
-                             }`}>
-                               {currentAnswer.is_correct ? '✅ Correct!' : '❌ Incorrect'}
-                             </p>
-                             <p className="text-sm text-gray-700">
-                               {currentQuestion.explanation}
-                             </p>
-                           </div>
-                         </div>
-                       </div>
-                     )}
+                     {/* Show explanation only after test is completed - removed during test to prevent cheating */}
                    </div>
                 )}
 
@@ -974,7 +972,7 @@ const Register: React.FC = () => {
                   
                   <div className="flex items-center text-sm text-gray-500">
                     <Globe className="h-4 w-4 mr-1" />
-                    {onboardingAnswers.filter(a => a.is_correct).length} / {onboardingAnswers.length} correct
+                    {onboardingAnswers.length} of {questions.length} answered
                   </div>
 
                   <button

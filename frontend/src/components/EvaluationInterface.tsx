@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { evaluationsAPI } from '../services/api';
+import { evaluationsAPI } from '../services/supabase-api';
 import type { Annotation, EvaluationCreate, TextHighlight } from '../types';
 import { logger } from '../utils/logger';
 import { 

@@ -84,6 +84,12 @@ export interface RegisterData {
   languages: string[];
   is_evaluator?: boolean;
   user_type?: string;
+  onboarding_passed?: boolean;
+}
+
+export interface RegisterResult {
+  user: User;
+  requiresEmailConfirmation: boolean;
 }
 
 export interface AnnotationCreate {
