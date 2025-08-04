@@ -4,6 +4,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Login from './components/Login';
 import Register from './components/Register';
+
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
 import AnnotationInterface from './components/AnnotationInterface';
 import MyAnnotations from './components/MyAnnotations';
 import AdminDashboard from './components/AdminDashboard';
@@ -180,6 +183,23 @@ const AppContent: React.FC = () => {
             element={
               <PublicRoute>
                 <Register />
+              </PublicRoute>
+            } 
+          />
+
+          <Route 
+            path="/forgot-password" 
+            element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/reset-password" 
+            element={
+              <PublicRoute>
+                <ResetPassword />
               </PublicRoute>
             } 
           />

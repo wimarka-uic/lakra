@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { authAPI } from '../services/api';
+import { authAPI } from '../services/supabase-api';
 import { User, Save, AlertCircle, CheckCircle } from 'lucide-react';
 
 // This component will allow users to update their profile settings
@@ -119,7 +119,7 @@ const Profile: React.FC = () => {
   const availableLanguages = [
     { id: 'tagalog', name: 'Tagalog' },
     { id: 'cebuano', name: 'Cebuano' },
-    { id: 'ilocano', name: 'Ilocano' },
+    { id: 'ilokano', name: 'Ilokano' },
     { id: 'hiligaynon', name: 'Hiligaynon' },
     { id: 'waray', name: 'Waray' },
     { id: 'bicolano', name: 'Bicolano' },

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import type { User, LoginCredentials, RegisterData } from '../types';
-import { authAPI, authStorage } from '../services/api';
+import type { User, LoginCredentials, RegisterData, RegisterResult } from '../types';
+import { authAPI, authStorage } from '../services/supabase-api';
 import { logger } from '../utils/logger';
 
 interface AuthContextType {
@@ -8,11 +8,14 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  register: (userData: RegisterData) => Promise<RegisterResult>;
+
   logout: () => void;
   markGuidelinesSeen: () => Promise<void>;
   refreshUser: () => Promise<void>;
   forceRefreshUser: () => Promise<void>; // Force refresh without error handling
+  sendPasswordResetEmail: (email: string) => Promise<void>;
+  resetPassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,11 +91,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const register = async (userData: RegisterData) => {
-    const authData = await authAPI.register(userData);
-    authStorage.setToken(authData.access_token);
-    authStorage.setUser(authData.user);
-    setUser(authData.user);
+    const result = await authAPI.register(userData);
+    return result;
   };
+
+
 
   const markGuidelinesSeen = async () => {
     try {
@@ -265,16 +268,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
+  const sendPasswordResetEmail = async (email: string) => {
+    await authAPI.sendPasswordResetEmail(email);
+  };
+
+  const resetPassword = async (newPassword: string) => {
+    await authAPI.resetPassword(newPassword);
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
     register,
+
     logout,
     markGuidelinesSeen,
     refreshUser,
     forceRefreshUser,
+    sendPasswordResetEmail,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { mtQualityAPI } from '../services/api';
+import { mtQualityAPI } from '../services/supabase-api';
 import type { EvaluatorStats, Sentence, MTQualityAssessment } from '../types';
 import { 
   FileText, 

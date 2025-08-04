@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { evaluationsAPI } from '../services/api';
+import { evaluationsAPI } from '../services/supabase-api';
 import type { Evaluation } from '../types';
 import { Star, Calendar, FileText, Search } from 'lucide-react';
 

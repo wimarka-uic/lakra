@@ -11,7 +11,7 @@ import {
   Save,
   RotateCcw
 } from 'lucide-react';
-import { mtQualityAPI } from '../services/api';
+import { mtQualityAPI } from '../services/supabase-api';
 import type { Sentence, MTQualityAssessment, MTQualityCreate } from '../types';
 
 interface ErrorDisplayProps {

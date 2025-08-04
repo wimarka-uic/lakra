@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/wimarka-uic/lakra/d0abd137499cd39740394f8b5179790e50b3fa56/frontend/public/lakra.svg" alt="Lakra Logo" width="256" height="256">
 </div>
 
-A comprehensive annotation and evaluation system for Machine Translation (MT) quality assessment, designed specifically for the WiMarka project. Built with FastAPI, PostgreSQL, React, TypeScript, and TailwindCSS.
+A comprehensive annotation and evaluation system for Machine Translation (MT) quality assessment, designed specifically for the WiMarka project. Built with React, TypeScript, TailwindCSS, and Supabase.
 
 ## Overview
 
@@ -26,6 +26,7 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 
 ### User Management & Roles
 - **Multi-Role System**: Administrators, Annotators, and Evaluators
+- **Flexible Authentication**: Sign in with email or username
 - **Language Preferences**: User-specific language settings and preferences
 - **Onboarding System**: Comprehensive onboarding tests for quality assurance
 - **Progress Tracking**: Individual and system-wide progress monitoring
@@ -54,59 +55,50 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 
 ## Tech Stack
 
-### Backend
-- **FastAPI**: Modern Python web framework with automatic API documentation
-- **SQLAlchemy**: SQL toolkit and ORM for database management
-- **SQLite**: Lightweight database for development and small deployments
-- **JWT Authentication**: Secure token-based authentication system
-- **Pydantic**: Data validation and serialization
-- **DistilBERT Integration**: AI model for MT quality assessment
+### Backend (Supabase)
+- **Supabase**: Complete backend-as-a-service with PostgreSQL database
+- **PostgreSQL**: Robust relational database with Row Level Security (RLS)
+- **Supabase Auth**: Built-in authentication with JWT tokens
+- **Supabase Edge Functions**: Serverless functions for custom logic
+- **Real-time Subscriptions**: Live updates for collaborative features
 
 ### Frontend
-- **React**: Modern JavaScript library for building user interfaces
+- **React 19**: Modern JavaScript library for building user interfaces
 - **TypeScript**: Type-safe JavaScript development
+- **Vite**: Fast build tool and development server
 - **TailwindCSS**: Utility-first CSS framework for responsive design
 - **React Router**: Client-side routing and navigation
-- **Axios**: HTTP client for API communication
 - **Lucide React**: Beautiful icon library
+- **PWA Support**: Progressive Web App capabilities with service workers
 
 ## Getting Started
 
 ### Prerequisites
-- Python 3.8+
-- Node.js 16+
-- npm or yarn
+- Node.js 18+
+- npm, yarn, or bun
+- Supabase account (free tier available)
 
-### Backend Setup
+### Environment Setup
 
-1. **Navigate to the backend directory:**
+1. **Clone the repository:**
    ```bash
-   cd backend
+   git clone <repository-url>
+   cd lakra
    ```
 
-2. **Create a virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+2. **Set up Supabase:**
+   - Create a new project at [supabase.com](https://supabase.com)
+   - Get your project URL and anon key from the project settings
+   - Create a `.env` file in the `frontend` directory with:
+     ```
+     VITE_SUPABASE_URL=your_supabase_project_url
+     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+     ```
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Initialize the database:**
-   ```bash
-   python init_db.py
-   ```
-
-5. **Start the FastAPI server:**
-   ```bash
-   python main.py
-   ```
-
-   The API will be available at `http://localhost:8000`
-   API documentation will be available at `http://localhost:8000/docs`
+3. **Set up the database:**
+   - Run the SQL migrations in your Supabase SQL editor
+   - Set up Row Level Security (RLS) policies
+   - Configure authentication settings
 
 ### Frontend Setup
 
@@ -118,26 +110,26 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 2. **Install dependencies:**
    ```bash
    npm install
+   # or
+   yarn install
+   # or
+   bun install
    ```
 
 3. **Start the development server:**
    ```bash
    npm run dev
+   # or
+   yarn dev
+   # or
+   bun dev
    ```
 
    The frontend will be available at `http://localhost:5173`
 
-## Default Credentials
+## Database Schema
 
-After running the database initialization script, you can log in with:
-
-- **Email**: admin@example.com
-- **Password**: admin123
-- **Role**: Administrator
-
-## System Architecture
-
-### Database Schema
+### Core Tables
 
 **Users Table:**
 - User authentication and profile information
@@ -178,57 +170,38 @@ After running the database initialization script, you can log in with:
 - Test scoring and completion tracking
 - Language-specific test data
 
-### API Endpoints
+## API Structure
 
-**Authentication:**
-- `POST /api/register` - User registration
-- `POST /api/login` - User login
-- `GET /api/me` - Get current user info
-- `PUT /api/me/guidelines-seen` - Mark guidelines as seen
+The application uses Supabase client libraries for all database operations:
 
-**Sentences:**
-- `GET /api/sentences` - List all sentences
-- `GET /api/sentences/next` - Get next sentence for annotation
-- `GET /api/sentences/unannotated` - Get unannotated sentences
-- `POST /api/sentences` - Create new sentence (admin only)
-- `POST /api/sentences/bulk` - Bulk create sentences (admin only)
-- `POST /api/sentences/import-csv` - Import sentences from CSV file (admin only)
+### Authentication
+- `authAPI.login()` - User login (supports both email and username)
+- `authAPI.register()` - User registration
+- `authAPI.getCurrentUser()` - Get current user info
+- `authAPI.logout()` - User logout
 
-**Annotations:**
-- `POST /api/annotations` - Create new annotation
-- `POST /api/annotations/legacy` - Legacy annotation format
-- `PUT /api/annotations/{id}` - Update annotation
-- `GET /api/annotations` - Get user's annotations
-- `DELETE /api/annotations/{id}` - Delete annotation
-- `POST /api/annotations/upload-voice` - Upload voice recording
+### Sentences
+- `sentencesAPI.getSentences()` - List all sentences
+- `sentencesAPI.getNextSentence()` - Get next sentence for annotation
+- `sentencesAPI.createSentence()` - Create new sentence (admin only)
+- `sentencesAPI.importSentencesFromCSV()` - Import sentences from CSV file
 
-**Evaluations:**
-- `POST /api/evaluations` - Create evaluation
-- `PUT /api/evaluations/{id}` - Update evaluation
-- `GET /api/evaluations` - Get user's evaluations
-- `GET /api/evaluations/pending` - Get pending evaluations
+### Annotations
+- `annotationsAPI.createAnnotation()` - Create new annotation
+- `annotationsAPI.getMyAnnotations()` - Get user's annotations
+- `annotationsAPI.deleteAnnotation()` - Delete annotation
 
-**MT Quality Assessment:**
-- `POST /api/mt-quality/assess` - Create MT quality assessment
-- `PUT /api/mt-quality/{id}` - Update assessment
-- `GET /api/mt-quality/my-assessments` - Get user's assessments
-- `GET /api/mt-quality/pending` - Get pending assessments
-- `POST /api/mt-quality/batch-assess` - Batch assessment
-- `GET /api/mt-quality/stats` - Get assessment statistics
+### Evaluations
+- `evaluationsAPI.createEvaluation()` - Create evaluation
+- `evaluationsAPI.getMyEvaluations()` - Get user's evaluations
+- `evaluationsAPI.getPendingEvaluations()` - Get pending evaluations
 
-**Admin:**
-- `GET /api/admin/stats` - System statistics
-- `GET /api/admin/users` - List all users
-- `GET /api/admin/sentences` - List all sentences
-- `GET /api/admin/annotations` - List all annotations
-- `GET /api/admin/mt-quality` - List all MT assessments
-- `PUT /api/admin/users/{id}/toggle-evaluator` - Toggle evaluator role
-
-**Onboarding:**
-- `POST /api/onboarding-tests` - Create onboarding test
-- `POST /api/onboarding-tests/{id}/submit` - Submit test
-- `GET /api/onboarding-tests/my-tests` - Get user's tests
-- `GET /api/onboarding-tests/{id}` - Get specific test
+### Admin Functions
+- `adminAPI.getStats()` - System statistics
+- `adminAPI.getAllUsers()` - List all users
+- `adminAPI.createUser()` - Create new user
+- `adminAPI.updateUser()` - Update user profile
+- `adminAPI.deleteUser()` - Delete user
 
 ## Usage Guide
 
@@ -274,30 +247,29 @@ The system tracks various quality metrics:
 
 ### Adding New Features
 
-1. **Backend**: Add new endpoints in `main.py`, define schemas in `schemas.py`
+1. **Database**: Add new tables and RLS policies in Supabase
 2. **Frontend**: Create new components in `src/components/`, add routes to `App.tsx`
-3. **Database**: Modify models in `database.py`, run migrations if needed
+3. **API**: Add new functions to the appropriate API module in `src/services/`
 
 ### Configuration
 
-- **Database URL**: Configure in `backend/database.py`
-- **JWT Secret**: Update `SECRET_KEY` in `backend/auth.py`
-- **CORS Settings**: Modify allowed origins in `backend/main.py`
-- **API Base URL**: Update in `frontend/src/services/api.ts`
+- **Supabase URL**: Configure in `frontend/src/utils/supabase.ts`
+- **Environment Variables**: Update `.env` file for different environments
+- **PWA Settings**: Configure in `vite.config.ts` and `public/manifest.json`
 
 ## Production Deployment
 
-### Backend
-- Use a production WSGI server like Gunicorn or Uvicorn
-- Configure environment variables for sensitive data
-- Use a production database (PostgreSQL recommended)
-- Set up proper logging and monitoring
-
 ### Frontend
 - Build the production bundle: `npm run build`
-- Serve static files with a web server (Nginx recommended)
-- Configure proper caching headers
-- Set up HTTPS and security headers
+- Deploy to Vercel, Netlify, or any static hosting service
+- Configure environment variables for production
+- Set up custom domain and HTTPS
+
+### Supabase
+- Use Supabase's built-in hosting for Edge Functions
+- Configure production database settings
+- Set up proper RLS policies for security
+- Configure authentication providers
 
 ## Contributing
 
@@ -314,7 +286,7 @@ This project is licensed under the MIT License.
 ## Support
 
 For issues and questions:
-1. Check the API documentation at `/docs`
-2. Review the database schema in `database.py`
-3. Check browser console for frontend errors
-4. Review server logs for backend issues 
+1. Check the Supabase dashboard for database issues
+2. Review browser console for frontend errors
+3. Check Supabase logs for backend issues
+4. Review the API documentation in `src/services/` 

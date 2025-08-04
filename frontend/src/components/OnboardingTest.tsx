@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { languageProficiencyAPI, onboardingAPI, authStorage, authAPI } from '../services/api';
+import { languageProficiencyAPI, onboardingAPI, authStorage } from '../services/supabase-api';
 import { useAuth } from '../contexts/AuthContext';
 import { Clock, Brain, AlertTriangle, ArrowRight, Globe, BookOpen } from 'lucide-react';
 import type { UserQuestionAnswer, LanguageProficiencyQuestion, OnboardingTest as OnboardingTestType } from '../types';
@@ -120,14 +120,19 @@ const OnboardingTest: React.FC = () => {
           if (fetchedQuestions && fetchedQuestions.length > 0) {
             setQuestions(fetchedQuestions);
           } else {
-            setQuestionsError('No questions available for your selected languages. Please contact support.');
+            setQuestionsError('No proficiency test questions are currently available for your selected languages. Please try selecting different languages or contact support for assistance.');
           }
-        } catch {
+        } catch (error) {
+          console.error('Error fetching questions:', error);
           setQuestionsError('Failed to load test questions. Please try again.');
         } finally {
           setLoadingQuestions(false);
         }
-      }
+              } else if (testStarted && selectedLanguages.length === 0) {
+          // If test is started but no languages are selected
+          setQuestionsError('No languages selected. Please update your profile to select languages before taking the proficiency test. Go to your profile and select at least one language you are proficient in.');
+          setQuestionsFetched(true);
+        }
     };
 
     fetchQuestions();
@@ -139,7 +144,7 @@ const OnboardingTest: React.FC = () => {
       setShowInstructions(false);
       setTestStarted(true);
     } else {
-      alert('Please update your profile to select your languages before taking the proficiency quiz.');
+      alert('Please update your profile to select your languages before taking the proficiency quiz. You need to select at least one language to take the test.');
       navigate('/profile');
     }
   };
@@ -147,11 +152,11 @@ const OnboardingTest: React.FC = () => {
   const updateAnswer = (selectedAnswer: number) => {
     if (!currentQuestion) return;
     
-    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+    // Only store the selected answer, don't calculate correctness during the test
     const newAnswer: UserQuestionAnswer = {
       question_id: currentQuestion.id,
-      selected_answer: selectedAnswer,
-      is_correct: isCorrect
+      selected_answer: selectedAnswer
+      // is_correct will be calculated only when submitting the test
     };
     
     setAnswers(prev => {
@@ -244,28 +249,15 @@ const OnboardingTest: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Test authentication first
-      console.log('Testing authentication...');
-      try {
-        const authTest = await authAPI.testAuth();
-        console.log('Auth test result:', authTest);
-      } catch (authError: any) {
-        console.error('Auth test failed:', authError);
-        alert('Authentication test failed. Please log in again.');
-        return;
-      }
       
-      // Calculate score
-      const correctAnswers = answers.filter(a => a.is_correct).length;
-      const totalQuestions = questions.length;
-      const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+      // Don't calculate score here - let the backend handle it
+      // The backend will calculate correctness by comparing selected_answer with correct_answer
       
       console.log('Submitting test with:', {
         answers: answers.length,
         questions: questions.length,
         sessionId,
-        selectedLanguages,
-        score
+        selectedLanguages
       });
       
       // Submit to backend
@@ -273,9 +265,9 @@ const OnboardingTest: React.FC = () => {
       
       console.log('Test submission result:', result);
       
-      if (result.passed || score >= 70) {
+      if (result.passed || result.score >= 70) {
         // Show success modal and mark as just completed
-        setFinalScore(score);
+        setFinalScore(result.score);
         setJustCompletedQuiz(true);
         
         // Update user data if returned from backend
@@ -290,26 +282,26 @@ const OnboardingTest: React.FC = () => {
         setShowSuccessModal(true);
       } else {
         // Show failure modal
-        setFinalScore(score);
+        setFinalScore(result.score);
         setShowFailureModal(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting quiz:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        statusText: error.response?.statusText
-      });
       
       // Show more specific error message
       let errorMessage = 'Error submitting quiz. Please try again.';
-      if (error.response?.status === 403) {
-        errorMessage = 'Access denied. Please check your permissions or try logging in again.';
-      } else if (error.response?.status === 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      } else if (error.response?.data?.detail) {
-        errorMessage = `Server error: ${error.response.data.detail}`;
+      
+      if (error instanceof Error) {
+        errorMessage = error.message || 'Error submitting quiz. Please try again.';
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const apiError = error as { response?: { data?: { detail?: string }, status?: number } };
+        if (apiError.response?.status === 403) {
+          errorMessage = 'Access denied. Please check your permissions or try logging in again.';
+        } else if (apiError.response?.status === 401) {
+          errorMessage = 'Authentication failed. Please log in again.';
+        } else if (apiError.response?.data?.detail) {
+          errorMessage = `Server error: ${apiError.response.data.detail}`;
+        }
       }
       
       alert(errorMessage);
@@ -597,26 +589,45 @@ const OnboardingTest: React.FC = () => {
               <AlertTriangle className="h-16 w-16 text-red-400 mx-auto mb-4" />
               <p className="text-red-600 mb-4">{questionsError}</p>
               <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setQuestionsError('');
-                    setQuestionsFetched(false);
-                    setQuestions([]);
-                    setLoadingQuestions(false);
-                    // Reset test state for retry
-                    setCurrentQuestionIndex(0);
-                    setAnswers([]);
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-3"
-                >
-                  Try Again
-                </button>
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-                >
-                  Return to Dashboard
-                </button>
+                {questionsError.includes('No languages selected') ? (
+                  <>
+                    <button
+                      onClick={() => navigate('/profile')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-3"
+                    >
+                      Go to Profile
+                    </button>
+                    <button
+                      onClick={() => navigate('/dashboard')}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                    >
+                      Return to Dashboard
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setQuestionsError('');
+                        setQuestionsFetched(false);
+                        setQuestions([]);
+                        setLoadingQuestions(false);
+                        // Reset test state for retry
+                        setCurrentQuestionIndex(0);
+                        setAnswers([]);
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-3"
+                    >
+                      Try Again
+                    </button>
+                    <button
+                      onClick={() => navigate('/dashboard')}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                    >
+                      Return to Dashboard
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ) : testStarted && questionsFetched && questions.length === 0 ? (
