@@ -450,7 +450,6 @@ export const sentencesAPI = {
   createSentence: async (sentenceData: {
     source_text: string;
     machine_translation: string;
-    tagalog_source_text?: string;
     source_language: string;
     target_language: string;
     domain?: string;
@@ -460,7 +459,6 @@ export const sentencesAPI = {
       .insert({
         source_text: sentenceData.source_text,
         machine_translation: sentenceData.machine_translation,
-        tagalog_source_text: sentenceData.tagalog_source_text,
         source_language: sentenceData.source_language,
         target_language: sentenceData.target_language,
         domain: sentenceData.domain,

@@ -91,7 +91,6 @@ const AdminDashboard: React.FC = () => {
   const [newSentence, setNewSentence] = useState({
     source_text: '',
     machine_translation: '',
-    tagalog_source_text: '',
     back_translation: '',
     source_language: 'en',
     target_language: 'tgl',
@@ -470,7 +469,6 @@ const AdminDashboard: React.FC = () => {
       setNewSentence({
         source_text: '',
         machine_translation: '',
-        tagalog_source_text: '',
         back_translation: '',
         source_language: 'en',
         target_language: 'tgl',
@@ -501,7 +499,6 @@ const AdminDashboard: React.FC = () => {
       await adminAPI.updateSentence(editingSentence.id, {
         source_text: editingSentence.source_text,
         machine_translation: editingSentence.machine_translation,
-        tagalog_source_text: editingSentence.tagalog_source_text,
         source_language: editingSentence.source_language,
         target_language: editingSentence.target_language,
         domain: editingSentence.domain,
@@ -2522,17 +2519,7 @@ const AdminDashboard: React.FC = () => {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tagalog Source Text (Optional)
-                      </label>
-                      <textarea
-                        value={editingSentence.tagalog_source_text || ''}
-                        onChange={(e) => setEditingSentence({...editingSentence, tagalog_source_text: e.target.value})}
-                        className="textarea-field autocomplete-off"
-                        placeholder="Enter the Tagalog source text if available..."
-                      />
-                    </div>
+
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2789,15 +2776,7 @@ const AdminDashboard: React.FC = () => {
                                 <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{sentence.source_text}</p>
                               </div>
 
-                              {/* Tagalog Source (if available) */}
-                              {sentence.tagalog_source_text && (
-                                <div className="bg-emerald-50 border-l-4 border-emerald-400 p-4 sm:p-3 rounded-r-lg">
-                                  <h5 className="text-xs font-medium text-emerald-900 mb-3 sm:mb-2 uppercase tracking-wide">
-                                    Tagalog Source Text
-                                  </h5>
-                                  <p className="text-base sm:text-sm text-gray-900 leading-relaxed">{sentence.tagalog_source_text}</p>
-                                </div>
-                              )}
+
 
                               {/* Machine Translation with Tags */}
                               <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4 sm:p-3">
