@@ -21,7 +21,6 @@ export interface Sentence {
   source_text: string;
   machine_translation: string;
   reference_translation?: string;  // Reference/human translation for comparison
-  tagalog_source_text?: string;
   source_language: string;
   target_language: string;
   domain?: string;
