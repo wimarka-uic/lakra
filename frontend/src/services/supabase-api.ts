@@ -425,14 +425,18 @@ export const sentencesAPI = {
     const annotatedIds = annotatedSentenceIds?.map(a => a.sentence_id) || [];
 
     // Find sentences that haven't been annotated by this user
-    const { data, error } = await supabase
+    let query = supabase
       .from('sentences')
       .select('*')
       .eq('is_active', true)
-      .eq('target_language', getLanguageCode(userProfile.preferred_language))
-      .not('id', 'in', `(${annotatedIds.length > 0 ? annotatedIds.join(',') : '0'})`)
-      .limit(1)
-      .single();
+      .eq('target_language', getLanguageCode(userProfile.preferred_language));
+
+    // Only apply the NOT IN filter if there are annotated IDs
+    if (annotatedIds.length > 0) {
+      query = query.not('id', 'in', `(${annotatedIds.join(',')})`);
+    }
+
+    const { data, error } = await query.limit(1).single();
 
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
     return data;
@@ -463,13 +467,18 @@ export const sentencesAPI = {
     const annotatedIds = annotatedSentenceIds?.map(a => a.sentence_id) || [];
 
     // Find sentences that haven't been annotated by this user
-    const { data, error } = await supabase
+    let query = supabase
       .from('sentences')
       .select('*')
       .eq('is_active', true)
-      .eq('target_language', getLanguageCode(userProfile.preferred_language))
-      .not('id', 'in', `(${annotatedIds.length > 0 ? annotatedIds.join(',') : '0'})`)
-      .range(skip, skip + limit - 1);
+      .eq('target_language', getLanguageCode(userProfile.preferred_language));
+
+    // Only apply the NOT IN filter if there are annotated IDs
+    if (annotatedIds.length > 0) {
+      query = query.not('id', 'in', `(${annotatedIds.join(',')})`);
+    }
+
+    const { data, error } = await query.range(skip, skip + limit - 1);
 
     if (error) throw error;
     return data || [];
@@ -607,17 +616,20 @@ export const annotationsAPI = {
       .select('id')
       .eq('sentence_id', annotationData.sentence_id)
       .eq('annotator_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       throw new Error('You have already annotated this sentence');
     }
 
+    // Prepare annotation data without highlights (they go in separate table)
+    const { highlights, ...annotationInsertData } = annotationData;
+
     // Create annotation
     const { data: annotation, error } = await supabase
       .from('annotations')
       .insert({
-        ...annotationData,
+        ...annotationInsertData,
         annotator_id: user.id,
         annotation_status: 'completed',
       })
@@ -627,8 +639,8 @@ export const annotationsAPI = {
     if (error) throw error;
 
     // Create highlights if provided
-    if (annotationData.highlights && annotationData.highlights.length > 0) {
-      const highlightsData = annotationData.highlights.map(h => ({
+    if (highlights && highlights.length > 0) {
+      const highlightsData = highlights.map(h => ({
         annotation_id: annotation.id,
         highlighted_text: h.highlighted_text,
         start_index: h.start_index,
@@ -638,9 +650,11 @@ export const annotationsAPI = {
         error_type: h.error_type,
       }));
 
-      await supabase
+      const { error: highlightsError } = await supabase
         .from('text_highlights')
         .insert(highlightsData);
+
+      if (highlightsError) throw highlightsError;
     }
 
     return annotation;
@@ -671,16 +685,20 @@ export const annotationsAPI = {
     if (!user) throw new Error('No authenticated user');
 
     // Delete highlights first
-    await supabase
+    const { error: highlightsError } = await supabase
       .from('text_highlights')
       .delete()
       .eq('annotation_id', id);
 
+    if (highlightsError) throw highlightsError;
+
     // Delete evaluations
-    await supabase
+    const { error: evaluationsError } = await supabase
       .from('evaluations')
       .delete()
       .eq('annotation_id', id);
+
+    if (evaluationsError) throw evaluationsError;
 
     // Delete annotation
     const { error } = await supabase
@@ -699,11 +717,14 @@ export const annotationsAPI = {
     
     if (!user) throw new Error('No authenticated user');
 
+    // Prepare update data without highlights (they go in separate table)
+    const { highlights, ...annotationUpdateData } = updateData;
+
     // Update annotation
     const { data: annotation, error } = await supabase
       .from('annotations')
       .update({
-        ...updateData,
+        ...annotationUpdateData,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -718,15 +739,17 @@ export const annotationsAPI = {
     if (error) throw error;
 
     // Update highlights if provided
-    if (updateData.highlights && updateData.highlights.length > 0) {
+    if (highlights && highlights.length > 0) {
       // Delete existing highlights
-      await supabase
+      const { error: deleteError } = await supabase
         .from('text_highlights')
         .delete()
         .eq('annotation_id', id);
 
+      if (deleteError) throw deleteError;
+
       // Insert new highlights
-      const highlightsData = updateData.highlights.map(h => ({
+      const highlightsData = highlights.map(h => ({
         annotation_id: id,
         highlighted_text: h.highlighted_text,
         start_index: h.start_index,
@@ -736,9 +759,11 @@ export const annotationsAPI = {
         error_type: h.error_type,
       }));
 
-      await supabase
+      const { error: insertError } = await supabase
         .from('text_highlights')
         .insert(highlightsData);
+
+      if (insertError) throw insertError;
     }
 
     return annotation;
