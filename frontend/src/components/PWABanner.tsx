@@ -3,17 +3,12 @@ import { Download, X, RefreshCw, WifiOff } from 'lucide-react';
 import { usePWA } from '../hooks/usePWA';
 
 export const PWABanner: React.FC = () => {
-  const { isInstallable, isOffline, hasUpdate, installApp, reloadApp } = usePWA();
+  const { isInstallable, isOffline, isUpdating, updateProgress, installApp } = usePWA();
   const [showInstallBanner, setShowInstallBanner] = React.useState(false);
-  const [showUpdateBanner, setShowUpdateBanner] = React.useState(false);
 
   React.useEffect(() => {
     setShowInstallBanner(isInstallable);
   }, [isInstallable]);
-
-  React.useEffect(() => {
-    setShowUpdateBanner(hasUpdate);
-  }, [hasUpdate]);
 
   const handleInstall = async () => {
     const success = await installApp();
@@ -22,10 +17,38 @@ export const PWABanner: React.FC = () => {
     }
   };
 
-  const handleUpdate = () => {
-    reloadApp();
-    setShowUpdateBanner(false);
+  const handleCloseInstall = () => {
+    setShowInstallBanner(false);
   };
+
+  // Show update progress overlay
+  if (isUpdating) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
+          <div className="flex items-center justify-center mb-4">
+            <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Updating Lakra</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Please wait while we update to the latest version...
+          </p>
+          
+          {/* Progress bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${updateProgress}%` }}
+            ></div>
+          </div>
+          
+          <div className="text-xs text-gray-500">
+            {updateProgress}% complete
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -39,7 +62,7 @@ export const PWABanner: React.FC = () => {
 
       {/* Install banner */}
       {showInstallBanner && (
-        <div className="fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-40 max-w-sm">
+        <div className="fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-40 max-w-sm animate-in slide-in-from-right-2 duration-300">
           <div className="flex items-start gap-3">
             <div className="bg-rose-100 p-2 rounded-lg">
               <Download className="w-5 h-5 text-rose-600" />
@@ -57,7 +80,7 @@ export const PWABanner: React.FC = () => {
                   Install
                 </button>
                 <button
-                  onClick={() => setShowInstallBanner(false)}
+                  onClick={handleCloseInstall}
                   className="bg-gray-100 text-gray-900 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
                 >
                   Later
@@ -65,44 +88,7 @@ export const PWABanner: React.FC = () => {
               </div>
             </div>
             <button
-              onClick={() => setShowInstallBanner(false)}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Update banner */}
-      {showUpdateBanner && (
-        <div className="fixed top-4 right-4 bg-blue-50 border border-blue-200 rounded-lg shadow-lg p-4 z-40 max-w-sm">
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <RefreshCw className="w-5 h-5 text-blue-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">Update Available</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                A new version of Lakra is available. Reload to update.
-              </p>
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleUpdate}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Reload
-                </button>
-                <button
-                  onClick={() => setShowUpdateBanner(false)}
-                  className="bg-gray-100 text-gray-900 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
-                >
-                  Later
-                </button>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowUpdateBanner(false)}
+              onClick={handleCloseInstall}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
               <X size={20} />

@@ -10,6 +10,8 @@ interface PWAState {
   isInstallable: boolean;
   isOffline: boolean;
   hasUpdate: boolean;
+  isUpdating: boolean;
+  updateProgress: number;
 }
 
 // Extend Navigator interface for iOS standalone detection
@@ -24,7 +26,9 @@ export const usePWA = () => {
     isInstalled: false,
     isInstallable: false,
     isOffline: false,
-    hasUpdate: false
+    hasUpdate: false,
+    isUpdating: false,
+    updateProgress: 0
   });
 
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -66,10 +70,101 @@ export const usePWA = () => {
       setPWAState(prev => ({ ...prev, isOffline: true }));
     };
 
-    // Listen for service worker updates
-    const handleServiceWorkerUpdate = () => {
-      setPWAState(prev => ({ ...prev, hasUpdate: true }));
-    };
+    // Enhanced automatic update handling
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(registration => {
+        if (registration) {
+          // Check for waiting service worker
+          if (registration.waiting) {
+            // Auto-update if there's a waiting service worker
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            setPWAState(prev => ({ 
+              ...prev, 
+              hasUpdate: true, 
+              isUpdating: true,
+              updateProgress: 50 
+            }));
+            
+            // Simulate update progress
+            const progressInterval = setInterval(() => {
+              setPWAState(prev => ({ 
+                ...prev, 
+                updateProgress: Math.min(prev.updateProgress + 10, 90) 
+              }));
+            }, 200);
+
+            // Listen for controller change (when new service worker takes over)
+            const handleControllerChange = () => {
+              clearInterval(progressInterval);
+              setPWAState(prev => ({ 
+                ...prev, 
+                hasUpdate: false, 
+                isUpdating: false,
+                updateProgress: 100 
+              }));
+              
+              // Reload after a short delay to ensure smooth transition
+              setTimeout(() => {
+                window.location.reload();
+              }, 500);
+            };
+
+            navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+            
+            // Cleanup
+            return () => {
+              clearInterval(progressInterval);
+              navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+            };
+          }
+
+          // Listen for new service worker installation
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // Auto-update when new service worker is installed
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  setPWAState(prev => ({ 
+                    ...prev, 
+                    hasUpdate: true, 
+                    isUpdating: true,
+                    updateProgress: 50 
+                  }));
+                  
+                  // Simulate update progress
+                  const progressInterval = setInterval(() => {
+                    setPWAState(prev => ({ 
+                      ...prev, 
+                      updateProgress: Math.min(prev.updateProgress + 10, 90) 
+                    }));
+                  }, 200);
+
+                  // Listen for controller change
+                  const handleControllerChange = () => {
+                    clearInterval(progressInterval);
+                    setPWAState(prev => ({ 
+                      ...prev, 
+                      hasUpdate: false, 
+                      isUpdating: false,
+                      updateProgress: 100 
+                    }));
+                    
+                    // Reload after a short delay
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 500);
+                  };
+
+                  navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+                }
+              });
+            }
+          });
+        }
+      });
+    }
 
     // Register event listeners
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -77,20 +172,11 @@ export const usePWA = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Check for service worker updates
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('controllerchange', handleServiceWorkerUpdate);
-    }
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.removeEventListener('controllerchange', handleServiceWorkerUpdate);
-      }
     };
   }, []);
 
@@ -114,13 +200,6 @@ export const usePWA = () => {
   };
 
   const reloadApp = () => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then(registration => {
-        if (registration?.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-      });
-    }
     window.location.reload();
   };
 

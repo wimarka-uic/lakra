@@ -499,6 +499,7 @@ const AdminDashboard: React.FC = () => {
       await adminAPI.updateSentence(editingSentence.id, {
         source_text: editingSentence.source_text,
         machine_translation: editingSentence.machine_translation,
+        back_translation: editingSentence.back_translation,
         source_language: editingSentence.source_language,
         target_language: editingSentence.target_language,
         domain: editingSentence.domain,
@@ -579,13 +580,15 @@ const AdminDashboard: React.FC = () => {
   };
 
   const downloadCSVTemplate = () => {
-    const csvContent = `Source,Source_Language,Translation,Translation_Language,Back_Translation,Domain,Domains
-"I am your mother, Jerry!","en","Lolo niya ako, Jerry.","tgl","","conversational","conversational"
-"Nanay mo ako, Jerry!","tgl","Siak ti inam, Jerry!","ilo","I am your mother, Jerry!","conversational","news"
-"Where is the hospital?","en","Nasaan ang ospital?","tgl","","medical","medical"
-"Good morning","en","Maayong buntag","ceb","","greetings","conversational"
-"Thank you very much","en","Agyamanak unay","ilo","","polite","conversational"
-"The food is delicious","en","Naimas ti kanen","ilo","","food","conversational"`;
+    const csvContent = `source_text,machine_translation,source_language,target_language,domain,back_translation
+"I am your mother, Jerry!","Lolo niya ako, Jerry.","en","tgl","conversational",""
+"Nanay mo ako, Jerry!","Siak ti inam, Jerry!","tgl","ilo","conversational","I am your mother, Jerry!"
+"Where is the hospital?","Nasaan ang ospital?","en","tgl","medical",""
+"Good morning","Maayong buntag","en","ceb","greetings",""
+"Thank you very much","Agyamanak unay","en","ilo","polite",""
+"The food is delicious","Naimas ti kanen","en","ilo","food",""
+"She said ""Hello, world!""","Sinabi niya ""Kumusta, mundo!""","en","tgl","conversational",""
+"Text with, comma inside quotes","Text na may, koma sa loob ng quotes","en","tgl","conversational",""`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -1984,8 +1987,8 @@ const AdminDashboard: React.FC = () => {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                     <h4 className="text-sm font-semibold text-blue-900 mb-2">CSV Format Requirements</h4>
                     <div className="text-sm text-blue-800 space-y-2">
-                      <p><strong>Required columns:</strong> Source, Source_Language, Translation, Translation_Language</p>
-                      <p><strong>Optional columns:</strong> Back_Translation, Domain, Domains</p>
+                      <p><strong>Required columns:</strong> source_text, machine_translation, source_language, target_language</p>
+                      <p><strong>Optional columns:</strong> domain, back_translation</p>
                       <p><strong>Supported source languages:</strong> en (English), tgl (Tagalog), ilo (Ilocano), ceb (Cebuano)</p>
                       <p><strong>Supported target languages:</strong> tgl (Tagalog), ilo (Ilocano), ceb (Cebuano), en (English)</p>
                       <p><strong>Available domains:</strong> conversational, news, legal, medical, educational</p>
@@ -2519,7 +2522,17 @@ const AdminDashboard: React.FC = () => {
                       />
                     </div>
 
-
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Back Translation (Optional)
+                      </label>
+                      <textarea
+                        value={editingSentence.back_translation || ''}
+                        onChange={(e) => setEditingSentence({...editingSentence, back_translation: e.target.value})}
+                        className="textarea-field autocomplete-off"
+                        placeholder="Enter the back translation for quality assessment..."
+                      />
+                    </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2608,7 +2621,13 @@ const AdminDashboard: React.FC = () => {
                       <p className="font-medium text-gray-900 mb-1">Source:</p>
                       <p className="text-gray-700 mb-2">{deletingSentence.source_text.substring(0, 100)}{deletingSentence.source_text.length > 100 && '...'}</p>
                       <p className="font-medium text-gray-900 mb-1">Translation:</p>
-                      <p className="text-gray-700">{deletingSentence.machine_translation.substring(0, 100)}{deletingSentence.machine_translation.length > 100 && '...'}</p>
+                      <p className="text-gray-700 mb-2">{deletingSentence.machine_translation.substring(0, 100)}{deletingSentence.machine_translation.length > 100 && '...'}</p>
+                      {deletingSentence.back_translation && (
+                        <>
+                          <p className="font-medium text-emerald-700 mb-1">Back Translation:</p>
+                          <p className="text-gray-700">{deletingSentence.back_translation.substring(0, 100)}{deletingSentence.back_translation.length > 100 && '...'}</p>
+                        </>
+                      )}
                     </div>
                     <p className="text-xs text-red-600 mt-2">
                       This will also delete all associated annotations and evaluations.
@@ -2762,6 +2781,12 @@ const AdminDashboard: React.FC = () => {
                                 <strong className="text-gray-900">Translation:</strong> {sentence.machine_translation.substring(0, 100)}
                                 {sentence.machine_translation.length > 100 && '...'}
                               </div>
+                              {sentence.back_translation && (
+                                <div className="text-sm sm:text-base text-gray-700 line-clamp-2 leading-relaxed">
+                                  <strong className="text-emerald-700">Back Translation:</strong> {sentence.back_translation.substring(0, 100)}
+                                  {sentence.back_translation.length > 100 && '...'}
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -2799,6 +2824,26 @@ const AdminDashboard: React.FC = () => {
                                   </div>
                                 )}
                               </div>
+
+                              {/* Back Translation */}
+                              {sentence.back_translation && (
+                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-lg p-4 sm:p-3">
+                                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-3 sm:mb-2">
+                                    <h5 className="text-xs font-medium text-emerald-900 uppercase tracking-wide">
+                                      Back Translation
+                                    </h5>
+                                    <span className="bg-emerald-100 text-emerald-800 text-xs font-medium px-3 py-1 sm:px-2 sm:py-1 rounded-full self-start sm:self-auto">
+                                      Quality Reference
+                                    </span>
+                                  </div>
+                                  <div className="text-base sm:text-sm text-gray-900 leading-relaxed bg-white border border-emerald-100 rounded p-4 sm:p-3">
+                                    {sentence.back_translation}
+                                  </div>
+                                  <div className="mt-3 sm:mt-2 text-xs text-emerald-600 italic">
+                                    Back translation for quality assessment and comparison.
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Annotations Summary - Only if expanded */}
                               {isExpanded && annotations.length > 0 && (
