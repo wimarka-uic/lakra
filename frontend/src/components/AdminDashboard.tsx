@@ -978,12 +978,51 @@ const AdminDashboard: React.FC = () => {
     });
 
     try {
-      const audio = new Audio(voiceRecordingUrl);
+      // First, check if the URL is accessible
+      const response = await fetch(voiceRecordingUrl, { method: 'HEAD' });
+      if (!response.ok) {
+        throw new Error(`Audio file not accessible: ${response.status}`);
+      }
+
+      const audio = new Audio();
+      
+      // Add event listeners
       audio.addEventListener('ended', () => {
         setAudioState(prev => ({
           ...prev,
           [audioKey]: { isPlaying: false, audio: null }
         }));
+      });
+
+      audio.addEventListener('error', (e) => {
+        console.error('Audio playback error:', e);
+        setAudioState(prev => ({
+          ...prev,
+          [audioKey]: { isPlaying: false, audio: null }
+        }));
+      });
+
+      // Set the source and load
+      audio.src = voiceRecordingUrl;
+      audio.load();
+
+      // Wait for the audio to be ready with a timeout
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Audio loading timeout'));
+        }, 10000); // 10 second timeout
+
+        audio.addEventListener('canplaythrough', () => {
+          clearTimeout(timeout);
+          resolve(true);
+        }, { once: true });
+        
+        audio.addEventListener('error', (e) => {
+          clearTimeout(timeout);
+          reject(new Error(`Audio loading failed: ${e.type}`));
+        }, { once: true });
+        
+        audio.load();
       });
 
       await audio.play();
@@ -993,6 +1032,12 @@ const AdminDashboard: React.FC = () => {
       }));
     } catch (error) {
       console.error('Error playing audio:', error);
+      // Show a user-friendly error message with download option
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const shouldDownload = confirm(`Unable to play audio recording: ${errorMessage}. Would you like to download the file instead?`);
+      if (shouldDownload) {
+        handleDownloadAudio(annotationId, voiceRecordingUrl, 'recording');
+      }
     }
   };
 

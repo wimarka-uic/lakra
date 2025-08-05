@@ -566,18 +566,20 @@ const AnnotationInterface: React.FC = () => {
             annotation.voice_recording_blob,
             annotation.voice_recording_duration || 0
           );
-                  logger.info('Voice recording uploaded successfully', {
-          component: 'AnnotationInterface',
-          userId: user?.id,
-          metadata: { sentenceId, recordingUrl: voiceResult.voice_recording_url }
-        });
-      } catch (voiceError) {
-        logger.error('Failed to upload voice recording', {
-          component: 'AnnotationInterface',
-          userId: user?.id,
-          metadata: { sentenceId }
-        }, voiceError as Error);
-          // Don't fail the whole submission for voice recording issues
+          logger.info('Voice recording uploaded successfully', {
+            component: 'AnnotationInterface',
+            userId: user?.id,
+            metadata: { sentenceId: pendingSubmitSentenceId, recordingUrl: voiceResult.voice_recording_url }
+          });
+        } catch (voiceError) {
+          logger.error('Failed to upload voice recording', {
+            component: 'AnnotationInterface',
+            userId: user?.id,
+            metadata: { sentenceId: pendingSubmitSentenceId }
+          }, voiceError as Error);
+          // Show a warning to the user about voice recording upload failure
+          setMessage('Annotation saved, but voice recording upload failed. Please try again later.');
+          setTimeout(() => setMessage(''), 5000);
         }
       }
       

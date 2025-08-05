@@ -907,21 +907,24 @@ export const annotationsAPI = {
     if (!user) throw new Error('No authenticated user');
 
     // Generate unique filename
-    const fileName = `voice-recordings/${user.id}/${annotationId}-${Date.now()}.webm`;
+    const fileName = `${user.id}/${annotationId}-${Date.now()}.webm`;
     
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
-      .from('annotations')
+      .from('voice-recordings')
       .upload(fileName, audioBlob, {
-        contentType: 'audio/webm',
+        contentType: audioBlob.type || 'audio/webm',
         cacheControl: '3600',
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error(`Failed to upload voice recording: ${uploadError.message}`);
+    }
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('annotations')
+      .from('voice-recordings')
       .getPublicUrl(fileName);
 
     // Update annotation with voice recording URL and duration
@@ -935,7 +938,10 @@ export const annotationsAPI = {
       .eq('id', annotationId)
       .eq('annotator_id', user.id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Database update error:', updateError);
+      throw new Error(`Failed to update annotation with voice recording: ${updateError.message}`);
+    }
 
     return { voice_recording_url: publicUrl };
   },

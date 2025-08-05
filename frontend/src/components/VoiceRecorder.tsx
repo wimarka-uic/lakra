@@ -57,8 +57,25 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         } 
       });
 
+      // Try to use a more widely supported format
+      let mimeType = 'audio/mp4';
+      
+      // Fallback to more compatible formats if mp4 is not supported
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm;codecs=opus';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/wav';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/ogg;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = ''; // Let the browser choose the best format
+            }
+          }
+        }
+      }
+      
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+        mimeType: mimeType || undefined
       });
       
       mediaRecorderRef.current = mediaRecorder;
@@ -71,7 +88,9 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       };
       
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        // Determine the correct MIME type for the blob
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(chunksRef.current, { type: mimeType });
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
         setDuration(recordingTime);
