@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminAPI, sentencesAPI, languageProficiencyAPI } from '../services/supabase-api';
 import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion } from '../types';
 import { logger } from '../utils/logger';
-import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download, UserCheck, UserX, Key } from 'lucide-react';
+import { Users, FileText, BarChart3, Plus, Filter, Home, MessageCircle, ChevronRight, Search, ChevronLeft, ChevronDown, Eye, EyeOff, Award, BookOpen, Edit, Trash2, Save, X, Upload, Download, UserCheck, UserX, Key, Play, Pause, Volume2 } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -110,6 +110,11 @@ const AdminDashboard: React.FC = () => {
   const [questionCurrentPage, setQuestionCurrentPage] = useState(1);
   const [questionItemsPerPage, setQuestionItemsPerPage] = useState(10);
   const [questionSortBy, setQuestionSortBy] = useState<'newest' | 'oldest' | 'difficulty' | 'language'>('newest');
+  
+  // Audio playback state
+  const [audioState, setAudioState] = useState<{
+    [key: string]: { isPlaying: boolean; audio: HTMLAudioElement | null }
+  }>({});
   const [newQuestion, setNewQuestion] = useState<Omit<LanguageProficiencyQuestion, 'id' | 'created_at' | 'updated_at' | 'created_by'>>({
     language: 'Tagalog',
     type: 'grammar',
@@ -957,6 +962,62 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Audio playback functions
+  const handlePlayAudio = async (annotationId: number, voiceRecordingUrl: string) => {
+    const audioKey = `annotation-${annotationId}`;
+    
+    // Stop any currently playing audio
+    Object.keys(audioState).forEach(key => {
+      if (key !== audioKey && audioState[key].isPlaying) {
+        audioState[key].audio?.pause();
+        setAudioState(prev => ({
+          ...prev,
+          [key]: { isPlaying: false, audio: null }
+        }));
+      }
+    });
+
+    try {
+      const audio = new Audio(voiceRecordingUrl);
+      audio.addEventListener('ended', () => {
+        setAudioState(prev => ({
+          ...prev,
+          [audioKey]: { isPlaying: false, audio: null }
+        }));
+      });
+
+      await audio.play();
+      setAudioState(prev => ({
+        ...prev,
+        [audioKey]: { isPlaying: true, audio }
+      }));
+    } catch (error) {
+      console.error('Error playing audio:', error);
+    }
+  };
+
+  const handlePauseAudio = (annotationId: number) => {
+    const audioKey = `annotation-${annotationId}`;
+    const currentAudio = audioState[audioKey];
+    
+    if (currentAudio?.audio) {
+      currentAudio.audio.pause();
+      setAudioState(prev => ({
+        ...prev,
+        [audioKey]: { isPlaying: false, audio: null }
+      }));
+    }
+  };
+
+  const handleDownloadAudio = (annotationId: number, voiceRecordingUrl: string, annotatorName: string) => {
+    const link = document.createElement('a');
+    link.href = voiceRecordingUrl;
+    link.download = `annotation-${annotationId}-${annotatorName.replace(/\s+/g, '-')}.webm`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Handle browser extension interference
   useEffect(() => {
     // Prevent extension overlays from interfering with our modals
@@ -980,6 +1041,18 @@ const AdminDashboard: React.FC = () => {
 
     return () => observer.disconnect();
   }, [showAddSentence, showCSVImport]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      // Stop all playing audio when component unmounts
+      Object.values(audioState).forEach(({ audio }) => {
+        if (audio) {
+          audio.pause();
+        }
+      });
+    };
+  }, [audioState]);
 
   // Error boundary for extension-related errors
   useEffect(() => {
@@ -2476,6 +2549,9 @@ const AdminDashboard: React.FC = () => {
                           required
                         >
                           <option value="en">English</option>
+                          <option value="tgl">Tagalog</option>
+                          <option value="ilo">Ilocano</option>
+                          <option value="ceb">Cebuano</option>
                         </select>
                       </div>
                       
@@ -2489,9 +2565,10 @@ const AdminDashboard: React.FC = () => {
                           className="input-field autocomplete-off"
                           required
                         >
-                          <option value="tagalog">Tagalog (Filipino)</option>
-                          <option value="cebuano">Cebuano</option>
-                          <option value="ilokano">Ilokano</option>
+                          <option value="tgl">Tagalog</option>
+                          <option value="ilo">Ilocano</option>
+                          <option value="ceb">Cebuano</option>
+                          <option value="en">English</option>
                         </select>
                       </div>
                     </div>
@@ -2929,6 +3006,120 @@ const AdminDashboard: React.FC = () => {
                                       </div>
                                     </div>
                                   )}
+
+                                  {/* Individual Annotations with Audio */}
+                                  <div className="space-y-4">
+                                    <h6 className="text-xs font-medium text-gray-700 mb-3 sm:mb-2 uppercase tracking-wide">Individual Annotations</h6>
+                                    {annotations.map((annotation) => (
+                                      <div key={annotation.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <div className="flex items-center space-x-2">
+                                            <div className="w-8 h-8 bg-beauty-bush-100 rounded-full flex items-center justify-center">
+                                              <span className="text-xs font-bold text-beauty-bush-700">
+                                                {annotation.annotator?.first_name?.[0] || 'A'}
+                                              </span>
+                                            </div>
+                                            <div>
+                                              <div className="text-sm font-medium text-gray-900">
+                                                {annotation.annotator?.first_name} {annotation.annotator?.last_name}
+                                              </div>
+                                              <div className="text-xs text-gray-500">
+                                                {new Date(annotation.created_at).toLocaleDateString()}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                              annotation.annotation_status === 'completed' 
+                                                ? 'bg-green-100 text-green-800' 
+                                                : annotation.annotation_status === 'in_progress'
+                                                ? 'bg-yellow-100 text-yellow-800'
+                                                : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                              {annotation.annotation_status}
+                                            </span>
+                                            {annotation.overall_quality && (
+                                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getScoreColor(annotation.overall_quality)}`}>
+                                                Quality: {annotation.overall_quality}/5
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {/* Voice Recording Section */}
+                                        {annotation.voice_recording_url && (
+                                          <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <div className="flex items-center space-x-2">
+                                                <Volume2 className="h-4 w-4 text-gray-600" />
+                                                <span className="text-sm font-medium text-gray-700">Voice Recording</span>
+                                                {annotation.voice_recording_duration && (
+                                                  <span className="text-xs text-gray-500">
+                                                    {Math.round(annotation.voice_recording_duration)}s
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex items-center space-x-1">
+                                                {audioState[`annotation-${annotation.id}`]?.isPlaying ? (
+                                                  <button
+                                                    onClick={() => handlePauseAudio(annotation.id)}
+                                                    className="flex items-center space-x-1 px-2 py-1 text-xs text-red-600 hover:text-red-800 font-medium rounded hover:bg-red-50 transition-all"
+                                                    title="Pause audio"
+                                                  >
+                                                    <Pause className="h-3 w-3" />
+                                                    <span>Pause</span>
+                                                  </button>
+                                                ) : (
+                                                  <button
+                                                    onClick={() => handlePlayAudio(annotation.id, annotation.voice_recording_url!)}
+                                                    className="flex items-center space-x-1 px-2 py-1 text-xs text-green-600 hover:text-green-800 font-medium rounded hover:bg-green-50 transition-all"
+                                                    title="Play audio"
+                                                  >
+                                                    <Play className="h-3 w-3" />
+                                                    <span>Play</span>
+                                                  </button>
+                                                )}
+                                                <button
+                                                  onClick={() => handleDownloadAudio(
+                                                    annotation.id, 
+                                                    annotation.voice_recording_url!, 
+                                                    `${annotation.annotator?.first_name} ${annotation.annotator?.last_name}`
+                                                  )}
+                                                  className="flex items-center space-x-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 font-medium rounded hover:bg-blue-50 transition-all"
+                                                  title="Download audio"
+                                                >
+                                                  <Download className="h-3 w-3" />
+                                                  <span>Download</span>
+                                                </button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Annotation Details */}
+                                        <div className="space-y-2">
+                                          {annotation.comments && (
+                                            <div className="text-sm">
+                                              <span className="font-medium text-gray-700">Comments:</span>
+                                              <span className="text-gray-600 ml-1">{annotation.comments}</span>
+                                            </div>
+                                          )}
+                                          {annotation.suggested_correction && (
+                                            <div className="text-sm">
+                                              <span className="font-medium text-gray-700">Suggested Correction:</span>
+                                              <span className="text-gray-600 ml-1">{annotation.suggested_correction}</span>
+                                            </div>
+                                          )}
+                                          {annotation.final_form && (
+                                            <div className="text-sm">
+                                              <span className="font-medium text-gray-700">Final Form:</span>
+                                              <span className="text-gray-600 ml-1">{annotation.final_form}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
