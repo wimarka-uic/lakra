@@ -533,6 +533,7 @@ export const sentencesAPI = {
   createSentence: async (sentenceData: {
     source_text: string;
     machine_translation: string;
+    back_translation?: string;
     source_language: string;
     target_language: string;
     domain?: string;
@@ -542,6 +543,7 @@ export const sentencesAPI = {
       .insert({
         source_text: sentenceData.source_text,
         machine_translation: sentenceData.machine_translation,
+        back_translation: sentenceData.back_translation,
         source_language: sentenceData.source_language,
         target_language: sentenceData.target_language,
         domain: sentenceData.domain,
