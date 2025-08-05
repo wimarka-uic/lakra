@@ -364,6 +364,18 @@ export const authAPI = {
   },
 };
 
+// Language mapping function
+const getLanguageCode = (displayName: string): string => {
+  const languageMap: { [key: string]: string } = {
+    'Tagalog': 'tgl',
+    'Cebuano': 'ceb',
+    'cebuano': 'ceb',
+    'Ilokano': 'ilo',
+    'English': 'en'
+  };
+  return languageMap[displayName] || displayName;
+};
+
 // Sentences API
 export const sentencesAPI = {
   getSentences: async (skip = 0, limit = 100): Promise<Sentence[]> => {
@@ -402,15 +414,23 @@ export const sentencesAPI = {
 
     if (!userProfile?.preferred_language) return null;
 
+    // First, get the IDs of sentences that have been annotated by this user
+    const { data: annotatedSentenceIds, error: subqueryError } = await supabase
+      .from('annotations')
+      .select('sentence_id')
+      .eq('annotator_id', user.id);
+
+    if (subqueryError) throw subqueryError;
+
+    const annotatedIds = annotatedSentenceIds?.map(a => a.sentence_id) || [];
+
     // Find sentences that haven't been annotated by this user
     const { data, error } = await supabase
       .from('sentences')
       .select('*')
       .eq('is_active', true)
-      .eq('target_language', userProfile.preferred_language)
-      .not('id', 'in', `(
-        SELECT sentence_id FROM annotations WHERE annotator_id = '${user.id}'
-      )`)
+      .eq('target_language', getLanguageCode(userProfile.preferred_language))
+      .not('id', 'in', `(${annotatedIds.length > 0 ? annotatedIds.join(',') : '0'})`)
       .limit(1)
       .single();
 
@@ -432,15 +452,23 @@ export const sentencesAPI = {
 
     if (!userProfile?.preferred_language) return [];
 
+    // First, get the IDs of sentences that have been annotated by this user
+    const { data: annotatedSentenceIds, error: subqueryError } = await supabase
+      .from('annotations')
+      .select('sentence_id')
+      .eq('annotator_id', user.id);
+
+    if (subqueryError) throw subqueryError;
+
+    const annotatedIds = annotatedSentenceIds?.map(a => a.sentence_id) || [];
+
     // Find sentences that haven't been annotated by this user
     const { data, error } = await supabase
       .from('sentences')
       .select('*')
       .eq('is_active', true)
-      .eq('target_language', userProfile.preferred_language)
-      .not('id', 'in', `(
-        SELECT sentence_id FROM annotations WHERE annotator_id = '${user.id}'
-      )`)
+      .eq('target_language', getLanguageCode(userProfile.preferred_language))
+      .not('id', 'in', `(${annotatedIds.length > 0 ? annotatedIds.join(',') : '0'})`)
       .range(skip, skip + limit - 1);
 
     if (error) throw error;
