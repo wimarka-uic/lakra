@@ -19,6 +19,7 @@ import type {
   MTQualityCreate,
   MTQualityUpdate,
   OnboardingTest,
+  OnboardingTestQuestion,
   OnboardingTestResult,
   LanguageProficiencyQuestion,
   UserQuestionAnswer,
@@ -52,12 +53,24 @@ export const authAPI = {
         metadata: { username: credentials.email }
       });
       
-      // Look up the user by username to get their email (case-insensitive)
-      const { data: userByUsername, error: usernameError } = await supabase
-        .from('users')
-        .select('email, username')
-        .ilike('username', credentials.email)
-        .single();
+      // Look up the user by username to get their email using raw SQL
+      const { data: userByUsernameArray, error: usernameError } = await supabase
+        .rpc('get_user_by_username', { username_param: credentials.email });
+      
+      // Extract the first (and should be only) user from the array
+      const userByUsername = userByUsernameArray?.[0];
+      
+      logger.debug('Username lookup result', {
+        component: 'authAPI',
+        action: 'login',
+        metadata: { 
+          username: credentials.email, 
+          hasData: !!userByUsername, 
+          hasError: !!usernameError,
+          errorMessage: usernameError?.message,
+          errorCode: usernameError?.code
+        }
+      });
       
       if (usernameError) {
         logger.error('Username lookup error', {
@@ -101,6 +114,9 @@ export const authAPI = {
       action: 'login',
       metadata: { email: email, isUsernameLogin }
     });
+
+    // Ensure we have a clean authentication state
+    await supabase.auth.signOut();
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
@@ -906,8 +922,20 @@ export const annotationsAPI = {
     
     if (!user) throw new Error('No authenticated user');
 
-    // Generate unique filename
-    const fileName = `${user.id}/${annotationId}-${Date.now()}.webm`;
+
+
+    // Determine the best file extension based on the blob type
+    let fileExtension = 'webm';
+    if (audioBlob.type) {
+      if (audioBlob.type.includes('mp4')) fileExtension = 'mp4';
+      else if (audioBlob.type.includes('mpeg')) fileExtension = 'mp3';
+      else if (audioBlob.type.includes('aac')) fileExtension = 'aac';
+      else if (audioBlob.type.includes('wav')) fileExtension = 'wav';
+      else if (audioBlob.type.includes('ogg')) fileExtension = 'ogg';
+    }
+
+    // Generate unique filename with proper extension
+    const fileName = `${user.id}/${annotationId}-${Date.now()}.${fileExtension}`;
     
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
@@ -918,20 +946,22 @@ export const annotationsAPI = {
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      logger.error('Storage upload error', {
+        component: 'annotationsAPI',
+        action: 'uploadVoiceRecording',
+        metadata: { error: uploadError.message }
+      });
       throw new Error(`Failed to upload voice recording: ${uploadError.message}`);
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('voice-recordings')
-      .getPublicUrl(fileName);
+    // Store the file path instead of public URL (since bucket is private)
+    const filePath = fileName;
 
-    // Update annotation with voice recording URL and duration
+    // Update annotation with voice recording file path and duration
     const { error: updateError } = await supabase
       .from('annotations')
       .update({
-        voice_recording_url: publicUrl,
+        voice_recording_url: filePath, // Store file path instead of public URL
         voice_recording_duration: duration,
         updated_at: new Date().toISOString(),
       })
@@ -939,11 +969,44 @@ export const annotationsAPI = {
       .eq('annotator_id', user.id);
 
     if (updateError) {
-      console.error('Database update error:', updateError);
+      logger.error('Database update error', {
+        component: 'annotationsAPI',
+        action: 'uploadVoiceRecording',
+        metadata: { error: updateError.message }
+      });
       throw new Error(`Failed to update annotation with voice recording: ${updateError.message}`);
     }
 
-    return { voice_recording_url: publicUrl };
+
+
+    return { voice_recording_url: filePath };
+  },
+
+  // New function to get signed URL for voice recordings
+  getSignedVoiceRecordingUrl: async (filePath: string): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+
+
+    // Generate signed URL that expires in 1 hour
+    const { data, error } = await supabase.storage
+      .from('voice-recordings')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+    if (error) {
+      logger.error('Error generating signed URL', {
+        component: 'annotationsAPI',
+        action: 'getSignedVoiceRecordingUrl',
+        metadata: { error: error.message, errorName: error.name }
+      });
+      throw new Error(`Failed to generate signed URL: ${error.message}`);
+    }
+
+
+
+    return data.signedUrl;
   },
 };
 
@@ -1000,87 +1063,18 @@ export const adminAPI = {
     // Transform data to match expected format
     return (data || []).map(user => ({
       ...user,
-      languages: user.languages?.map((l: any) => l.language) || [],
+              languages: user.languages?.map((l: { language: string }) => l.language) || [],
     }));
   },
 
   // User Management Functions
-  createUser: async (userData: any): Promise<User> => {
-    // Note: This requires Supabase Auth Admin API which may not be available in client-side code
+  createUser: async (): Promise<User> => {
+    // Note: This requires Supabase Auth Admin API which is not available in client-side code
     // In a production environment, this should be handled by a server-side API
-    try {
-      // First create the user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: userData.email,
-        password: userData.password,
-        email_confirm: true,
-      });
-
-      if (authError) throw authError;
-
-      if (!authData.user) throw new Error('Failed to create user');
-
-      // Create user profile in our users table
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: userData.email,
-          username: userData.username,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          is_active: userData.is_active,
-          is_admin: userData.is_admin,
-          is_evaluator: userData.is_evaluator,
-          onboarding_status: userData.skip_onboarding ? 'completed' : 'pending',
-          onboarding_score: userData.skip_onboarding ? 100.0 : null,
-          onboarding_completed_at: userData.skip_onboarding ? new Date().toISOString() : null,
-        })
-        .select()
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Add user languages
-      if (userData.languages && userData.languages.length > 0) {
-        const languageData = userData.languages.map((lang: string) => ({
-          user_id: authData.user.id,
-          language: lang,
-        }));
-
-        const { error: langError } = await supabase
-          .from('user_languages')
-          .insert(languageData);
-
-        if (langError) throw langError;
-      }
-
-      // Get the created user with languages
-      const { data: finalUser, error: getError } = await supabase
-        .from('users')
-        .select(`
-          *,
-          languages:user_languages(language)
-        `)
-        .eq('id', authData.user.id)
-        .single();
-
-      if (getError) throw getError;
-
-      return {
-        ...finalUser,
-        languages: finalUser.languages?.map((l: any) => l.language) || [],
-      };
-    } catch (error) {
-      // If admin functions are not available, throw a helpful error
-      if (error instanceof Error && error.message.includes('admin')) {
-        throw new Error('User creation requires server-side implementation. Please contact your administrator.');
-      }
-      throw error;
-    }
+    throw new Error('User creation requires server-side implementation. Please contact your administrator.');
   },
 
-  updateUser: async (userId: number, userData: any): Promise<User> => {
+  updateUser: async (userId: number, userData: Partial<User>): Promise<User> => {
     const { error } = await supabase
       .from('users')
       .update({
@@ -1135,7 +1129,7 @@ export const adminAPI = {
 
     return {
       ...updatedUser,
-      languages: updatedUser.languages?.map((l: any) => l.language) || [],
+      languages: updatedUser.languages?.map((l: { language: string }) => l.language) || [],
     };
   },
 
@@ -1158,12 +1152,16 @@ export const adminAPI = {
     // The admin would need to do this manually in the Supabase dashboard
   },
 
-  resetUserPassword: async (userId: number, newPassword: string): Promise<void> => {
-    // Note: This requires Supabase Auth Admin API which may not be available in client-side code
+  resetUserPassword: async (): Promise<void> => {
+    // Note: This requires Supabase Auth Admin API which is not available in client-side code
     // In a production environment, this should be handled by a server-side API
+    throw new Error('Password reset requires server-side implementation. Please contact your administrator.');
+  },
+
+  sendPasswordResetEmail: async (userId: number): Promise<void> => {
     try {
       // Get user email
-      const { error: getError } = await supabase
+      const { data: user, error: getError } = await supabase
         .from('users')
         .select('email')
         .eq('id', userId)
@@ -1171,17 +1169,28 @@ export const adminAPI = {
 
       if (getError) throw getError;
 
-      // Update password in Supabase Auth
-      const { error } = await supabase.auth.admin.updateUserById(
-        userId.toString(),
-        { password: newPassword }
-      );
+      if (!user?.email) {
+        throw new Error('User email not found');
+      }
 
-      if (error) throw error;
+      // Send password reset email using Supabase Auth
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        // Handle rate limiting specifically
+        if (error.message.includes('security purposes')) {
+          throw new Error(error.message);
+        } else if (error.message.includes('429')) {
+          throw new Error('Rate limit exceeded. Please wait 60 seconds before requesting another password reset email.');
+        }
+        throw error;
+      }
     } catch (error) {
       // If admin functions are not available, throw a helpful error
       if (error instanceof Error && error.message.includes('admin')) {
-        throw new Error('Password reset requires server-side implementation. Please contact your administrator.');
+        throw new Error('Password reset email requires server-side implementation. Please contact your administrator.');
       }
       throw error;
     }
@@ -1234,7 +1243,7 @@ export const adminAPI = {
 
     return {
       ...updatedUser,
-      languages: updatedUser.languages?.map((l: any) => l.language) || [],
+      languages: updatedUser.languages?.map((l: { language: string }) => l.language) || [],
     };
   },
 
@@ -1269,7 +1278,7 @@ export const adminAPI = {
     return data || [];
   },
 
-  updateSentence: async (sentenceId: number, sentenceData: any): Promise<Sentence> => {
+  updateSentence: async (sentenceId: number, sentenceData: Partial<Sentence>): Promise<Sentence> => {
     const { data, error } = await supabase
       .from('sentences')
       .update(sentenceData)
@@ -1994,7 +2003,7 @@ export const mtQualityAPI = {
 
 // Onboarding API
 export const onboardingAPI = {
-  createTest: async (language: string, testData: any): Promise<OnboardingTest> => {
+  createTest: async (language: string, testData: OnboardingTestQuestion[]): Promise<OnboardingTest> => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) throw new Error('No authenticated user');

@@ -1,25 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Layout from './components/Layout';
-import Login from './components/Login';
-import Register from './components/Register';
+import Layout from './components/layout/Layout';
+import Landing from './components/pages/Landing';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
 
-import ForgotPassword from './components/ForgotPassword';
-import ResetPassword from './components/ResetPassword';
-import AnnotationInterface from './components/AnnotationInterface';
-import MyAnnotations from './components/MyAnnotations';
-import AdminDashboard from './components/AdminDashboard';
-import UserDashboard from './components/UserDashboard';
-import Profile from './components/Profile';
-import About from './components/About';
-import GuidelinesModal from './components/GuidelinesModal';
-import EvaluatorDashboard from './components/EvaluatorDashboard';
-import EvaluationInterface from './components/EvaluationInterface';
-import MyEvaluations from './components/MyEvaluations';
-import MTQualityInterface from './components/MTQualityInterface';
-import OnboardingTest from './components/OnboardingTest';
-import { PWABanner } from './components/PWABanner';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
+import AnnotationInterface from './components/pages/AnnotationInterface';
+import MyAnnotations from './components/pages/MyAnnotations';
+import AdminDashboard from './components/pages/AdminDashboard';
+import UserDashboard from './components/pages/UserDashboard';
+import Profile from './components/pages/Profile';
+
+import AboutLanding from './components/pages/AboutLanding';
+import Features from './components/pages/Features';
+import Process from './components/pages/Process';
+import Contact from './components/pages/Contact';
+import GuidelinesModal from './components/modals/GuidelinesModal';
+import EvaluatorDashboard from './components/pages/EvaluatorDashboard';
+import EvaluationInterface from './components/pages/EvaluationInterface';
+import MyEvaluations from './components/pages/MyEvaluations';
+import MTQualityInterface from './components/pages/MTQualityInterface';
+import OnboardingTest from './components/pages/OnboardingTest';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ 
@@ -93,7 +97,7 @@ const SmartRedirect: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/landing" replace />;
   }
 
   if (user?.is_admin) {
@@ -123,7 +127,7 @@ const NotFound: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/landing" replace />;
   }
 
   return (
@@ -206,6 +210,14 @@ const AppContent: React.FC = () => {
       <Layout onShowGuidelines={handleShowGuidelines}>
         <Routes>
           {/* Public Routes */}
+          <Route 
+            path="/landing" 
+            element={
+              <PublicRoute>
+                <Landing />
+              </PublicRoute>
+            } 
+          />
           <Route 
             path="/login" 
             element={
@@ -296,9 +308,36 @@ const AppContent: React.FC = () => {
           <Route 
             path="/about" 
             element={
-              <ProtectedRoute>
-                <About />
-              </ProtectedRoute>
+              <PublicRoute>
+                <AboutLanding />
+              </PublicRoute>
+            } 
+          />
+          
+          <Route 
+            path="/features" 
+            element={
+              <PublicRoute>
+                <Features />
+              </PublicRoute>
+            } 
+          />
+          
+          <Route 
+            path="/process" 
+            element={
+              <PublicRoute>
+                <Process />
+              </PublicRoute>
+            } 
+          />
+          
+          <Route 
+            path="/contact" 
+            element={
+              <PublicRoute>
+                <Contact />
+              </PublicRoute>
             } 
           />
           
@@ -384,8 +423,6 @@ const AppContent: React.FC = () => {
           onAccept={handleGuidelinesAccept}
         />
         
-        {/* PWA Banner */}
-        <PWABanner />
       </Layout>
     </Router>
   );
