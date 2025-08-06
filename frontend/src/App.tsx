@@ -83,32 +83,7 @@ const ProtectedRoute: React.FC<{
 
 // Smart redirect component
 const SmartRedirect: React.FC = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/landing" replace />;
-  }
-
-  if (user?.is_admin) {
-    return <Navigate to="/admin" replace />;
-  }
-
-  if (user?.is_evaluator) {
-    return <Navigate to="/evaluator" replace />;
-  }
-
-  return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/landing" replace />;
 };
 
 // 404 Not Found component
@@ -148,6 +123,7 @@ const NotFound: React.FC = () => {
 };
 
 // Public Route Component (redirects to appropriate dashboard if already authenticated)
+// This is used for login/register pages, not the landing page
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
 
@@ -212,11 +188,7 @@ const AppContent: React.FC = () => {
           {/* Public Routes */}
           <Route 
             path="/landing" 
-            element={
-              <PublicRoute>
-                <Landing />
-              </PublicRoute>
-            } 
+            element={<Landing />}
           />
           <Route 
             path="/login" 

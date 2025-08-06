@@ -6,6 +6,7 @@ import Footer from '../layout/Footer';
 import Logo from '../ui/Logo';
 
 const Landing: React.FC = () => {
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-white via-gray-50 to-beauty-bush-50 overflow-hidden">
       <AnimatedBackground />
