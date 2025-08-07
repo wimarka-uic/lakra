@@ -24,6 +24,7 @@ import EvaluationInterface from './components/pages/EvaluationInterface';
 import MyEvaluations from './components/pages/MyEvaluations';
 import MTQualityInterface from './components/pages/MTQualityInterface';
 import OnboardingTest from './components/pages/OnboardingTest';
+import About from './components/pages/About';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ 
@@ -84,6 +85,36 @@ const ProtectedRoute: React.FC<{
 // Smart redirect component
 const SmartRedirect: React.FC = () => {
   return <Navigate to="/landing" replace />;
+};
+
+// Landing page redirect component for authenticated users
+const LandingRedirect: React.FC = () => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, redirect to appropriate dashboard
+  if (isAuthenticated && user) {
+    if (user.is_admin) {
+      return <Navigate to="/admin" replace />;
+    }
+    if (user.is_evaluator) {
+      return <Navigate to="/evaluator" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // If not authenticated, show the landing page
+  return <Landing />;
 };
 
 // 404 Not Found component
@@ -151,6 +182,34 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
+// Accessible Route Component (allows both authenticated and unauthenticated users)
+// This is used for about, features, process, contact pages
+const AccessibleRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+// About page component that shows different content based on authentication
+const AboutPage: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  
+  // If authenticated, show the About component (for logged-in users)
+  // If not authenticated, show the AboutLanding component (for landing page users)
+  return isAuthenticated ? <About /> : <AboutLanding />;
+};
+
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, markGuidelinesSeen } = useAuth();
   const [showGuidelines, setShowGuidelines] = useState(false);
@@ -188,7 +247,7 @@ const AppContent: React.FC = () => {
           {/* Public Routes */}
           <Route 
             path="/landing" 
-            element={<Landing />}
+            element={<LandingRedirect />}
           />
           <Route 
             path="/login" 
@@ -280,36 +339,36 @@ const AppContent: React.FC = () => {
           <Route 
             path="/about" 
             element={
-              <PublicRoute>
-                <AboutLanding />
-              </PublicRoute>
+              <AccessibleRoute>
+                <AboutPage />
+              </AccessibleRoute>
             } 
           />
           
           <Route 
             path="/features" 
             element={
-              <PublicRoute>
+              <AccessibleRoute>
                 <Features />
-              </PublicRoute>
+              </AccessibleRoute>
             } 
           />
           
           <Route 
             path="/process" 
             element={
-              <PublicRoute>
+              <AccessibleRoute>
                 <Process />
-              </PublicRoute>
+              </AccessibleRoute>
             } 
           />
           
           <Route 
             path="/contact" 
             element={
-              <PublicRoute>
+              <AccessibleRoute>
                 <Contact />
-              </PublicRoute>
+              </AccessibleRoute>
             } 
           />
           

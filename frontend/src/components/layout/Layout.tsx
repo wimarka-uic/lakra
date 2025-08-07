@@ -96,7 +96,11 @@ const Layout: React.FC<LayoutProps> = ({ children, onShowGuidelines }) => {
           <div className="flex justify-between h-16">
             {/* Left side - Logo and Desktop Nav */}
             <div className="flex items-center space-x-3 lg:space-x-6">
-              <Link to="/" className="flex items-center space-x-2" onClick={closeMobileMenu}>
+              <Link 
+                to={user?.is_admin ? "/admin" : user?.is_evaluator ? "/evaluator" : "/dashboard"} 
+                className="flex items-center space-x-2" 
+                onClick={closeMobileMenu}
+              >
                 <Logo size="medium" />
               </Link>
               
