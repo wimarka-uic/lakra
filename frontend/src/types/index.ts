@@ -1,5 +1,5 @@
 export interface User {
-  id: number;
+  id: string; // UUID from Supabase Auth
   email: string;
   username: string;
   first_name: string;
@@ -44,7 +44,7 @@ export interface TextHighlight {
 export interface Annotation {
   id: number;
   sentence_id: number;
-  annotator_id: number;
+  annotator_id: string; // UUID from Supabase Auth
   fluency_score?: number;
   adequacy_score?: number;
   overall_quality?: number;
@@ -85,6 +85,8 @@ export interface RegisterData {
   is_evaluator?: boolean;
   user_type?: string;
   onboarding_passed?: boolean;
+  test_answers?: UserQuestionAnswer[];
+  test_session_id?: string;
 }
 
 export interface RegisterResult {
@@ -178,7 +180,7 @@ export interface AdminStats {
 export interface MTQualityAssessment {
   id: number;
   sentence_id: number;
-  evaluator_id: number;
+  evaluator_id: string; // UUID from Supabase Auth
   
   // AI-generated scores
   ai_fluency_score?: number;
@@ -238,7 +240,7 @@ export interface MTQualityUpdate {
 // Onboarding Test interfaces
 export interface OnboardingTest {
   id: number;
-  user_id: number;
+  user_id: string; // UUID from Supabase Auth
   language: string;
   test_data: OnboardingTestQuestion[];
   score?: number;
@@ -290,7 +292,7 @@ export interface OnboardingTestResult {
 export interface Evaluation {
   id: number;
   annotation_id: number;
-  evaluator_id: number;
+  evaluator_id: string; // UUID from Supabase Auth
   fluency_rating?: number;
   adequacy_rating?: number;
   overall_rating?: number;
@@ -386,12 +388,12 @@ export interface LanguageProficiencyQuestion {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
-  created_by?: number;
+  created_by?: string; // UUID from Supabase Auth
 }
 
 export interface UserQuestionAnswer {
   id?: number;
-  user_id?: number;
+  user_id?: string; // UUID from Supabase Auth
   question_id: number;
   selected_answer: number;
   is_correct?: boolean;

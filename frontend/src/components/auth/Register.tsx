@@ -120,7 +120,7 @@ const Register: React.FC = () => {
         test_session_id: testSessionId
       }));
 
-      const result = await languageProficiencyAPI.submitAnswers(userAnswers, testSessionId, formData.languages);
+      const result = await languageProficiencyAPI.submitAnswersRegistration(userAnswers, testSessionId, formData.languages);
       
       if (result.passed) {
         // Test passed, now complete the registration
@@ -134,17 +134,32 @@ const Register: React.FC = () => {
           languages: formData.languages,
           is_evaluator: false, // annotator
           user_type: formData.user_type,
-          onboarding_passed: true // Indicate that user passed onboarding test
+          onboarding_passed: true, // Indicate that user passed onboarding test
+          test_answers: onboardingAnswers, // Pass test answers to be stored after user creation
+          test_session_id: testSessionId
         };
         
-        await register(registerData);
-        
-        setRegistrationSuccess(true);
-        setSuccessMessage('Registration successful! You can now log in and start annotating.');
-        setError(''); // Clear any error messages
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
+        try {
+          await register(registerData);
+          
+          setRegistrationSuccess(true);
+          setSuccessMessage('Registration successful! You can now log in and start annotating.');
+          setError(''); // Clear any error messages
+          setTimeout(() => {
+            navigate('/login');
+          }, 3000);
+        } catch (registrationError) {
+          console.error('Registration failed after test passed:', registrationError);
+          setError('Registration failed after passing the test. Please try again or contact support.');
+          setCurrentStep(3); // Go back to account creation step
+          setTestStarted(false);
+          setCurrentQuestionIndex(0);
+          setOnboardingAnswers([]);
+          setTimeRemaining(0);
+          questionsLoadedRef.current = '';
+          setQuestions([]);
+          setTestSessionId('');
+        }
       } else {
         setError(`You scored ${result.score.toFixed(1)}% on the proficiency test. You need at least 70% to pass. Don't worry - you can retake the test after reviewing the materials. Please go back and try again when you're ready.`);
         setCurrentStep(3); // Go back to account creation step
@@ -166,6 +181,10 @@ const Register: React.FC = () => {
       if (error instanceof Error) {
         if (error.message.includes('Registration failed')) {
           errorMessage = 'Registration failed. Please try again.';
+        } else if (error.message.includes('Test validation failed')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('Failed to validate test answers')) {
+          errorMessage = 'Test validation failed. Please try again.';
         } else {
           errorMessage = error.message || errorMessage;
         }
@@ -177,6 +196,11 @@ const Register: React.FC = () => {
       questionsLoadedRef.current = '';
       setQuestions([]);
       setTestSessionId('');
+      setCurrentStep(3); // Go back to account creation step
+      setTestStarted(false);
+      setCurrentQuestionIndex(0);
+      setOnboardingAnswers([]);
+      setTimeRemaining(0);
     } finally {
       setIsSubmittingTest(false);
     }

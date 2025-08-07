@@ -209,55 +209,128 @@ export const authAPI = {
     let signupData: { user: any; session: any } | null = null;
     let signupError: Error | null = null;
 
-    // Simplified registration flow
-    const { data, error } = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: {
-        data: {
-          onboarding_passed: userData.onboarding_passed || false
-        }
-      }
-    });
-
-    signupData = data;
-    signupError = error;
-
-    if (error) throw error;
-
-    if (signupError) throw signupError;
-    if (!signupData.user) throw new Error('Registration failed');
-
-    // Create user profile
-    const { error: profileError } = await supabase
-      .from('users')
-      .insert({
-        id: signupData.user.id,
-        email: userData.email,
-        username: userData.username,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        preferred_language: userData.preferred_language || userData.languages?.[0] || 'tagalog',
-        is_evaluator: userData.is_evaluator || false,
-        onboarding_status: userData.onboarding_passed ? 'completed' : 'pending',
-        onboarding_score: userData.onboarding_passed ? 100.0 : null,
-        onboarding_completed_at: userData.onboarding_passed ? new Date().toISOString() : null,
-      });
-
-    if (profileError) throw profileError;
-
-    // Add user languages
-    if (userData.languages && userData.languages.length > 0) {
-      const languageData = userData.languages.map(lang => ({
-        user_id: signupData.user.id,
-        language: lang,
+    // For users who need onboarding test, validate the test first
+    if (userData.onboarding_passed && userData.test_answers && userData.test_answers.length > 0) {
+      // Verify the test answers are valid before creating the user
+      const testAnswersData = userData.test_answers.map((answer: any) => ({
+        question_id: answer.question_id,
+        selected_answer: answer.selected_answer,
+        test_session_id: userData.test_session_id,
       }));
 
-      const { error: langError } = await supabase
-        .from('user_languages')
-        .insert(languageData);
+      // Get correct answers for all questions to calculate correctness
+      const questionIds = userData.test_answers.map((answer: any) => answer.question_id);
+      const { data: questions } = await supabase
+        .from('language_proficiency_questions')
+        .select('id, correct_answer')
+        .in('id', questionIds);
 
-      if (langError) throw langError;
+      if (!questions || questions.length === 0) {
+        throw new Error('Failed to validate test answers. Please try again.');
+      }
+
+      // Calculate score to double-check
+      let correct_count = 0;
+      for (const answer of userData.test_answers) {
+        const question = questions.find(q => q.id === answer.question_id);
+        if (question && answer.selected_answer === question.correct_answer) {
+          correct_count++;
+        }
+      }
+
+      const score = (correct_count / userData.test_answers.length) * 100;
+      if (score < 70) {
+        throw new Error(`Test validation failed. Score: ${score.toFixed(1)}%. You need at least 70% to register.`);
+      }
+    }
+
+    try {
+      // FIRST: Create the user in Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            onboarding_passed: userData.onboarding_passed || false
+          }
+        }
+      });
+
+      signupData = data;
+      signupError = error;
+
+      if (error) throw error;
+      if (signupError) throw signupError;
+      if (!signupData.user) throw new Error('Registration failed');
+
+      // NOW: Create user profile using the database function (which has SECURITY DEFINER privileges)
+      const profileData = {
+        user_id: signupData.user.id,
+        user_email: userData.email,
+        user_username: userData.username,
+        user_first_name: userData.first_name,
+        user_last_name: userData.last_name,
+        user_preferred_language: userData.preferred_language || userData.languages?.[0] || 'tagalog',
+        user_is_evaluator: userData.is_evaluator || false,
+        user_onboarding_status: userData.onboarding_passed ? 'completed' : 'pending',
+        user_onboarding_score: userData.onboarding_passed ? 100.0 : null,
+        user_onboarding_completed_at: userData.onboarding_passed ? new Date().toISOString() : null
+      };
+
+      console.log('Creating user profile with data:', profileData);
+
+      const { error: profileError } = await supabase
+        .rpc('create_user_profile', profileData);
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
+      }
+
+      // Add user languages using the database function
+      if (userData.languages && userData.languages.length > 0) {
+        const languageData = {
+          user_id_param: signupData.user.id,
+          languages_param: userData.languages
+        };
+        
+        console.log('Creating user languages with data:', languageData);
+        
+        const { error: langError } = await supabase
+          .rpc('create_user_languages', languageData);
+
+        if (langError) {
+          console.error('Language creation error:', langError);
+          throw langError;
+        }
+      }
+
+      // Store test answers if provided using the database function
+      if (userData.test_answers && userData.test_answers.length > 0) {
+        const testAnswersData = {
+          user_id_param: signupData.user.id,
+          test_answers_param: userData.test_answers,
+          test_session_id_param: userData.test_session_id
+        };
+        
+        console.log('Creating user test answers with data:', testAnswersData);
+        
+        const { error: testAnswersError } = await supabase
+          .rpc('create_user_test_answers', testAnswersData);
+
+        if (testAnswersError) {
+          console.error('Test answers creation error:', testAnswersError);
+          throw testAnswersError;
+        }
+      }
+
+    } catch (error) {
+      // If any step fails, clean up any partial data
+      console.error('Registration failed, cleaning up:', error);
+      
+      // If Supabase Auth user was created but profile creation failed, we can't easily clean up
+      // The user will need to contact support or try again with a different email
+      throw error;
     }
 
     // Get the created user profile
@@ -1747,6 +1820,68 @@ export const languageProficiencyAPI = {
         ...updatedUser,
         languages: [], // Will be populated by the calling code
       } : undefined,
+    };
+  },
+
+  // Submit answers during registration (no auth required, just validation)
+  submitAnswersRegistration: async (answers: UserQuestionAnswer[], sessionId: string, languages: string[]): Promise<OnboardingTestResult> => {
+    let correct_count = 0;
+    const total_questions = answers.length;
+
+    // Process each answer for validation only (no storage since user doesn't exist yet)
+    for (const answer of answers) {
+      const { data: question } = await supabase
+        .from('language_proficiency_questions')
+        .select('correct_answer')
+        .eq('id', answer.question_id)
+        .single();
+
+      if (question) {
+        const is_correct = answer.selected_answer === question.correct_answer;
+        if (is_correct) correct_count++;
+      }
+    }
+
+    // Calculate score
+    const score = total_questions > 0 ? (correct_count / total_questions) * 100 : 0;
+    const passed = score >= 70.0;
+
+    // Create results breakdown by language
+    const questions_by_language: Record<string, {
+      total: number;
+      correct: number;
+      score: number;
+    }> = {};
+    for (const language of languages) {
+      // Capitalize language name to match database format
+      const capitalizedLanguage = language.charAt(0).toUpperCase() + language.slice(1);
+      const { data: langQuestions } = await supabase
+        .from('language_proficiency_questions')
+        .select('id, correct_answer')
+        .eq('language', capitalizedLanguage);
+
+      const langQuestionIds = langQuestions?.map(q => q.id) || [];
+      const langAnswers = answers.filter(a => langQuestionIds.includes(a.question_id));
+      const langCorrect = langAnswers.filter(a => {
+        const question = langQuestions?.find(q => q.id === a.question_id);
+        return question && a.selected_answer === question.correct_answer;
+      }).length;
+
+      questions_by_language[language] = {
+        total: langAnswers.length,
+        correct: langCorrect,
+        score: langAnswers.length > 0 ? (langCorrect / langAnswers.length) * 100 : 0,
+      };
+    }
+
+    return {
+      total_questions,
+      correct_answers: correct_count,
+      score,
+      passed,
+      questions_by_language,
+      session_id: sessionId,
+      updated_user: undefined, // No user exists yet during registration
     };
   },
 
