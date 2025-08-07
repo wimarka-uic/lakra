@@ -84,10 +84,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
-    const authData = await authAPI.login(credentials);
-    authStorage.setToken(authData.access_token);
-    authStorage.setUser(authData.user);
-    setUser(authData.user);
+    try {
+      logger.debug('Starting login process', {
+        component: 'AuthContext',
+        action: 'login',
+        metadata: { isUsernameLogin: !credentials.email.includes('@') }
+      });
+      
+      const authData = await authAPI.login(credentials);
+      
+      logger.debug('Login API call successful', {
+        component: 'AuthContext',
+        action: 'login',
+        metadata: { userId: authData.user.id }
+      });
+      
+      authStorage.setToken(authData.access_token);
+      authStorage.setUser(authData.user);
+      setUser(authData.user);
+      
+      logger.debug('Login process completed', {
+        component: 'AuthContext',
+        action: 'login',
+        metadata: { userId: authData.user.id }
+      });
+    } catch (error) {
+      logger.error('Login process failed', {
+        component: 'AuthContext',
+        action: 'login',
+        metadata: { error: (error as Error).message }
+      });
+      throw error;
+    }
   };
 
   const register = async (userData: RegisterData) => {

@@ -19,6 +19,7 @@ import type {
   MTQualityCreate,
   MTQualityUpdate,
   OnboardingTest,
+  OnboardingTestQuestion,
   OnboardingTestResult,
   LanguageProficiencyQuestion,
   UserQuestionAnswer,
@@ -41,23 +42,43 @@ export const authStorage = {
 export const authAPI = {
   login: async (credentials: LoginCredentials): Promise<AuthToken> => {
     let email = credentials.email;
+    let isUsernameLogin = false;
     
     // Check if the input is a username (not an email)
     if (!credentials.email.includes('@')) {
+      isUsernameLogin = true;
       logger.debug('Attempting username-based login', {
         component: 'authAPI',
         action: 'login',
         metadata: { username: credentials.email }
       });
       
-      // Look up the user by username to get their email
-      const { data: userByUsername, error: usernameError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('username', credentials.email)
-        .single();
+      // Look up the user by username to get their email using raw SQL
+      const { data: userByUsernameArray, error: usernameError } = await supabase
+        .rpc('get_user_by_username', { username_param: credentials.email });
+      
+      // Extract the first (and should be only) user from the array
+      const userByUsername = userByUsernameArray?.[0];
+      
+      logger.debug('Username lookup result', {
+        component: 'authAPI',
+        action: 'login',
+        metadata: { 
+          username: credentials.email, 
+          hasData: !!userByUsername, 
+          hasError: !!usernameError,
+          errorMessage: usernameError?.message,
+          errorCode: usernameError?.code
+        }
+      });
       
       if (usernameError) {
+        logger.error('Username lookup error', {
+          component: 'authAPI',
+          action: 'login',
+          metadata: { username: credentials.email, error: usernameError.message, errorCode: usernameError.code }
+        });
+        
         if (usernameError.code === 'PGRST116') {
           // No rows returned - username doesn't exist
           logger.debug('Username not found', {
@@ -67,19 +88,15 @@ export const authAPI = {
           });
           throw new Error('Invalid username or password');
         }
-        logger.error('Username lookup error', {
-          component: 'authAPI',
-          action: 'login',
-          metadata: { username: credentials.email, error: usernameError.message }
-        });
+        
         throw new Error('Authentication error. Please try again.');
       }
       
-      if (!userByUsername) {
-        logger.debug('No user data returned for username', {
+      if (!userByUsername || !userByUsername.email) {
+        logger.debug('No user data or email returned for username', {
           component: 'authAPI',
           action: 'login',
-          metadata: { username: credentials.email }
+          metadata: { username: credentials.email, userData: userByUsername }
         });
         throw new Error('Invalid username or password');
       }
@@ -88,15 +105,18 @@ export const authAPI = {
       logger.debug('Username lookup successful', {
         component: 'authAPI',
         action: 'login',
-        metadata: { username: credentials.email, email: email }
+        metadata: { username: credentials.email, email: email, foundUsername: userByUsername.username }
       });
     }
 
     logger.debug('Attempting Supabase authentication', {
       component: 'authAPI',
       action: 'login',
-      metadata: { email: email, isUsernameLogin: email !== credentials.email }
+      metadata: { email: email, isUsernameLogin }
     });
+
+    // Ensure we have a clean authentication state
+    await supabase.auth.signOut();
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
@@ -107,9 +127,29 @@ export const authAPI = {
       logger.error('Supabase authentication failed', {
         component: 'authAPI',
         action: 'login',
-        metadata: { email: email, error: error.message }
+        metadata: { email: email, error: error.message, isUsernameLogin }
       });
+      
+      // Provide more specific error messages for username login
+      if (isUsernameLogin) {
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid username or password');
+        }
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and confirm your account before signing in with username');
+        }
+      }
+      
       throw error;
+    }
+
+    if (!data.user) {
+      logger.error('No user data returned from Supabase auth', {
+        component: 'authAPI',
+        action: 'login',
+        metadata: { email: email, isUsernameLogin }
+      });
+      throw new Error('Authentication failed. Please try again.');
     }
 
     // Get user profile from our users table
@@ -119,7 +159,14 @@ export const authAPI = {
       .eq('id', data.user.id)
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      logger.error('Failed to get user profile', {
+        component: 'authAPI',
+        action: 'login',
+        metadata: { userId: data.user.id, error: profileError.message }
+      });
+      throw profileError;
+    }
 
     // Get user languages
     const { data: languages } = await supabase
@@ -132,9 +179,24 @@ export const authAPI = {
       languages: languages?.map(l => l.language) || [],
     };
 
-    const token = data.session?.access_token || '';
+    if (!data.session) {
+      logger.error('No session returned from Supabase auth', {
+        component: 'authAPI',
+        action: 'login',
+        metadata: { userId: data.user.id, isUsernameLogin }
+      });
+      throw new Error('Authentication failed. No session created.');
+    }
+
+    const token = data.session.access_token;
     authStorage.setToken(token);
     authStorage.setUser(user);
+
+    logger.debug('Login successful', {
+      component: 'authAPI',
+      action: 'login',
+      metadata: { userId: user.id, isUsernameLogin }
+    });
 
     return {
       access_token: token,
@@ -425,14 +487,18 @@ export const sentencesAPI = {
     const annotatedIds = annotatedSentenceIds?.map(a => a.sentence_id) || [];
 
     // Find sentences that haven't been annotated by this user
-    const { data, error } = await supabase
+    let query = supabase
       .from('sentences')
       .select('*')
       .eq('is_active', true)
-      .eq('target_language', getLanguageCode(userProfile.preferred_language))
-      .not('id', 'in', `(${annotatedIds.length > 0 ? annotatedIds.join(',') : '0'})`)
-      .limit(1)
-      .single();
+      .eq('target_language', getLanguageCode(userProfile.preferred_language));
+
+    // Only apply the NOT IN filter if there are annotated IDs
+    if (annotatedIds.length > 0) {
+      query = query.not('id', 'in', `(${annotatedIds.join(',')})`);
+    }
+
+    const { data, error } = await query.limit(1).single();
 
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
     return data;
@@ -463,13 +529,18 @@ export const sentencesAPI = {
     const annotatedIds = annotatedSentenceIds?.map(a => a.sentence_id) || [];
 
     // Find sentences that haven't been annotated by this user
-    const { data, error } = await supabase
+    let query = supabase
       .from('sentences')
       .select('*')
       .eq('is_active', true)
-      .eq('target_language', getLanguageCode(userProfile.preferred_language))
-      .not('id', 'in', `(${annotatedIds.length > 0 ? annotatedIds.join(',') : '0'})`)
-      .range(skip, skip + limit - 1);
+      .eq('target_language', getLanguageCode(userProfile.preferred_language));
+
+    // Only apply the NOT IN filter if there are annotated IDs
+    if (annotatedIds.length > 0) {
+      query = query.not('id', 'in', `(${annotatedIds.join(',')})`);
+    }
+
+    const { data, error } = await query.range(skip, skip + limit - 1);
 
     if (error) throw error;
     return data || [];
@@ -478,6 +549,7 @@ export const sentencesAPI = {
   createSentence: async (sentenceData: {
     source_text: string;
     machine_translation: string;
+    back_translation?: string;
     source_language: string;
     target_language: string;
     domain?: string;
@@ -487,6 +559,7 @@ export const sentencesAPI = {
       .insert({
         source_text: sentenceData.source_text,
         machine_translation: sentenceData.machine_translation,
+        back_translation: sentenceData.back_translation,
         source_language: sentenceData.source_language,
         target_language: sentenceData.target_language,
         domain: sentenceData.domain,
@@ -508,9 +581,33 @@ export const sentencesAPI = {
   }> => {
     const text = await file.text();
     const lines = text.split('\n');
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
     
-    const requiredColumns = ['Source', 'Source_Language', 'Translation', 'Translation_Language'];
+    // Improved CSV header parsing with proper quote handling
+    const parseCSVHeaders = (headerLine: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < headerLine.length; i++) {
+        const char = headerLine[i];
+        
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim().replace(/^"|"$/g, '')); // Remove outer quotes
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      
+      result.push(current.trim().replace(/^"|"$/g, '')); // Remove outer quotes
+      return result;
+    };
+    
+    const headers = parseCSVHeaders(lines[0]);
+    
+    const requiredColumns = ['source_text', 'machine_translation', 'source_language', 'target_language'];
     const missingColumns = requiredColumns.filter(col => !headers.includes(col));
     
     if (missingColumns.length > 0) {
@@ -527,19 +624,68 @@ export const sentencesAPI = {
       if (!line) continue;
 
       try {
-        // Parse CSV line (simple implementation)
-        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+        // Enhanced CSV line parsing with better quote handling and error detection
+        const parseCSVLine = (line: string): string[] => {
+          const result: string[] = [];
+          let current = '';
+          let inQuotes = false;
+          let quoteCount = 0;
+          
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+              inQuotes = !inQuotes;
+              quoteCount++;
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          
+          // Check for unclosed quotes
+          if (inQuotes) {
+            throw new Error('Unclosed quotes detected');
+          }
+          
+          // Check for odd number of quotes (malformed CSV)
+          if (quoteCount % 2 !== 0) {
+            throw new Error('Malformed quotes detected');
+          }
+          
+          result.push(current.trim());
+          
+          // Remove outer quotes and handle escaped quotes
+          return result.map(v => {
+            let cleaned = v.replace(/^"|"$/g, ''); // Remove outer quotes
+            cleaned = cleaned.replace(/""/g, '"'); // Handle escaped quotes (double quotes)
+            return cleaned;
+          });
+        };
+        
+        const values = parseCSVLine(line);
+        
+        // Validate that we have the correct number of columns
+        if (values.length !== headers.length) {
+          errors.push(`Row ${i + 1}: Column count mismatch. Expected ${headers.length} columns, got ${values.length}`);
+          skippedCount++;
+          continue;
+        }
+        
         const sentence = {
-          source_text: values[headers.indexOf('Source')] || '',
-          machine_translation: values[headers.indexOf('Translation')] || '',
-          source_language: values[headers.indexOf('Source_Language')] || 'en',
-          target_language: values[headers.indexOf('Translation_Language')] || 'tgl',
-          domain: headers.includes('Domain') ? values[headers.indexOf('Domain')] || '' : '',
+          source_text: values[headers.indexOf('source_text')] || '',
+          machine_translation: values[headers.indexOf('machine_translation')] || '',
+          source_language: values[headers.indexOf('source_language')] || 'en',
+          target_language: values[headers.indexOf('target_language')] || 'tgl',
+          domain: headers.includes('domain') ? values[headers.indexOf('domain')] || '' : '',
+          back_translation: headers.includes('back_translation') ? values[headers.indexOf('back_translation')] || '' : '',
         };
 
         // Validate required fields
         if (!sentence.source_text || !sentence.machine_translation) {
-          errors.push(`Row ${i + 1}: Missing required fields`);
+          errors.push(`Row ${i + 1}: Missing required fields (source_text and machine_translation are required)`);
           skippedCount++;
           continue;
         }
@@ -549,20 +695,31 @@ export const sentencesAPI = {
         const validTargetLanguages = ['tgl', 'ilo', 'ceb', 'en'];
         
         if (!validSourceLanguages.includes(sentence.source_language)) {
-          errors.push(`Row ${i + 1}: Invalid source language '${sentence.source_language}'`);
+          errors.push(`Row ${i + 1}: Invalid source language '${sentence.source_language}'. Valid options: ${validSourceLanguages.join(', ')}`);
           skippedCount++;
           continue;
         }
 
         if (!validTargetLanguages.includes(sentence.target_language)) {
-          errors.push(`Row ${i + 1}: Invalid target language '${sentence.target_language}'`);
+          errors.push(`Row ${i + 1}: Invalid target language '${sentence.target_language}'. Valid options: ${validTargetLanguages.join(', ')}`);
           skippedCount++;
           continue;
         }
 
+        // Validate domain if provided
+        if (sentence.domain && sentence.domain.trim()) {
+          const validDomains = ['conversational', 'news', 'legal', 'medical', 'educational'];
+          if (!validDomains.includes(sentence.domain)) {
+            errors.push(`Row ${i + 1}: Invalid domain '${sentence.domain}'. Valid options: ${validDomains.join(', ')}`);
+            skippedCount++;
+            continue;
+          }
+        }
+
         sentences.push(sentence);
       } catch (error) {
-        errors.push(`Row ${i + 1}: Parse error - ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown parsing error';
+        errors.push(`Row ${i + 1}: CSV parsing error - ${errorMessage}. Please check your CSV format and ensure proper quote usage.`);
         skippedCount++;
       }
     }
@@ -577,7 +734,7 @@ export const sentencesAPI = {
           .insert(batch);
 
         if (error) {
-          errors.push(`Batch ${Math.floor(i / batchSize) + 1}: ${error.message}`);
+          errors.push(`Batch ${Math.floor(i / batchSize) + 1}: Database error - ${error.message}`);
         } else {
           importedCount += batch.length;
         }
@@ -607,17 +764,20 @@ export const annotationsAPI = {
       .select('id')
       .eq('sentence_id', annotationData.sentence_id)
       .eq('annotator_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       throw new Error('You have already annotated this sentence');
     }
 
+    // Prepare annotation data without highlights (they go in separate table)
+    const { highlights, ...annotationInsertData } = annotationData;
+
     // Create annotation
     const { data: annotation, error } = await supabase
       .from('annotations')
       .insert({
-        ...annotationData,
+        ...annotationInsertData,
         annotator_id: user.id,
         annotation_status: 'completed',
       })
@@ -627,8 +787,8 @@ export const annotationsAPI = {
     if (error) throw error;
 
     // Create highlights if provided
-    if (annotationData.highlights && annotationData.highlights.length > 0) {
-      const highlightsData = annotationData.highlights.map(h => ({
+    if (highlights && highlights.length > 0) {
+      const highlightsData = highlights.map(h => ({
         annotation_id: annotation.id,
         highlighted_text: h.highlighted_text,
         start_index: h.start_index,
@@ -638,9 +798,11 @@ export const annotationsAPI = {
         error_type: h.error_type,
       }));
 
-      await supabase
+      const { error: highlightsError } = await supabase
         .from('text_highlights')
         .insert(highlightsData);
+
+      if (highlightsError) throw highlightsError;
     }
 
     return annotation;
@@ -671,16 +833,20 @@ export const annotationsAPI = {
     if (!user) throw new Error('No authenticated user');
 
     // Delete highlights first
-    await supabase
+    const { error: highlightsError } = await supabase
       .from('text_highlights')
       .delete()
       .eq('annotation_id', id);
 
+    if (highlightsError) throw highlightsError;
+
     // Delete evaluations
-    await supabase
+    const { error: evaluationsError } = await supabase
       .from('evaluations')
       .delete()
       .eq('annotation_id', id);
+
+    if (evaluationsError) throw evaluationsError;
 
     // Delete annotation
     const { error } = await supabase
@@ -699,11 +865,14 @@ export const annotationsAPI = {
     
     if (!user) throw new Error('No authenticated user');
 
+    // Prepare update data without highlights (they go in separate table)
+    const { highlights, ...annotationUpdateData } = updateData;
+
     // Update annotation
     const { data: annotation, error } = await supabase
       .from('annotations')
       .update({
-        ...updateData,
+        ...annotationUpdateData,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -718,15 +887,17 @@ export const annotationsAPI = {
     if (error) throw error;
 
     // Update highlights if provided
-    if (updateData.highlights && updateData.highlights.length > 0) {
+    if (highlights && highlights.length > 0) {
       // Delete existing highlights
-      await supabase
+      const { error: deleteError } = await supabase
         .from('text_highlights')
         .delete()
         .eq('annotation_id', id);
 
+      if (deleteError) throw deleteError;
+
       // Insert new highlights
-      const highlightsData = updateData.highlights.map(h => ({
+      const highlightsData = highlights.map(h => ({
         annotation_id: id,
         highlighted_text: h.highlighted_text,
         start_index: h.start_index,
@@ -736,9 +907,11 @@ export const annotationsAPI = {
         error_type: h.error_type,
       }));
 
-      await supabase
+      const { error: insertError } = await supabase
         .from('text_highlights')
         .insert(highlightsData);
+
+      if (insertError) throw insertError;
     }
 
     return annotation;
@@ -749,38 +922,91 @@ export const annotationsAPI = {
     
     if (!user) throw new Error('No authenticated user');
 
-    // Generate unique filename
-    const fileName = `voice-recordings/${user.id}/${annotationId}-${Date.now()}.webm`;
+
+
+    // Determine the best file extension based on the blob type
+    let fileExtension = 'webm';
+    if (audioBlob.type) {
+      if (audioBlob.type.includes('mp4')) fileExtension = 'mp4';
+      else if (audioBlob.type.includes('mpeg')) fileExtension = 'mp3';
+      else if (audioBlob.type.includes('aac')) fileExtension = 'aac';
+      else if (audioBlob.type.includes('wav')) fileExtension = 'wav';
+      else if (audioBlob.type.includes('ogg')) fileExtension = 'ogg';
+    }
+
+    // Generate unique filename with proper extension
+    const fileName = `${user.id}/${annotationId}-${Date.now()}.${fileExtension}`;
     
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
-      .from('annotations')
+      .from('voice-recordings')
       .upload(fileName, audioBlob, {
-        contentType: 'audio/webm',
+        contentType: audioBlob.type || 'audio/webm',
         cacheControl: '3600',
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      logger.error('Storage upload error', {
+        component: 'annotationsAPI',
+        action: 'uploadVoiceRecording',
+        metadata: { error: uploadError.message }
+      });
+      throw new Error(`Failed to upload voice recording: ${uploadError.message}`);
+    }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('annotations')
-      .getPublicUrl(fileName);
+    // Store the file path instead of public URL (since bucket is private)
+    const filePath = fileName;
 
-    // Update annotation with voice recording URL and duration
+    // Update annotation with voice recording file path and duration
     const { error: updateError } = await supabase
       .from('annotations')
       .update({
-        voice_recording_url: publicUrl,
+        voice_recording_url: filePath, // Store file path instead of public URL
         voice_recording_duration: duration,
         updated_at: new Date().toISOString(),
       })
       .eq('id', annotationId)
       .eq('annotator_id', user.id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      logger.error('Database update error', {
+        component: 'annotationsAPI',
+        action: 'uploadVoiceRecording',
+        metadata: { error: updateError.message }
+      });
+      throw new Error(`Failed to update annotation with voice recording: ${updateError.message}`);
+    }
 
-    return { voice_recording_url: publicUrl };
+
+
+    return { voice_recording_url: filePath };
+  },
+
+  // New function to get signed URL for voice recordings
+  getSignedVoiceRecordingUrl: async (filePath: string): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+
+
+    // Generate signed URL that expires in 1 hour
+    const { data, error } = await supabase.storage
+      .from('voice-recordings')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+    if (error) {
+      logger.error('Error generating signed URL', {
+        component: 'annotationsAPI',
+        action: 'getSignedVoiceRecordingUrl',
+        metadata: { error: error.message, errorName: error.name }
+      });
+      throw new Error(`Failed to generate signed URL: ${error.message}`);
+    }
+
+
+
+    return data.signedUrl;
   },
 };
 
@@ -837,87 +1063,18 @@ export const adminAPI = {
     // Transform data to match expected format
     return (data || []).map(user => ({
       ...user,
-      languages: user.languages?.map((l: any) => l.language) || [],
+              languages: user.languages?.map((l: { language: string }) => l.language) || [],
     }));
   },
 
   // User Management Functions
-  createUser: async (userData: any): Promise<User> => {
-    // Note: This requires Supabase Auth Admin API which may not be available in client-side code
+  createUser: async (): Promise<User> => {
+    // Note: This requires Supabase Auth Admin API which is not available in client-side code
     // In a production environment, this should be handled by a server-side API
-    try {
-      // First create the user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: userData.email,
-        password: userData.password,
-        email_confirm: true,
-      });
-
-      if (authError) throw authError;
-
-      if (!authData.user) throw new Error('Failed to create user');
-
-      // Create user profile in our users table
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: userData.email,
-          username: userData.username,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          is_active: userData.is_active,
-          is_admin: userData.is_admin,
-          is_evaluator: userData.is_evaluator,
-          onboarding_status: userData.skip_onboarding ? 'completed' : 'pending',
-          onboarding_score: userData.skip_onboarding ? 100.0 : null,
-          onboarding_completed_at: userData.skip_onboarding ? new Date().toISOString() : null,
-        })
-        .select()
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Add user languages
-      if (userData.languages && userData.languages.length > 0) {
-        const languageData = userData.languages.map((lang: string) => ({
-          user_id: authData.user.id,
-          language: lang,
-        }));
-
-        const { error: langError } = await supabase
-          .from('user_languages')
-          .insert(languageData);
-
-        if (langError) throw langError;
-      }
-
-      // Get the created user with languages
-      const { data: finalUser, error: getError } = await supabase
-        .from('users')
-        .select(`
-          *,
-          languages:user_languages(language)
-        `)
-        .eq('id', authData.user.id)
-        .single();
-
-      if (getError) throw getError;
-
-      return {
-        ...finalUser,
-        languages: finalUser.languages?.map((l: any) => l.language) || [],
-      };
-    } catch (error) {
-      // If admin functions are not available, throw a helpful error
-      if (error instanceof Error && error.message.includes('admin')) {
-        throw new Error('User creation requires server-side implementation. Please contact your administrator.');
-      }
-      throw error;
-    }
+    throw new Error('User creation requires server-side implementation. Please contact your administrator.');
   },
 
-  updateUser: async (userId: number, userData: any): Promise<User> => {
+  updateUser: async (userId: number, userData: Partial<User>): Promise<User> => {
     const { error } = await supabase
       .from('users')
       .update({
@@ -972,7 +1129,7 @@ export const adminAPI = {
 
     return {
       ...updatedUser,
-      languages: updatedUser.languages?.map((l: any) => l.language) || [],
+      languages: updatedUser.languages?.map((l: { language: string }) => l.language) || [],
     };
   },
 
@@ -995,12 +1152,16 @@ export const adminAPI = {
     // The admin would need to do this manually in the Supabase dashboard
   },
 
-  resetUserPassword: async (userId: number, newPassword: string): Promise<void> => {
-    // Note: This requires Supabase Auth Admin API which may not be available in client-side code
+  resetUserPassword: async (): Promise<void> => {
+    // Note: This requires Supabase Auth Admin API which is not available in client-side code
     // In a production environment, this should be handled by a server-side API
+    throw new Error('Password reset requires server-side implementation. Please contact your administrator.');
+  },
+
+  sendPasswordResetEmail: async (userId: number): Promise<void> => {
     try {
       // Get user email
-      const { error: getError } = await supabase
+      const { data: user, error: getError } = await supabase
         .from('users')
         .select('email')
         .eq('id', userId)
@@ -1008,17 +1169,28 @@ export const adminAPI = {
 
       if (getError) throw getError;
 
-      // Update password in Supabase Auth
-      const { error } = await supabase.auth.admin.updateUserById(
-        userId.toString(),
-        { password: newPassword }
-      );
+      if (!user?.email) {
+        throw new Error('User email not found');
+      }
 
-      if (error) throw error;
+      // Send password reset email using Supabase Auth
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        // Handle rate limiting specifically
+        if (error.message.includes('security purposes')) {
+          throw new Error(error.message);
+        } else if (error.message.includes('429')) {
+          throw new Error('Rate limit exceeded. Please wait 60 seconds before requesting another password reset email.');
+        }
+        throw error;
+      }
     } catch (error) {
       // If admin functions are not available, throw a helpful error
       if (error instanceof Error && error.message.includes('admin')) {
-        throw new Error('Password reset requires server-side implementation. Please contact your administrator.');
+        throw new Error('Password reset email requires server-side implementation. Please contact your administrator.');
       }
       throw error;
     }
@@ -1071,7 +1243,7 @@ export const adminAPI = {
 
     return {
       ...updatedUser,
-      languages: updatedUser.languages?.map((l: any) => l.language) || [],
+      languages: updatedUser.languages?.map((l: { language: string }) => l.language) || [],
     };
   },
 
@@ -1106,7 +1278,7 @@ export const adminAPI = {
     return data || [];
   },
 
-  updateSentence: async (sentenceId: number, sentenceData: any): Promise<Sentence> => {
+  updateSentence: async (sentenceId: number, sentenceData: Partial<Sentence>): Promise<Sentence> => {
     const { data, error } = await supabase
       .from('sentences')
       .update(sentenceData)
@@ -1831,7 +2003,7 @@ export const mtQualityAPI = {
 
 // Onboarding API
 export const onboardingAPI = {
-  createTest: async (language: string, testData: any): Promise<OnboardingTest> => {
+  createTest: async (language: string, testData: OnboardingTestQuestion[]): Promise<OnboardingTest> => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) throw new Error('No authenticated user');

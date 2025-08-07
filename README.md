@@ -69,7 +69,7 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 - **TailwindCSS**: Utility-first CSS framework for responsive design
 - **React Router**: Client-side routing and navigation
 - **Lucide React**: Beautiful icon library
-- **PWA Support**: Progressive Web App capabilities with service workers
+
 
 ## Getting Started
 
@@ -255,7 +255,6 @@ The system tracks various quality metrics:
 
 - **Supabase URL**: Configure in `frontend/src/utils/supabase.ts`
 - **Environment Variables**: Update `.env` file for different environments
-- **PWA Settings**: Configure in `vite.config.ts` and `public/manifest.json`
 
 ## Production Deployment
 

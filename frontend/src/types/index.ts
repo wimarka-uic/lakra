@@ -21,6 +21,7 @@ export interface Sentence {
   source_text: string;
   machine_translation: string;
   reference_translation?: string;  // Reference/human translation for comparison
+  back_translation?: string;  // Back translation for quality assessment
   source_language: string;
   target_language: string;
   domain?: string;

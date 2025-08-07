@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 import type {
   User,
   Sentence,
@@ -47,9 +48,17 @@ api.interceptors.request.use((config) => {
   const token = authStorage.getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log('Request interceptor: Added auth token for', config.url);
+    logger.debug('Request interceptor: Added auth token', {
+      component: 'API',
+      action: 'request_interceptor',
+      metadata: { url: config.url }
+    });
   } else {
-    console.log('Request interceptor: No auth token found for', config.url);
+    logger.debug('Request interceptor: No auth token found', {
+      component: 'API',
+      action: 'request_interceptor',
+      metadata: { url: config.url }
+    });
   }
   return config;
 });
@@ -58,11 +67,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.log('Response interceptor: Error occurred:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data
+    logger.debug('Response interceptor: Error occurred', {
+      component: 'API',
+      action: 'response_interceptor',
+      metadata: {
+        url: error.config?.url,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      }
     });
     
     if (error.response?.status === 401) {
@@ -291,6 +304,11 @@ export const adminAPI = {
     return response.data;
   },
 
+  sendPasswordResetEmail: async (userId: number): Promise<{ message: string }> => {
+    const response = await api.post(`/admin/users/${userId}/send-reset-email`);
+    return response.data;
+  },
+
   deleteUser: async (userId: number): Promise<{ message: string }> => {
     const response = await api.delete(`/admin/users/${userId}`);
     return response.data;
@@ -509,8 +527,14 @@ export const languageProficiencyAPI = {
       languages: capitalizedLanguages
     };
     
-    console.log('Submitting answers with data:', requestData);
-    console.log('Auth token:', authStorage.getToken() ? 'Present' : 'Missing');
+    logger.debug('Submitting answers with data', {
+      component: 'LanguageProficiencyAPI',
+      action: 'submit_answers',
+      metadata: { 
+        requestData,
+        hasAuthToken: !!authStorage.getToken()
+      }
+    });
     
     const response = await api.post('/language-proficiency-questions/submit', requestData);
     return response.data;
@@ -531,7 +555,11 @@ export const languageProficiencyAPI = {
       languages: capitalizedLanguages
     };
     
-    console.log('Submitting registration answers with data:', requestData);
+    logger.debug('Submitting registration answers with data', {
+      component: 'LanguageProficiencyAPI',
+      action: 'submit_answers_registration',
+      metadata: { requestData }
+    });
     
     // Use a separate axios instance without auth interceptor for registration
     const registrationApi = axios.create({

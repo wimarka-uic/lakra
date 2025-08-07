@@ -17,11 +17,14 @@ interface LogContext {
 
 class Logger {
   private level: LogLevel;
-  private isDevelopment: boolean;
+  private isProduction: boolean;
 
   constructor() {
-    this.isDevelopment = import.meta.env.DEV;
-    this.level = this.isDevelopment ? LogLevel.DEBUG : LogLevel.WARN;
+    this.isProduction = import.meta.env.PROD;
+    
+    // In production, only show WARN and ERROR
+    // In development, show DEBUG and above
+    this.level = this.isProduction ? LogLevel.WARN : LogLevel.DEBUG;
   }
 
   private shouldLog(level: LogLevel): boolean {
@@ -41,7 +44,9 @@ class Logger {
     
     switch (level) {
       case LogLevel.DEBUG:
-        console.debug(formattedMessage, ...args);
+        if (!this.isProduction) {
+          console.debug(formattedMessage, ...args);
+        }
         break;
       case LogLevel.INFO:
         console.info(formattedMessage, ...args);
@@ -55,8 +60,9 @@ class Logger {
     }
 
     // In production, you might want to send errors to a logging service
-    if (!this.isDevelopment && level >= LogLevel.ERROR) {
+    if (this.isProduction && level >= LogLevel.ERROR) {
       // Implementation omitted for placeholder
+      // Could integrate with services like Sentry, LogRocket, etc.
     }
   }
 
@@ -106,6 +112,16 @@ class Logger {
       userId,
       metadata
     });
+  }
+
+  // Method to check if debug logging is enabled
+  isDebugEnabled(): boolean {
+    return this.level <= LogLevel.DEBUG;
+  }
+
+  // Method to check if we're in production
+  isProd(): boolean {
+    return this.isProduction;
   }
 }
 
