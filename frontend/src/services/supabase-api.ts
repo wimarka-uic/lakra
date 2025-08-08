@@ -211,13 +211,6 @@ export const authAPI = {
 
     // For users who need onboarding test, validate the test first
     if (userData.onboarding_passed && userData.test_answers && userData.test_answers.length > 0) {
-      // Verify the test answers are valid before creating the user
-      const testAnswersData = userData.test_answers.map((answer: any) => ({
-        question_id: answer.question_id,
-        selected_answer: answer.selected_answer,
-        test_session_id: userData.test_session_id,
-      }));
-
       // Get correct answers for all questions to calculate correctness
       const questionIds = userData.test_answers.map((answer: any) => answer.question_id);
       const { data: questions } = await supabase
