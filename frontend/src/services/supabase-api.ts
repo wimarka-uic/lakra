@@ -1313,6 +1313,106 @@ export const adminAPI = {
     };
   },
 
+  // User Test Results Functions
+  getUserTestResults: async (userId: number): Promise<OnboardingTest[]> => {
+    const { data, error } = await supabase
+      .from('onboarding_tests')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  getAllUserTestResults: async (): Promise<Array<OnboardingTest & { user: User }>> => {
+    // Get aggregated test results from user_question_answers with question details
+    const { data, error } = await supabase
+      .from('user_question_answers')
+      .select(`
+        test_session_id,
+        user_id,
+        answered_at,
+        is_correct,
+        selected_answer,
+        users!user_question_answers_user_id_fkey(
+          id, 
+          first_name, 
+          last_name, 
+          email, 
+          username, 
+          is_active
+        ),
+        language_proficiency_questions!user_question_answers_question_id_fkey(
+          id,
+          language,
+          type,
+          question,
+          options,
+          correct_answer,
+          explanation
+        )
+      `)
+      .not('test_session_id', 'is', null)
+      .order('answered_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Group by test_session_id to create test results
+    const testResultsMap = new Map();
+    
+    data?.forEach(answer => {
+      const sessionId = answer.test_session_id;
+      if (!testResultsMap.has(sessionId)) {
+        testResultsMap.set(sessionId, {
+          id: sessionId, // Use session_id as the test id
+          user_id: answer.user_id,
+          language: (answer.language_proficiency_questions as any)?.language || 'Tagalog',
+          test_data: [],
+          score: null,
+          status: 'completed' as const,
+          started_at: answer.answered_at,
+          completed_at: answer.answered_at,
+          created_at: answer.answered_at,
+          user: answer.users,
+          total_questions: 0,
+          correct_answers: 0,
+          answers: [] // Array to store individual answers
+        });
+      }
+      
+      // Update the test result with question data
+      const testResult = testResultsMap.get(sessionId);
+      testResult.total_questions += 1;
+      if (answer.is_correct) {
+        testResult.correct_answers += 1;
+      }
+      
+      // Add the answer details
+      const question = answer.language_proficiency_questions as any;
+      testResult.answers.push({
+        question_id: question?.id,
+        question: question?.question,
+        options: question?.options || [],
+        correct_answer: question?.correct_answer,
+        selected_answer: answer.selected_answer,
+        is_correct: answer.is_correct,
+        explanation: question?.explanation,
+        type: question?.type
+      });
+    });
+
+    // Calculate scores for each test result
+    const results = Array.from(testResultsMap.values()).map(testResult => ({
+      ...testResult,
+      score: testResult.total_questions > 0 
+        ? Math.round((testResult.correct_answers / testResult.total_questions) * 100)
+        : null
+    }));
+
+    return results;
+  },
+
   // Sentence Management Functions
   getAdminSentences: async (skip = 0, limit = 100, targetLanguage?: string): Promise<Sentence[]> => {
     let query = supabase
@@ -2181,6 +2281,31 @@ export const onboardingAPI = {
       .from('onboarding_tests')
       .select('*')
       .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Admin functions for getting user test results
+  getUserTestResults: async (userId: number): Promise<OnboardingTest[]> => {
+    const { data, error } = await supabase
+      .from('onboarding_tests')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  getAllUserTestResults: async (): Promise<Array<OnboardingTest & { user: User }>> => {
+    const { data, error } = await supabase
+      .from('onboarding_tests')
+      .select(`
+        *,
+        user:users(id, first_name, last_name, email, username, is_active)
+      `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

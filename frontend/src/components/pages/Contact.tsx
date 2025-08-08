@@ -31,137 +31,67 @@ const Contact: React.FC = () => {
             Get in Touch
           </h2>
           
-          <div className="grid md:grid-cols-2 gap-12">
+          <div className="max-w-4xl mx-auto space-y-8">
             {/* Contact Details */}
-            <div className="space-y-8">
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-beauty-bush-200/50 shadow-lg">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Research Team</h3>
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-beauty-bush-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800">Student Researchers</h4>
-                      <p className="text-gray-600 text-sm">Shaira Lorraine Q. Montojo</p>
-                      <p className="text-gray-600 text-sm">Al Gabriel A. Orig</p>
-                      <p className="text-gray-600 text-sm">Charlese Jeanrie A. Te</p>
-                    </div>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-beauty-bush-200/50 shadow-lg">
+              <h3 className="text-xl font-bold text-gray-800 mb-6">Research Team</h3>
+              <div className="space-y-4">                
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
                   </div>
-                  
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
+                  <div>
+                      <h4 className="font-semibold text-gray-800 mb-3">Student Researchers</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-gray-800 text-sm font-medium">Shaira Lorraine Q. Montojo</p>
+                          <p className="text-gray-600 text-sm font-normal">smontojo_200000000067@uic.edu.ph</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-800 text-sm font-medium">Al Gabriel A. Orig</p>
+                          <p className="text-gray-600 text-sm font-normal">aorig_200000000296@uic.edu.ph</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-800 text-sm font-medium">Charlese Jeanrie A. Te</p>
+                          <p className="text-gray-600 text-sm font-normal">cte_220000001593@uic.edu.ph</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800">Thesis Adviser</h4>
-                      <p className="text-gray-600 text-sm">Ms. Kristine Mae Adlaon, MIT</p>
-                      <p className="text-gray-600 text-sm">University of the Immaculate Conception</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800">Email</h4>
-                      <p className="text-gray-600 text-sm">research@wimarka.com</p>
-                      <p className="text-gray-600 text-sm">support@lakra.com</p>
-                    </div>
-                  </div>
                 </div>
-              </div>
-
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-beauty-bush-200/50 shadow-lg">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Frequently Asked Questions</h3>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-800 mb-2">How do I participate in the research?</h4>
-                    <p className="text-gray-600 text-sm">
-                      Register for an account and complete the training modules to start contributing to the research project.
-                    </p>
+                
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-800 mb-2">Is my data secure?</h4>
-                    <p className="text-gray-600 text-sm">
-                      Yes, all data is handled according to academic research standards with appropriate privacy protections and ethical considerations.
-                    </p>
+                    <h4 className="font-semibold text-gray-800">Thesis Adviser</h4>
+                    <p className="text-gray-600 text-sm">Ms. Kristine Mae Adlaon, MIT</p>
+                    <p className="text-gray-600 text-sm">kadlaon@uic.edu.ph</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Contact Form */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-beauty-bush-200/50 shadow-lg">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Send us a Message</h2>
-              
-              <form className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-6">Frequently Asked Questions</h3>
+              <div className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    className="w-full px-4 py-3 bg-white text-gray-800 border border-gray-300 rounded-lg focus:border-beauty-bush-400 focus:outline-none"
-                    placeholder="Your name"
-                  />
+                  <h4 className="font-semibold text-gray-800 mb-2">How do I participate in the research?</h4>
+                  <p className="text-gray-600 text-sm">
+                    Register for an account and complete the training modules to start contributing to the research project.
+                  </p>
                 </div>
-
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    className="w-full px-4 py-3 bg-white text-gray-800 border border-gray-300 rounded-lg focus:border-beauty-bush-400 focus:outline-none"
-                    placeholder="your.email@example.com"
-                  />
+                  <h4 className="font-semibold text-gray-800 mb-2">Is my data secure?</h4>
+                  <p className="text-gray-600 text-sm">
+                    Yes, all data is handled according to academic research standards with appropriate privacy protections and ethical considerations.
+                  </p>
                 </div>
-
-                <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                    Subject
-                  </label>
-                  <select
-                    id="subject"
-                    className="w-full px-4 py-3 bg-white text-gray-800 border border-gray-300 rounded-lg focus:border-beauty-bush-400 focus:outline-none"
-                  >
-                    <option value="">Select a subject</option>
-                    <option value="research">Research Participation</option>
-                    <option value="technical">Technical Support</option>
-                    <option value="general">General Inquiry</option>
-                    <option value="feedback">Feedback</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    rows={6}
-                    className="w-full px-4 py-3 bg-white text-gray-800 border border-gray-300 rounded-lg focus:border-beauty-bush-400 focus:outline-none"
-                    placeholder="Please describe your inquiry or question..."
-                  ></textarea>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-beauty-bush-600 hover:bg-beauty-bush-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-                >
-                  Send Message
-                </button>
-              </form>
+              </div>
             </div>
           </div>
         </div>

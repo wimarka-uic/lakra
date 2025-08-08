@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { languageProficiencyAPI } from '../../services/supabase-api';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, Eye, EyeOff, Brain, Globe, Users, FileText, Check, UserCheck, Clock, Loader2, ArrowRight } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Brain, Globe, Users, FileText, Check, UserCheck, Clock, Loader2, ArrowRight, X } from 'lucide-react';
 import type { LanguageProficiencyQuestion } from '../../types';
 import Logo from '../ui/Logo';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 interface UserAnswer {
   question_id: number;
@@ -43,6 +44,9 @@ const Register: React.FC = () => {
   const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
   const [testSessionId, setTestSessionId] = useState('');
   
+  // Confirmation modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  
   // Use ref to track if questions have been loaded for current languages
   const questionsLoadedRef = useRef<string>('');
 
@@ -77,6 +81,25 @@ const Register: React.FC = () => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Handle cancel test with confirmation
+  const handleCancelTest = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = () => {
+    // Reset test state
+    setCurrentQuestionIndex(0);
+    setOnboardingAnswers([]);
+    setTimeRemaining(0);
+    setTestStarted(false);
+    setQuestions([]);
+    setTestSessionId('');
+    questionsLoadedRef.current = '';
+    
+    // Go back to step 3 (account details)
+    setCurrentStep(3);
   };
 
   const updateOnboardingAnswer = (selectedAnswer: number) => {
@@ -881,6 +904,8 @@ const Register: React.FC = () => {
                   </div>
                 </div>
 
+
+
                 {questions.length === 0 ? (
                   // This state should not occur now since we check for questions before reaching step 4
                   <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
@@ -890,20 +915,29 @@ const Register: React.FC = () => {
                       <p className="text-sm text-red-800 mb-4">
                         An unexpected error occurred while loading the proficiency test.
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Go back to step 3 to try again
-                          setCurrentStep(3);
-                          setQuestions([]);
-                          questionsLoadedRef.current = '';
-                          setTestSessionId('');
-                          setError('');
-                        }}
-                        className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
-                      >
-                        Go Back and Try Again
-                      </button>
+                      <div className="space-y-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Go back to step 3 to try again
+                            setCurrentStep(3);
+                            setQuestions([]);
+                            questionsLoadedRef.current = '';
+                            setTestSessionId('');
+                            setError('');
+                          }}
+                          className="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
+                        >
+                          Go Back and Try Again
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelTest}
+                          className="px-6 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700"
+                        >
+                          Cancel Test
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -1056,6 +1090,19 @@ const Register: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Cancel Test Button */}
+                <div className="flex justify-center mt-6">
+                  <button
+                    type="button"
+                    onClick={handleCancelTest}
+                    className="flex items-center px-6 py-2 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors border border-gray-300"
+                    title="Cancel test"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel Test
+                  </button>
+                </div>
+
                 {/* Test Instructions */}
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start">
@@ -1111,6 +1158,18 @@ const Register: React.FC = () => {
           </form>
         )}
       </div>
+      
+      {/* Cancel Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleConfirmCancel}
+        title="Cancel Test"
+        message="Are you sure you want to cancel the test? Your progress will be lost and you'll need to start over."
+        confirmText="Yes, Cancel Test"
+        cancelText="Continue Test"
+        type="warning"
+      />
     </div>
   );
 };

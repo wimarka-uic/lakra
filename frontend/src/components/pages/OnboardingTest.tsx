@@ -3,10 +3,11 @@ import { languageProficiencyAPI, onboardingAPI, authStorage } from '../../servic
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import type { UserQuestionAnswer, LanguageProficiencyQuestion, OnboardingTest as OnboardingTestType } from '../../types';
-import { CheckCircle, AlertCircle, Brain, BookOpen, Clock, Loader2, ArrowRight } from 'lucide-react';
+import { CheckCircle, AlertCircle, Brain, BookOpen, Clock, Loader2, ArrowRight, X } from 'lucide-react';
 import { logger } from '../../utils/logger';
 import QuizSuccessModal from '../modals/QuizSuccessModal';
 import QuizFailureModal from '../modals/QuizFailureModal';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const OnboardingTest: React.FC = () => {
   const navigate = useNavigate();
@@ -36,6 +37,9 @@ const OnboardingTest: React.FC = () => {
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [justCompletedQuiz, setJustCompletedQuiz] = useState(false);
+  
+  // Confirmation modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentAnswer = answers.find(a => a.question_id === currentQuestion?.id);
@@ -44,6 +48,28 @@ const OnboardingTest: React.FC = () => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Handle cancel test with confirmation
+  const handleCancelTest = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = () => {
+    // Reset test state
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    setTimeRemaining(0);
+    setShowInstructions(true);
+    setTestStarted(false);
+    setQuestions([]);
+    setQuestionsFetched(false);
+    setQuestionsError('');
+    setLoadingQuestions(false);
+    setSelectedLanguages([]);
+    
+    // Navigate back to dashboard
+    navigate('/dashboard');
   };
 
   // Auto-refresh user data after successful quiz completion
@@ -764,6 +790,15 @@ const OnboardingTest: React.FC = () => {
                 style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
               />
             </div>
+            
+            <button
+              onClick={handleCancelTest}
+              className="flex items-center px-3 py-1 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              title="Cancel test"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </button>
           </div>
         </div>
       </div>
@@ -865,6 +900,18 @@ const OnboardingTest: React.FC = () => {
           navigate('/dashboard');
         }}
         languages={selectedLanguages}
+      />
+      
+      {/* Cancel Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleConfirmCancel}
+        title="Cancel Test"
+        message="Are you sure you want to cancel the test? Your progress will be lost and you'll need to start over."
+        confirmText="Yes, Cancel Test"
+        cancelText="Continue Test"
+        type="warning"
       />
     </div>
   );
