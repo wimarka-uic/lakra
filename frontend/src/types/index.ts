@@ -247,6 +247,8 @@ export interface OnboardingTest {
   status: 'in_progress' | 'completed' | 'failed';
   started_at: string;
   completed_at?: string;
+  created_at: string;
+  answers?: OnboardingTestAnswer[];
 }
 
 export interface OnboardingTestQuestion {
@@ -267,6 +269,13 @@ export interface OnboardingTestAnswer {
   adequacy_score: number;
   identified_errors: string[];
   comment: string;
+  is_correct?: boolean;
+  type?: string;
+  question?: string;
+  options?: string[];
+  selected_answer?: number;
+  correct_answer?: number;
+  explanation?: string;
 }
 
 export interface OnboardingTestSubmission {

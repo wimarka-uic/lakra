@@ -4527,7 +4527,7 @@ const AdminDashboard: React.FC = () => {
                             
                             <div className="space-y-2">
                               <div className="text-sm font-medium text-gray-700 mb-2">Options:</div>
-                              {answer.options.map((option, optionIndex) => (
+                              {answer.options?.map((option, optionIndex) => (
                                 <div key={optionIndex} className={`p-2 rounded border ${
                                   optionIndex === answer.selected_answer 
                                     ? (answer.is_correct 
