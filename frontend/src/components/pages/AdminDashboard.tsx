@@ -2524,7 +2524,11 @@ const AdminDashboard: React.FC = () => {
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  Annotation Overview for {languageFilter === 'all' ? 'All Languages' : languageFilter.toUpperCase()}
+                  Annotation Overview for {languageFilter === 'all' ? 'All Languages' : 
+                    languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
+                    languageFilter === 'ceb' ? 'Cebuano' : 
+                    languageFilter === 'ilo' ? 'Ilokano' : 
+                    languageFilter.toUpperCase()}
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {(() => {
@@ -2591,9 +2595,9 @@ const AdminDashboard: React.FC = () => {
                       className="flex-1 border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                     >
                       <option value="all">All Languages</option>
-                      <option value="tagalog">Tagalog (Filipino)</option>
-                      <option value="cebuano">Cebuano</option>
-                      <option value="ilokano">Ilokano</option>
+                      <option value="tgl">Tagalog (Filipino)</option>
+                      <option value="ceb">Cebuano</option>
+                      <option value="ilo">Ilokano</option>
                     </select>
                   </div>
 
@@ -3068,7 +3072,11 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-500">Showing:</span>
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-beauty-bush-100 text-beauty-bush-800 border border-beauty-bush-200">
-                      {languageFilter === 'all' ? 'All Languages' : languageFilter.toUpperCase()}
+                      {languageFilter === 'all' ? 'All Languages' : 
+                        languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
+                        languageFilter === 'ceb' ? 'Cebuano' : 
+                        languageFilter === 'ilo' ? 'Ilokano' : 
+                        languageFilter.toUpperCase()}
                     </span>
                   </div>
                 </div>
@@ -3481,7 +3489,11 @@ const AdminDashboard: React.FC = () => {
                         {searchQuery ? (
                           <>No sentences match your search criteria.</>
                         ) : (
-                          <>No sentences available for the selected language filter: <span className="font-semibold">{languageFilter === 'all' ? 'All Languages' : languageFilter.toUpperCase()}</span></>
+                          <>No sentences available for the selected language filter: <span className="font-semibold">{languageFilter === 'all' ? 'All Languages' : 
+                            languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
+                            languageFilter === 'ceb' ? 'Cebuano' : 
+                            languageFilter === 'ilo' ? 'Ilokano' : 
+                            languageFilter.toUpperCase()}</span></>
                         )}
                       </p>
                     </div>

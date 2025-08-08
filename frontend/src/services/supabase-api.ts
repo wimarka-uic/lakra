@@ -494,14 +494,22 @@ export const authAPI = {
 
 // Language mapping function
 const getLanguageCode = (displayName: string): string => {
+  const normalizedName = displayName.toLowerCase().trim();
   const languageMap: { [key: string]: string } = {
-    'Tagalog': 'tgl',
-    'Cebuano': 'ceb',
+    'tagalog': 'tgl',
+    'tagalog (filipino)': 'tgl',
+    'filipino': 'tgl',
     'cebuano': 'ceb',
-    'Ilokano': 'ilo',
-    'English': 'en'
+    'ilocano': 'ilo',
+    'ilokano': 'ilo',
+    'english': 'en',
+    // Direct language codes should match themselves
+    'tgl': 'tgl',
+    'ceb': 'ceb',
+    'ilo': 'ilo',
+    'en': 'en'
   };
-  return languageMap[displayName] || displayName;
+  return languageMap[normalizedName] || displayName;
 };
 
 // Sentences API
@@ -746,7 +754,7 @@ export const sentencesAPI = {
           source_language: values[headers.indexOf('source_language')] || 'en',
           target_language: values[headers.indexOf('target_language')] || 'tgl',
           domain: headers.includes('domain') ? values[headers.indexOf('domain')] || '' : '',
-          back_translation: headers.includes('back_translation') ? values[headers.indexOf('back_translation')] || '' : '',
+          // back_translation is excluded from CSV imports - let the DB handle it as optional data
         };
 
         // Validate required fields
