@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { evaluationsAPI } from '../../services/supabase-api';
+// TODO: Replace dummy data with Supabase-backed API when backend is wired.
+// import { evaluationsAPI } from '../../services/supabase-api';
 import type { Annotation, EvaluationCreate, TextHighlight } from '../../types';
 import { logger } from '../../utils/logger';
 import { 
@@ -66,18 +67,55 @@ const EvaluationInterface: React.FC = () => {
     
     setIsLoading(true);
     try {
-      // For this implementation, we'll need to get annotations via the admin API
-      // since there's no direct endpoint to get a specific annotation by ID for evaluators
-      const annotations = await evaluationsAPI.getPendingEvaluations(0, 100);
-      const targetAnnotation = annotations.find(a => a.id === parseInt(annotationId));
+      // DEBUG: Use dummy annotation while Supabase is disabled
+      const targetAnnotation: Annotation = {
+        id: parseInt(annotationId),
+        sentence_id: 1,
+        annotator_id: 1,
+        fluency_score: 4,
+        adequacy_score: 4,
+        overall_quality: 4,
+        comments: 'Minor wording improvements suggested.',
+        final_form: 'Kumusta ka? Kumusta ang trabaho mo?',
+        time_spent_seconds: 95,
+        annotation_status: 'completed',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sentence: {
+          id: 1,
+          source_text: 'Kumusta ka na? Kamusta ang trabaho mo?',
+          machine_translation: 'How are you? How is your work?',
+          source_language: 'PHL',
+          target_language: 'EN',
+          created_at: new Date().toISOString(),
+          is_active: true,
+        },
+        annotator: {
+          id: 2,
+          email: 'annotator@example.com',
+          username: 'annotator',
+          first_name: 'Ana',
+          last_name: 'Tador',
+          is_admin: false,
+          is_evaluator: false,
+          preferred_language: 'PHL',
+          languages: ['PHL', 'EN'],
+          created_at: new Date().toISOString(),
+        },
+        highlights: [
+          {
+            start_index: 0,
+            end_index: 8,
+            highlighted_text: 'Kumusta',
+            comment: 'Spelling variants accepted; choose one form.',
+            text_type: 'machine',
+            error_type: 'MI_SE',
+          },
+        ],
+      };
       
-      if (targetAnnotation) {
-        setAnnotation(targetAnnotation);
-        setEvaluation((prev: EvaluationCreate) => ({ ...prev, annotation_id: targetAnnotation.id }));
-      } else {
-        setMessage('Annotation not found or already evaluated');
-        navigate('/evaluator');
-      }
+      setAnnotation(targetAnnotation);
+      setEvaluation((prev: EvaluationCreate) => ({ ...prev, annotation_id: targetAnnotation.id }));
     } catch (error) {
       logger.apiError('loadAnnotation', error as Error, {
         component: 'EvaluationInterface',
@@ -92,15 +130,46 @@ const EvaluationInterface: React.FC = () => {
   const loadNextAnnotation = useCallback(async () => {
     setIsLoading(true);
     try {
-      const pendingAnnotations = await evaluationsAPI.getPendingEvaluations(0, 1);
-      if (pendingAnnotations.length > 0) {
-        const nextAnnotation = pendingAnnotations[0];
-        setAnnotation(nextAnnotation);
-        setEvaluation((prev: EvaluationCreate) => ({ ...prev, annotation_id: nextAnnotation.id }));
-      } else {
-        setMessage('No pending annotations to evaluate');
-        navigate('/evaluator');
-      }
+      // DEBUG: Create a dummy next annotation
+      const nextAnnotation: Annotation = {
+        id: 999,
+        sentence_id: 2,
+        annotator_id: 3,
+        fluency_score: 3,
+        adequacy_score: 3,
+        overall_quality: 3,
+        comments: 'Check tense consistency.',
+        final_form: 'Tuluy-tuloy ang operasyon ng klinika tuwing Lunes.',
+        time_spent_seconds: 110,
+        annotation_status: 'completed',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sentence: {
+          id: 2,
+          source_text: 'Nagpapatuloy ang operasyon ng klinika tuwing Lunes.',
+          machine_translation: 'The clinic continues its operation every Monday.',
+          source_language: 'PHL',
+          target_language: 'EN',
+          created_at: new Date().toISOString(),
+          is_active: true,
+        },
+        annotator: {
+          id: 3,
+          email: 'annotator2@example.com',
+          username: 'ann2',
+          first_name: 'Juan',
+          last_name: 'Dela Cruz',
+          is_admin: false,
+          is_evaluator: false,
+          preferred_language: 'PHL',
+          languages: ['PHL', 'EN'],
+          created_at: new Date().toISOString(),
+        },
+        highlights: [],
+      };
+
+      setAnnotation(nextAnnotation);
+      setEvaluation((prev: EvaluationCreate) => ({ ...prev, annotation_id: nextAnnotation.id }));
     } catch (error) {
       logger.apiError('loadNextAnnotation', error as Error, {
         component: 'EvaluationInterface'
@@ -151,8 +220,9 @@ const EvaluationInterface: React.FC = () => {
         time_spent_seconds: timeSpent
       };
 
-      await evaluationsAPI.createEvaluation(submissionData);
-      setMessage('Evaluation submitted successfully!');
+      // TODO: Send to Supabase when ready. For now just simulate success.
+      console.log('DEBUG submit evaluation', submissionData); // eslint-disable-line no-console
+      setMessage('Evaluation submitted successfully! (debug)');
       
       // Navigate to next annotation or back to dashboard after delay
       setTimeout(() => {

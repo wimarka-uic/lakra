@@ -398,30 +398,18 @@ const AppContent: React.FC = () => {
             } 
           />
           
-          {/* MT Quality Assessment Routes */}
+          {/* MT Quality Assessment Routes (disabled during debug phase) */}
           <Route 
             path="/mt-assess" 
-            element={
-              <ProtectedRoute evaluatorOnly>
-                <MTQualityInterface />
-              </ProtectedRoute>
-            } 
+            element={<Navigate to="/evaluator" replace />} 
           />
           <Route 
             path="/mt-assess/:sentenceId" 
-            element={
-              <ProtectedRoute evaluatorOnly>
-                <MTQualityInterface />
-              </ProtectedRoute>
-            } 
+            element={<Navigate to="/evaluator" replace />} 
           />
           <Route 
             path="/my-assessments" 
-            element={
-              <ProtectedRoute evaluatorOnly>
-                <MyEvaluations />
-              </ProtectedRoute>
-            } 
+            element={<Navigate to="/evaluator" replace />} 
           />
           
           {/* Admin Only Routes */}

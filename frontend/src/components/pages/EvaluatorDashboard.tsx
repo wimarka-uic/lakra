@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { mtQualityAPI } from '../../services/supabase-api';
 import type { EvaluatorStats, Sentence, MTQualityAssessment } from '../../types';
 import { 
   FileText, 
@@ -8,7 +7,6 @@ import {
   CheckSquare,
   AlertCircle,
   Target,
-  Brain,
   Zap,
   TrendingUp
 } from 'lucide-react';
@@ -26,15 +24,85 @@ const EvaluatorDashboard: React.FC = () => {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [statsData, pendingData, assessmentsData] = await Promise.all([
-        mtQualityAPI.getEvaluatorStats(),
-        mtQualityAPI.getPendingAssessments(0, 5),
-        mtQualityAPI.getMyAssessments(0, 5)
-      ]);
+      // TODO: Replace dummy data with real API once backend wiring is ready.
+      const dummyStats: EvaluatorStats = {
+        total_evaluations: 24,
+        completed_evaluations: 20,
+        pending_evaluations: 4,
+        average_rating: 4.1,
+        total_time_spent: 36000,
+        evaluations_today: 2,
+        weekly_progress: [2, 1, 3, 0, 4, 6, 4],
+        average_overall_score: 4.2,
+        average_fluency_score: 4.3,
+        average_adequacy_score: 4.1,
+      };
 
-      setStats(statsData);
-      setPendingSentences(pendingData);
-      setRecentAssessments(assessmentsData);
+      const dummyPending: Sentence[] = [
+        {
+          id: 1,
+          source_text: 'Kumusta ka na? Kamusta ang trabaho mo?',
+          machine_translation: 'How are you? How is your work?',
+          source_language: 'PHL',
+          target_language: 'EN',
+          created_at: new Date().toISOString(),
+          is_active: true,
+        },
+        {
+          id: 2,
+          source_text: 'Nagpapatuloy ang operasyon ng klinika tuwing Lunes.',
+          machine_translation: 'The clinic continues its operation every Monday.',
+          source_language: 'PHL',
+          target_language: 'EN',
+          created_at: new Date().toISOString(),
+          is_active: true,
+        },
+      ];
+
+      const dummyRecent: MTQualityAssessment[] = [
+        {
+          id: 101,
+          sentence_id: 1,
+          evaluator_id: 1,
+          overall_quality_score: 4,
+          fluency_score: 4,
+          adequacy_score: 4,
+          human_feedback: 'Minor wording tweak needed.',
+          correction_notes: 'Use "How’s work going?"',
+          time_spent_seconds: 120,
+          assessment_status: 'completed',
+          evaluation_status: 'completed',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          sentence: {
+            id: 1,
+            source_text: 'Kumusta ka na? Kamusta ang trabaho mo?',
+            machine_translation: 'How are you? How is your work?',
+            source_language: 'PHL',
+            target_language: 'EN',
+            created_at: new Date().toISOString(),
+            is_active: true,
+          },
+          evaluator: {
+            id: 1,
+            email: 'demo@example.com',
+            username: 'demo',
+            first_name: 'Demo',
+            last_name: 'User',
+            is_active: true,
+            is_admin: false,
+            is_evaluator: true,
+            guidelines_seen: true,
+            preferred_language: 'PHL',
+            languages: ['PHL', 'EN'],
+            created_at: new Date().toISOString(),
+          },
+        },
+      ];
+
+      setStats(dummyStats);
+      setPendingSentences(dummyPending);
+      setRecentAssessments(dummyRecent);
     } catch (error) {
       console.error('Error loading evaluator dashboard data:', error);
     } finally {
@@ -89,11 +157,11 @@ const EvaluatorDashboard: React.FC = () => {
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
-            <Brain className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600" />
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Machine Translation Evaluator</h1>
+            <CheckSquare className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Evaluator Dashboard</h1>
           </div>
           <p className="text-sm sm:text-base text-gray-600">
-            DistilBERT-powered machine translation quality assessment platform
+            Review sentence pairs, provide scores (fluency, adequacy, overall), and submit feedback.
           </p>
         </div>
 
@@ -184,7 +252,7 @@ const EvaluatorDashboard: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <TrendingUp className="h-5 w-5 text-green-500" />
-                    <h3 className="text-sm font-medium text-gray-700">Avg Quality Score</h3>
+                    <h3 className="text-sm font-medium text-gray-700">Avg Overall Score</h3>
                   </div>
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.average_overall_score ? stats.average_overall_score.toFixed(1) : '0.0'}
@@ -194,13 +262,13 @@ const EvaluatorDashboard: React.FC = () => {
 
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
-                    <Brain className="h-5 w-5 text-purple-500" />
-                    <h3 className="text-sm font-medium text-gray-700">AI Agreement</h3>
+                    <Target className="h-5 w-5 text-blue-500" />
+                    <h3 className="text-sm font-medium text-gray-700">Average Fluency</h3>
                   </div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats?.human_agreement_rate ? Math.round(stats.human_agreement_rate * 100) : 0}%
+                    {stats?.average_fluency_score ? stats.average_fluency_score.toFixed(1) : '0.0'}
                   </p>
-                  <p className="text-sm text-gray-500">human-AI agreement</p>
+                  <p className="text-sm text-gray-500">out of 5.0</p>
                 </div>
               </div>
 
@@ -229,45 +297,26 @@ const EvaluatorDashboard: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-3">
               <a
-                href="/mt-assess"
+                href={pendingSentences[0] ? `/evaluate/${pendingSentences[0].id}` : '/evaluator'}
                 className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all min-h-[60px] hover:scale-105 active:scale-95"
               >
                 <Zap className="h-5 w-5 text-blue-500 mr-3" />
                 <div>
-                  <p className="font-medium text-gray-900">Start MT Assessment</p>
-                  <p className="text-sm text-gray-500">Analyze translation quality with AI</p>
+                  <p className="font-medium text-gray-900">Start Evaluation</p>
+                  <p className="text-sm text-gray-500">Open the next sentence pair to evaluate</p>
                 </div>
               </a>
-              
+
               <a
-                href="/my-assessments"
+                href="/my-evaluations"
                 className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all min-h-[60px] hover:scale-105 active:scale-95"
               >
                 <FileText className="h-5 w-5 text-green-500 mr-3" />
                 <div>
-                  <p className="font-medium text-gray-900">My Assessments</p>
-                  <p className="text-sm text-gray-500">View completed MT assessments</p>
+                  <p className="font-medium text-gray-900">My Evaluations</p>
+                  <p className="text-sm text-gray-500">View completed evaluations</p>
                 </div>
               </a>
-
-              {/* Error Detection Stats */}
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">AI Error Detection</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Syntax Errors Found</span>
-                    <span className="font-medium">{stats?.total_syntax_errors_found || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Semantic Errors Found</span>
-                    <span className="font-medium">{stats?.total_semantic_errors_found || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Model Confidence</span>
-                    <span className="font-medium">{stats?.average_model_confidence ? Math.round(stats.average_model_confidence * 100) : 0}%</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -277,7 +326,7 @@ const EvaluatorDashboard: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Pending Sentences</h2>
             <a 
-              href="/mt-assess" 
+              href={pendingSentences[0] ? `/evaluate/${pendingSentences[0].id}` : '/evaluator'} 
               className="text-sm font-medium text-blue-600 hover:text-blue-500"
             >
               View all
@@ -303,10 +352,10 @@ const EvaluatorDashboard: React.FC = () => {
                       </p>
                     </div>
                     <a
-                      href={`/mt-assess/${sentence.id}`}
+                      href={`/evaluate/${sentence.id}`}
                       className="ml-4 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-500 border border-blue-200 rounded-lg hover:bg-blue-50"
                     >
-                      Assess
+                      Evaluate
                     </a>
                   </div>
                 </div>
