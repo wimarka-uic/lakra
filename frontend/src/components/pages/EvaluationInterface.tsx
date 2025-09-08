@@ -9,7 +9,11 @@ import {
   Clock, 
   Save,
   User,
-  FileText
+  FileText,
+  Home,
+  Star,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 
 interface RatingButtonsProps {
@@ -20,18 +24,18 @@ interface RatingButtonsProps {
 
 const RatingButtons: React.FC<RatingButtonsProps> = ({ value, onChange, label }) => {
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
-      <div className="flex space-x-2">
+    <div className="space-y-3">
+      <label className="block text-base font-semibold text-gray-700">{label}</label>
+      <div className="flex space-x-3">
         {[1, 2, 3, 4, 5].map((rating) => (
           <button
             key={rating}
             type="button"
             onClick={() => onChange(rating)}
-            className={`w-10 h-10 rounded-full border-2 font-medium text-sm transition-all ${
+            className={`w-12 h-12 rounded-full border-2 font-semibold text-base transition-all ${
               value === rating
-                ? 'border-blue-500 bg-blue-500 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+                ? 'border-blue-600 bg-blue-600 text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50'
             }`}
           >
             {rating}
@@ -98,6 +102,8 @@ const EvaluationInterface: React.FC = () => {
           last_name: 'Tador',
           is_admin: false,
           is_evaluator: false,
+          is_active: true,
+          guidelines_seen: true,
           preferred_language: 'PHL',
           languages: ['PHL', 'EN'],
           created_at: new Date().toISOString(),
@@ -161,6 +167,8 @@ const EvaluationInterface: React.FC = () => {
           last_name: 'Dela Cruz',
           is_admin: false,
           is_evaluator: false,
+          is_active: true,
+          guidelines_seen: true,
           preferred_language: 'PHL',
           languages: ['PHL', 'EN'],
           created_at: new Date().toISOString(),
@@ -318,10 +326,10 @@ const EvaluationInterface: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <Clock className="h-12 w-12 text-gray-400 mx-auto animate-pulse mb-4" />
-          <p className="text-gray-600">Loading annotation...</p>
+          <Clock className="h-16 w-16 text-gray-400 mx-auto animate-pulse mb-6" />
+          <p className="text-xl text-gray-600">Loading annotation...</p>
         </div>
       </div>
     );
@@ -329,53 +337,81 @@ const EvaluationInterface: React.FC = () => {
 
   if (!annotation) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No annotation to evaluate</p>
+          <FileText className="h-16 w-16 text-gray-400 mx-auto mb-6" />
+          <p className="text-xl text-gray-600">No annotation to evaluate</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-100">
+      <div className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Breadcrumb Navigation */}
+        <nav className="mb-6">
+          <ol className="flex items-center space-x-2 text-base text-gray-600">
+            <li className="flex items-center">
+              <Home className="h-4 w-4 mr-1" />
+              <span>Home</span>
+            </li>
+            <li className="flex items-center">
+              <span className="mx-2">/</span>
+              <span>Evaluator Dashboard</span>
+            </li>
+            <li className="flex items-center">
+              <span className="mx-2">/</span>
+              <span className="text-gray-900 font-medium">Evaluate Annotation</span>
+            </li>
+          </ol>
+        </nav>
+
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/evaluator')}
-            className="flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center text-base text-gray-600 hover:text-gray-900 mb-6"
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
+            <ChevronLeft className="h-5 w-5 mr-2" />
             Back to Dashboard
           </button>
           
-          <h1 className="text-3xl font-bold text-gray-900">Evaluate Annotation</h1>
-          <p className="mt-2 text-gray-600">
-            Review and evaluate the quality of this annotation
-          </p>
+          <div className="flex items-center space-x-4 mb-4">
+            <div className="p-3 bg-blue-600 rounded-lg">
+              <Star className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Evaluate Annotation</h1>
+              <p className="text-lg text-gray-600 mt-1">
+                Review and evaluate the quality of this annotation
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Message */}
         {message && (
-          <div className={`mb-6 p-4 rounded-lg ${
+          <div className={`mb-8 p-5 rounded-lg border-2 ${
             message.includes('Error') || message.includes('Please') 
-              ? 'bg-red-50 text-red-800 border border-red-200' 
-              : 'bg-green-50 text-green-800 border border-green-200'
+              ? 'bg-red-50 text-red-800 border-red-200' 
+              : 'bg-green-50 text-green-800 border-green-200'
           }`}>
-            {message}
+            <div className="text-lg font-medium">{message}</div>
           </div>
         )}
 
         {/* Annotation Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+        <div className="bg-white rounded-lg shadow-md border border-gray-200 mb-8">
           <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Annotation Details</h2>
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <FileText className="h-6 w-6 text-blue-600" />
+                <h2 className="text-2xl font-semibold text-gray-900">Annotation Details</h2>
+              </div>
+              <div className="flex items-center space-x-6 text-base text-gray-500">
                 <span className="flex items-center">
-                  <User className="h-4 w-4 mr-1" />
+                  <User className="h-5 w-5 mr-2" />
                   {annotation.annotator.first_name} {annotation.annotator.last_name}
                 </span>
                 <span>
@@ -386,17 +422,17 @@ const EvaluationInterface: React.FC = () => {
 
             {/* Source Text */}
             <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Source Text</h3>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-gray-900">{annotation.sentence.source_text}</p>
+              <h3 className="text-base font-semibold text-gray-700 mb-3">Source Text</h3>
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-5">
+                <p className="text-lg text-gray-900">{annotation.sentence.source_text}</p>
               </div>
             </div>
 
             {/* Machine Translation with Highlights */}
             <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Machine Translation</h3>
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <p className="text-gray-900 leading-relaxed">
+              <h3 className="text-base font-semibold text-gray-700 mb-3">Machine Translation</h3>
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-5">
+                <p className="text-lg text-gray-900 leading-relaxed">
                   {renderHighlightedText(
                     annotation.sentence.machine_translation, 
                     annotation.highlights || [], 
@@ -409,24 +445,24 @@ const EvaluationInterface: React.FC = () => {
             {/* Annotation Scores */}
             {(annotation.fluency_score || annotation.adequacy_score || annotation.overall_quality) && (
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Annotator's Scores</h3>
-                <div className="grid grid-cols-3 gap-4">
+                <h3 className="text-base font-semibold text-gray-700 mb-4">Annotator's Scores</h3>
+                <div className="grid grid-cols-3 gap-6">
                   {annotation.fluency_score && (
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                      <div className="text-sm text-gray-600">Fluency</div>
-                      <div className="text-lg font-bold text-blue-600">{annotation.fluency_score}/5</div>
+                    <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-base text-gray-600">Fluency</div>
+                      <div className="text-2xl font-bold text-blue-600">{annotation.fluency_score}/5</div>
                     </div>
                   )}
                   {annotation.adequacy_score && (
-                    <div className="text-center p-3 bg-green-50 rounded-lg">
-                      <div className="text-sm text-gray-600">Adequacy</div>
-                      <div className="text-lg font-bold text-green-600">{annotation.adequacy_score}/5</div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div className="text-base text-gray-600">Adequacy</div>
+                      <div className="text-2xl font-bold text-green-600">{annotation.adequacy_score}/5</div>
                     </div>
                   )}
                   {annotation.overall_quality && (
-                    <div className="text-center p-3 bg-purple-50 rounded-lg">
-                      <div className="text-sm text-gray-600">Overall</div>
-                      <div className="text-lg font-bold text-purple-600">{annotation.overall_quality}/5</div>
+                    <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="text-base text-gray-600">Overall</div>
+                      <div className="text-2xl font-bold text-purple-600">{annotation.overall_quality}/5</div>
                     </div>
                   )}
                 </div>
@@ -435,21 +471,21 @@ const EvaluationInterface: React.FC = () => {
 
             {/* Comments and Final Form */}
             {(annotation.comments || annotation.final_form) && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {annotation.comments && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Annotator's Comments</h3>
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <p className="text-gray-900">{annotation.comments}</p>
+                    <h3 className="text-base font-semibold text-gray-700 mb-3">Annotator's Comments</h3>
+                    <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-5">
+                      <p className="text-lg text-gray-900">{annotation.comments}</p>
                     </div>
                   </div>
                 )}
                 
                 {annotation.final_form && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Final Corrected Form</h3>
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <p className="text-gray-900">{annotation.final_form}</p>
+                    <h3 className="text-base font-semibold text-gray-700 mb-3">Final Corrected Form</h3>
+                    <div className="bg-green-50 border-2 border-green-200 rounded-lg p-5">
+                      <p className="text-lg text-gray-900">{annotation.final_form}</p>
                     </div>
                   </div>
                 )}
@@ -458,21 +494,24 @@ const EvaluationInterface: React.FC = () => {
 
             {/* Highlights Details */}
             {annotation.highlights && annotation.highlights.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Annotations ({annotation.highlights.length})</h3>
-                <div className="space-y-3">
+              <div className="mt-8">
+                <div className="flex items-center space-x-2 mb-4">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  <h3 className="text-base font-semibold text-gray-700">Annotations ({annotation.highlights.length})</h3>
+                </div>
+                <div className="space-y-4">
                   {annotation.highlights.map((highlight, index) => (
-                    <div key={index} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-yellow-800">
+                    <div key={index} className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-base font-semibold text-yellow-800">
                           "{highlight.highlighted_text}"
                         </span>
-                        <span className="text-xs text-yellow-600">
+                        <span className="text-sm text-yellow-600">
                           Position: {highlight.start_index}-{highlight.end_index}
                         </span>
                       </div>
                       {highlight.comment && (
-                        <p className="text-sm text-yellow-700">{highlight.comment}</p>
+                        <p className="text-base text-yellow-700">{highlight.comment}</p>
                       )}
                     </div>
                   ))}
@@ -483,12 +522,15 @@ const EvaluationInterface: React.FC = () => {
         </div>
 
         {/* Evaluation Form */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white rounded-lg shadow-md border border-gray-200">
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Your Evaluation</h2>
+            <div className="flex items-center space-x-2 mb-8">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+              <h2 className="text-2xl font-semibold text-gray-900">Your Evaluation</h2>
+            </div>
 
             {/* Rating Scores */}
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="grid md:grid-cols-2 gap-8 mb-8">
               <RatingButtons
                 value={evaluation.annotation_quality_score}
                 onChange={(value) => handleRatingChange('annotation_quality_score', value)}
@@ -512,29 +554,29 @@ const EvaluationInterface: React.FC = () => {
             </div>
 
             {/* Feedback */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-8">
+              <label className="block text-base font-semibold text-gray-700 mb-3">
                 Feedback for Annotator
               </label>
               <textarea
                 value={evaluation.feedback || ''}
                 onChange={(e) => handleTextChange('feedback', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={4}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                rows={5}
                 placeholder="Provide constructive feedback about the annotation quality..."
               />
             </div>
 
             {/* Evaluation Notes */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-8">
+              <label className="block text-base font-semibold text-gray-700 mb-3">
                 Evaluation Notes (Internal)
               </label>
               <textarea
                 value={evaluation.evaluation_notes || ''}
                 onChange={(e) => handleTextChange('evaluation_notes', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                rows={4}
                 placeholder="Internal notes about your evaluation process..."
               />
             </div>
@@ -544,16 +586,16 @@ const EvaluationInterface: React.FC = () => {
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="flex items-center px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg"
               >
                 {isSubmitting ? (
                   <>
-                    <Clock className="h-4 w-4 mr-2 animate-spin" />
+                    <Clock className="h-5 w-5 mr-3 animate-spin" />
                     Submitting...
                   </>
                 ) : (
                   <>
-                    <Save className="h-4 w-4 mr-2" />
+                    <Save className="h-5 w-5 mr-3" />
                     Submit Evaluation
                   </>
                 )}
