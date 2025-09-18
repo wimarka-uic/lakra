@@ -61,8 +61,11 @@ const AdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAnnotations, setIsLoadingAnnotations] = useState(false);
   
+  // Audio playback state
+  const [audioUrls, setAudioUrls] = useState<{[key: string]: string}>({});
+  
   // Get active tab from URL
-  const getActiveTabFromUrl = (): 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results' => {
+  const getActiveTabFromUrl = useCallback((): 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results' => {
     const path = location.pathname;
     if (path.includes('/overview')) return 'overview';
     if (path.includes('/users')) return 'users';
@@ -70,14 +73,14 @@ const AdminDashboard: React.FC = () => {
     if (path.includes('/onboarding-tests')) return 'onboarding-tests';
     if (path.includes('/test-results')) return 'test-results';
     return 'home';
-  };
+  }, [location.pathname]);
   
   const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results'>(getActiveTabFromUrl());
 
   // Update active tab when URL changes
   useEffect(() => {
     setActiveTab(getActiveTabFromUrl());
-  }, [location.pathname]);
+  }, [location.pathname, getActiveTabFromUrl]);
 
   // Handle tab navigation
   const handleTabChange = (tab: 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results') => {
@@ -115,7 +118,7 @@ const AdminDashboard: React.FC = () => {
   // Pagination and search states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [totalSentences, setTotalSentences] = useState(0);  const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'most_annotated' | 'least_annotated'>('newest');
   const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
   
@@ -342,8 +345,16 @@ const AdminDashboard: React.FC = () => {
   const loadSentences = useCallback(async () => {
     try {
       const targetLanguage = languageFilter === 'all' ? undefined : languageFilter;
-      const sentencesData = await adminAPI.getAdminSentences(0, 100, targetLanguage);
+      const skip = (currentPage - 1) * itemsPerPage;
+      
+      // Load sentences with server-side pagination
+      const [sentencesData, totalCount] = await Promise.all([
+        adminAPI.getAdminSentences(skip, itemsPerPage, targetLanguage),
+        adminAPI.getAdminSentencesCount(targetLanguage)
+      ]);
+      
       setSentences(sentencesData);
+      setTotalSentences(totalCount);
       
       // Set loading state for annotations
       setIsLoadingAnnotations(true);
@@ -398,7 +409,7 @@ const AdminDashboard: React.FC = () => {
     } finally {
       setIsLoadingAnnotations(false);
     }
-  }, [languageFilter]);
+  }, [languageFilter, currentPage, itemsPerPage, audioUrls]);
 
   // Load Users with Pagination
   const loadUsers = useCallback(async () => {
@@ -911,11 +922,12 @@ const AdminDashboard: React.FC = () => {
     return 'text-red-600';
   };
 
-  // Filter, sort, and paginate sentences
+  // Note: With server-side pagination, filtering and sorting should ideally be done server-side
+  // For now, we'll apply client-side filtering only to the current page of results
   const filteredAndSortedSentences = useCallback(() => {
     let filtered = sentences;
 
-    // Apply search filter
+    // Apply search filter (client-side for current page only)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(sentence => 
@@ -925,7 +937,8 @@ const AdminDashboard: React.FC = () => {
       );
     }
 
-    // Apply sorting
+    // Apply sorting (client-side for current page only)
+    // Data is already sorted by ID from server, apply additional sorting if needed
     const sorted = [...filtered].sort((a, b) => {
       const aAnnotations = sentenceAnnotations.get(a.id) || [];
       const bAnnotations = sentenceAnnotations.get(b.id) || [];
@@ -940,21 +953,20 @@ const AdminDashboard: React.FC = () => {
         case 'least_annotated':
           return aAnnotations.length - bAnnotations.length;
         default:
-          return 0;
+          // Default: keep ID order (ascending) from server
+          return a.id - b.id;
       }
     });
 
     return sorted;
   }, [sentences, searchQuery, sortBy, sentenceAnnotations]);
 
-  // Paginate sentences
+  // Use filtered and sorted sentences (client-side filtering on current page)
   const paginatedSentences = useCallback(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredAndSortedSentences().slice(startIndex, endIndex);
-  }, [filteredAndSortedSentences, currentPage, itemsPerPage]);
+    return filteredAndSortedSentences();
+  }, [filteredAndSortedSentences]);
 
-  const totalPages = Math.ceil(filteredAndSortedSentences().length / itemsPerPage);
+  const totalPages = Math.ceil(totalSentences / itemsPerPage);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -1209,7 +1221,6 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Audio playback functions - using native audio element approach
-  const [audioUrls, setAudioUrls] = useState<{[key: string]: string}>({});
   const [audioLoading, setAudioLoading] = useState<{[key: string]: boolean}>({});
   const [audioErrors, setAudioErrors] = useState<{[key: string]: string}>({});
 
@@ -3516,7 +3527,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-sm text-gray-700">
                     Showing page {currentPage} of {totalPages} 
                     <span className="ml-2 text-gray-500">
-                      ({((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredAndSortedSentences().length)} of {filteredAndSortedSentences().length} total)
+                      ({((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalSentences)} of {totalSentences} total)
                     </span>
                   </div>
                   

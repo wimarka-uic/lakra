@@ -1422,12 +1422,12 @@ export const adminAPI = {
   },
 
   // Sentence Management Functions
-  getAdminSentences: async (skip = 0, limit = 100, targetLanguage?: string): Promise<Sentence[]> => {
+  getAdminSentences: async (skip = 0, limit = 10000, targetLanguage?: string): Promise<Sentence[]> => {
     let query = supabase
       .from('sentences')
       .select('*')
       .range(skip, skip + limit - 1)
-      .order('created_at', { ascending: false });
+      .order('id', { ascending: true });
 
     if (targetLanguage) {
       query = query.eq('target_language', targetLanguage);
@@ -1437,6 +1437,21 @@ export const adminAPI = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  getAdminSentencesCount: async (targetLanguage?: string): Promise<number> => {
+    let query = supabase
+      .from('sentences')
+      .select('*', { count: 'exact', head: true });
+
+    if (targetLanguage) {
+      query = query.eq('target_language', targetLanguage);
+    }
+
+    const { count, error } = await query;
+
+    if (error) throw error;
+    return count || 0;
   },
 
   getSentenceAnnotations: async (sentenceId: number): Promise<Annotation[]> => {
