@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { languageProficiencyAPI } from '../../services/supabase-api';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, Eye, EyeOff, Brain, Globe, Users, FileText, Check, UserCheck, Clock, Loader2, ArrowRight } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Brain, Globe, Users, FileText, Check, UserCheck, Clock, Loader2, ArrowRight, X } from 'lucide-react';
 import type { LanguageProficiencyQuestion } from '../../types';
 import Logo from '../ui/Logo';
+import ConfirmationModal from '../modals/ConfirmationModal';
+import Modal from '../modals/Modal';
 
 interface UserAnswer {
   question_id: number;
@@ -23,6 +25,8 @@ const Register: React.FC = () => {
     preferred_language: '', // No default language selection
     languages: [] as string[], // Explicitly define as string array
     user_type: 'annotator', // New field for user type
+    accepted_terms: false,
+    is_over_18: false,
   });
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -42,6 +46,14 @@ const Register: React.FC = () => {
   const [isSubmittingTest, setIsSubmittingTest] = useState(false);
   const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
   const [testSessionId, setTestSessionId] = useState('');
+  
+  // Confirmation modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showTosModal, setShowTosModal] = useState(false);
+  const [hasViewedTos, setHasViewedTos] = useState(false);
+  const [hasScrolledTosEnd, setHasScrolledTosEnd] = useState(false);
+  const [modalAgeConfirmed, setModalAgeConfirmed] = useState(false);
+  const tosScrollRef = useRef<HTMLDivElement | null>(null);
   
   // Use ref to track if questions have been loaded for current languages
   const questionsLoadedRef = useRef<string>('');
@@ -77,6 +89,120 @@ const Register: React.FC = () => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Handle cancel test with confirmation
+  const handleCancelTest = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = () => {
+    // Reset test state
+    setCurrentQuestionIndex(0);
+    setOnboardingAnswers([]);
+    setTimeRemaining(0);
+    setTestStarted(false);
+    setQuestions([]);
+    setTestSessionId('');
+    questionsLoadedRef.current = '';
+    
+    // Go back to step 3 (account details)
+    setCurrentStep(3);
+  };
+
+  const openTosModal = () => {
+    setShowTosModal(true);
+    if (!hasViewedTos) setHasViewedTos(true);
+  };
+
+  const closeTosModal = () => {
+    setShowTosModal(false);
+  };
+
+  const handleTosScroll = () => {
+    const el = tosScrollRef.current;
+    if (!el) return;
+    const reachedEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+    if (reachedEnd) setHasScrolledTosEnd(true);
+  };
+
+  // Extracted processing for Step 3 submit (after legal gate)
+  const processRegistrationStep3 = async () => {
+    setIsLoading(true);
+    try {
+      // Check if user is annotator and needs onboarding BEFORE registering
+      const needsOnboardingTest = formData.user_type === 'annotator';
+
+      if (needsOnboardingTest) {
+        // Check if questions are available for selected languages before proceeding
+        try {
+          setError(''); // Clear any previous errors
+          const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(formData.languages);
+
+          if (!fetchedQuestions || fetchedQuestions.length === 0) {
+            setError(
+              `No proficiency test questions are currently available for your selected languages (${formData.languages.map(lang => 
+                lang.charAt(0).toUpperCase() + lang.slice(1)
+              ).join(', ')}). Please try selecting different languages or contact support for assistance.`
+            );
+            return;
+          }
+
+          // Questions are available, proceed to test
+          setQuestions(fetchedQuestions);
+          // Calculate timer based on number of questions (90 seconds per question)
+          const calculatedTime = fetchedQuestions.length * 90;
+          setTimeRemaining(calculatedTime);
+
+          if (!testSessionId) {
+            const sessionId = generateSessionId();
+            setTestSessionId(sessionId);
+          }
+          questionsLoadedRef.current = formData.languages.sort().join(',');
+
+          // For annotators, move to onboarding test step
+          setCurrentStep(4);
+          setTestStarted(true);
+          // Reset any previous test state
+          setCurrentQuestionIndex(0);
+          setOnboardingAnswers([]);
+        } catch (questionError) {
+          console.error('Error checking questions availability:', questionError);
+          setError('Unable to load proficiency test questions. Please try again or contact support.');
+          return;
+        }
+      } else {
+        // For evaluators, complete registration normally
+        const registerData = {
+          email: formData.email,
+          username: formData.username,
+          password: formData.password,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          preferred_language: formData.preferred_language,
+          languages: formData.languages,
+          is_evaluator: formData.user_type === 'evaluator',
+          user_type: formData.user_type
+        };
+
+        await register(registerData);
+
+        setRegistrationSuccess(true);
+        setTimeout(() => navigate('/'), 1500);
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message || 'Registration failed. Please try again.');
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        // Handle API error responses
+        const apiError = error as { response?: { data?: { detail?: string } } };
+        setError(apiError.response?.data?.detail || 'Registration failed. Please try again.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const updateOnboardingAnswer = (selectedAnswer: number) => {
@@ -120,7 +246,7 @@ const Register: React.FC = () => {
         test_session_id: testSessionId
       }));
 
-      const result = await languageProficiencyAPI.submitAnswers(userAnswers, testSessionId, formData.languages);
+      const result = await languageProficiencyAPI.submitAnswersRegistration(userAnswers, testSessionId, formData.languages);
       
       if (result.passed) {
         // Test passed, now complete the registration
@@ -134,17 +260,32 @@ const Register: React.FC = () => {
           languages: formData.languages,
           is_evaluator: false, // annotator
           user_type: formData.user_type,
-          onboarding_passed: true // Indicate that user passed onboarding test
+          onboarding_passed: true, // Indicate that user passed onboarding test
+          test_answers: onboardingAnswers, // Pass test answers to be stored after user creation
+          test_session_id: testSessionId
         };
         
-        await register(registerData);
-        
-        setRegistrationSuccess(true);
-        setSuccessMessage('Registration successful! You can now log in and start annotating.');
-        setError(''); // Clear any error messages
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
+        try {
+          await register(registerData);
+          
+          setRegistrationSuccess(true);
+          setSuccessMessage('Registration successful! You can now log in and start annotating.');
+          setError(''); // Clear any error messages
+          setTimeout(() => {
+            navigate('/login');
+          }, 3000);
+        } catch (registrationError) {
+          console.error('Registration failed after test passed:', registrationError);
+          setError('Registration failed after passing the test. Please try again or contact support.');
+          setCurrentStep(3); // Go back to account creation step
+          setTestStarted(false);
+          setCurrentQuestionIndex(0);
+          setOnboardingAnswers([]);
+          setTimeRemaining(0);
+          questionsLoadedRef.current = '';
+          setQuestions([]);
+          setTestSessionId('');
+        }
       } else {
         setError(`You scored ${result.score.toFixed(1)}% on the proficiency test. You need at least 70% to pass. Don't worry - you can retake the test after reviewing the materials. Please go back and try again when you're ready.`);
         setCurrentStep(3); // Go back to account creation step
@@ -166,6 +307,10 @@ const Register: React.FC = () => {
       if (error instanceof Error) {
         if (error.message.includes('Registration failed')) {
           errorMessage = 'Registration failed. Please try again.';
+        } else if (error.message.includes('Test validation failed')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('Failed to validate test answers')) {
+          errorMessage = 'Test validation failed. Please try again.';
         } else {
           errorMessage = error.message || errorMessage;
         }
@@ -177,6 +322,11 @@ const Register: React.FC = () => {
       questionsLoadedRef.current = '';
       setQuestions([]);
       setTestSessionId('');
+      setCurrentStep(3); // Go back to account creation step
+      setTestStarted(false);
+      setCurrentQuestionIndex(0);
+      setOnboardingAnswers([]);
+      setTimeRemaining(0);
     } finally {
       setIsSubmittingTest(false);
     }
@@ -342,87 +492,15 @@ const Register: React.FC = () => {
         setError('Please correct the errors before submitting');
         return;
       }
-
-      setIsLoading(true);
-
-      try {
-        // Check if user is annotator and needs onboarding BEFORE registering
-        const needsOnboardingTest = formData.user_type === 'annotator';
-        
-        if (needsOnboardingTest) {
-          // Check if questions are available for selected languages before proceeding
-          try {
-            setError(''); // Clear any previous errors
-            const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(formData.languages);
-            
-            if (!fetchedQuestions || fetchedQuestions.length === 0) {
-              setError(
-                `No proficiency test questions are currently available for your selected languages (${formData.languages.map(lang => 
-                  lang.charAt(0).toUpperCase() + lang.slice(1)
-                ).join(', ')}). Please try selecting different languages or contact support for assistance.`
-              );
-              setIsLoading(false);
-              return;
-            }
-            
-            // Questions are available, proceed to test
-            setQuestions(fetchedQuestions);
-            // Calculate timer based on number of questions (90 seconds per question)
-            const calculatedTime = fetchedQuestions.length * 90;
-            setTimeRemaining(calculatedTime);
-            
-            if (!testSessionId) {
-              const sessionId = generateSessionId();
-              setTestSessionId(sessionId);
-            }
-            questionsLoadedRef.current = formData.languages.sort().join(',');
-            
-
-            
-            // For annotators, move to onboarding test step
-            setCurrentStep(4);
-            setTestStarted(true);
-            // Reset any previous test state
-            setCurrentQuestionIndex(0);
-            setOnboardingAnswers([]);
-          } catch (questionError) {
-            console.error('Error checking questions availability:', questionError);
-            setError('Unable to load proficiency test questions. Please try again or contact support.');
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          // For evaluators, complete registration normally
-          const registerData = {
-            email: formData.email,
-            username: formData.username,
-            password: formData.password,
-            first_name: formData.first_name,
-            last_name: formData.last_name,
-            preferred_language: formData.preferred_language,
-            languages: formData.languages,
-            is_evaluator: formData.user_type === 'evaluator',
-            user_type: formData.user_type
-          };
-          
-          await register(registerData);
-          
-          setRegistrationSuccess(true);
-          setTimeout(() => navigate('/'), 1500);
-        }
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          setError(error.message || 'Registration failed. Please try again.');
-        } else if (typeof error === 'object' && error !== null && 'response' in error) {
-          // Handle API error responses
-          const apiError = error as { response?: { data?: { detail?: string } } };
-          setError(apiError.response?.data?.detail || 'Registration failed. Please try again.');
-        } else {
-          setError('Registration failed. Please try again.');
-        }
-      } finally {
-        setIsLoading(false);
+      // Gate on legal acceptance; open modal if not accepted yet
+      if (!formData.accepted_terms || !formData.is_over_18) {
+        setModalAgeConfirmed(false);
+        setHasScrolledTosEnd(false);
+        openTosModal();
+        return;
       }
+
+      await processRegistrationStep3();
       return;
     }
 
@@ -857,6 +935,8 @@ const Register: React.FC = () => {
                   </div>
                 </div>
 
+
+
                 {questions.length === 0 ? (
                   // This state should not occur now since we check for questions before reaching step 4
                   <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
@@ -866,20 +946,29 @@ const Register: React.FC = () => {
                       <p className="text-sm text-red-800 mb-4">
                         An unexpected error occurred while loading the proficiency test.
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Go back to step 3 to try again
-                          setCurrentStep(3);
-                          setQuestions([]);
-                          questionsLoadedRef.current = '';
-                          setTestSessionId('');
-                          setError('');
-                        }}
-                        className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
-                      >
-                        Go Back and Try Again
-                      </button>
+                      <div className="space-y-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Go back to step 3 to try again
+                            setCurrentStep(3);
+                            setQuestions([]);
+                            questionsLoadedRef.current = '';
+                            setTestSessionId('');
+                            setError('');
+                          }}
+                          className="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
+                        >
+                          Go Back and Try Again
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelTest}
+                          className="px-6 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700"
+                        >
+                          Cancel Test
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -1032,6 +1121,19 @@ const Register: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Cancel Test Button */}
+                <div className="flex justify-center mt-6">
+                  <button
+                    type="button"
+                    onClick={handleCancelTest}
+                    className="flex items-center px-6 py-2 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors border border-gray-300"
+                    title="Cancel test"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel Test
+                  </button>
+                </div>
+
                 {/* Test Instructions */}
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start">
@@ -1087,6 +1189,113 @@ const Register: React.FC = () => {
           </form>
         )}
       </div>
+      
+      {/* Cancel Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleConfirmCancel}
+        title="Cancel Test"
+        message="Are you sure you want to cancel the test? Your progress will be lost and you'll need to start over."
+        confirmText="Yes, Cancel Test"
+        cancelText="Continue Test"
+        type="warning"
+      />
+
+      {/* Terms of Service Modal */}
+      <Modal
+        isOpen={showTosModal}
+        onClose={closeTosModal}
+        title="Terms of Service"
+        size="xl"
+        closeOnBackdropClick={false}
+        closeOnEscape={false}
+      >
+        <div className="p-6 space-y-4">
+          <div
+            ref={tosScrollRef}
+            onScroll={handleTosScroll}
+            className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Welcome to Lakra</h3>
+            <p className="text-sm text-gray-700 mb-3">
+              These Terms of Service ("Terms") govern your access to and use of the Lakra platform.
+              By using the service, you agree to these Terms. If you do not agree, do not use the service.
+            </p>
+            <h4 className="font-medium text-gray-900 mt-4 mb-1">1. Eligibility</h4>
+            <p className="text-sm text-gray-700 mb-2">You must be at least 18 years old to use Lakra.</p>
+            <h4 className="font-medium text-gray-900 mt-4 mb-1">2. Acceptable Use</h4>
+            <p className="text-sm text-gray-700 mb-2">
+              You agree not to misuse the platform, interfere with its operation, or attempt unauthorized access.
+            </p>
+            <h4 className="font-medium text-gray-900 mt-4 mb-1">3. Content and Data</h4>
+            <p className="text-sm text-gray-700 mb-2">
+              Your annotations and evaluations may be used for research and product improvement. Do not upload
+              content you do not have rights to share.
+            </p>
+            <h4 className="font-medium text-gray-900 mt-4 mb-1">4. Privacy</h4>
+            <p className="text-sm text-gray-700 mb-2">
+              We process personal data in accordance with our privacy practices. Do not share sensitive personal
+              information within annotations or comments.
+            </p>
+            <h4 className="font-medium text-gray-900 mt-4 mb-1">5. Termination</h4>
+            <p className="text-sm text-gray-700 mb-2">
+              We may suspend or terminate access for violations of these Terms or for maintaining the security and
+              integrity of the service.
+            </p>
+            <h4 className="font-medium text-gray-900 mt-4 mb-1">6. Disclaimers</h4>
+            <p className="text-sm text-gray-700 mb-2">
+              The service is provided "as is" without warranties of any kind. We are not liable for any indirect or
+              consequential damages arising from your use of the platform.
+            </p>
+            <h4 className="font-medium text-gray-900 mt-4 mb-1">7. Changes</h4>
+            <p className="text-sm text-gray-700 mb-2">
+              We may update these Terms from time to time. Continued use of the platform constitutes acceptance of
+              the updated Terms.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 rounded-md p-3 border border-gray-200 bg-white">
+              <input
+                id="modal_is_over_18"
+                name="modal_is_over_18"
+                type="checkbox"
+                checked={modalAgeConfirmed}
+                onChange={(e) => setModalAgeConfirmed(e.target.checked)}
+                className="h-4 w-4 mt-0.5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+              />
+              <label htmlFor="modal_is_over_18" className="text-sm text-gray-700">
+                I confirm that I am at least 18 years old.
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeTosModal}
+                  className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasScrolledTosEnd || !modalAgeConfirmed}
+                  onClick={() => {
+                    setFormData({ ...formData, accepted_terms: true, is_over_18: true });
+                    setShowTosModal(false);
+                  }}
+                  className={`px-4 py-2 text-sm rounded-md ${hasScrolledTosEnd && modalAgeConfirmed ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                >
+                  I Agree
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

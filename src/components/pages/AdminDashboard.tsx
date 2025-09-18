@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI, sentencesAPI, languageProficiencyAPI, annotationsAPI } from '../../services/supabase-api';
-import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion } from '../../types';
+import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion, OnboardingTest } from '../../types';
 import { logger } from '../../utils/logger';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -61,25 +61,29 @@ const AdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAnnotations, setIsLoadingAnnotations] = useState(false);
   
+  // Audio playback state
+  const [audioUrls, setAudioUrls] = useState<{[key: string]: string}>({});
+  
   // Get active tab from URL
-  const getActiveTabFromUrl = (): 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' => {
+  const getActiveTabFromUrl = useCallback((): 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results' => {
     const path = location.pathname;
     if (path.includes('/overview')) return 'overview';
     if (path.includes('/users')) return 'users';
     if (path.includes('/sentences')) return 'sentences';
     if (path.includes('/onboarding-tests')) return 'onboarding-tests';
+    if (path.includes('/test-results')) return 'test-results';
     return 'home';
-  };
+  }, [location.pathname]);
   
-  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests'>(getActiveTabFromUrl());
+  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results'>(getActiveTabFromUrl());
 
   // Update active tab when URL changes
   useEffect(() => {
     setActiveTab(getActiveTabFromUrl());
-  }, [location.pathname]);
+  }, [location.pathname, getActiveTabFromUrl]);
 
   // Handle tab navigation
-  const handleTabChange = (tab: 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests') => {
+  const handleTabChange = (tab: 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results') => {
     setActiveTab(tab);
     const basePath = '/admin';
     const tabPath = tab === 'home' ? '' : `/${tab}`;
@@ -114,7 +118,7 @@ const AdminDashboard: React.FC = () => {
   // Pagination and search states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [totalSentences, setTotalSentences] = useState(0);  const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'most_annotated' | 'least_annotated'>('newest');
   const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
   
@@ -192,6 +196,22 @@ const AdminDashboard: React.FC = () => {
   });
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [passwordResetCooldowns, setPasswordResetCooldowns] = useState<{[userId: number]: number}>({});
+
+  // Test Results state
+  const [userTestResults, setUserTestResults] = useState<Array<OnboardingTest & { user: User }>>([]);
+  const [isLoadingTestResults, setIsLoadingTestResults] = useState(false);
+  const [testResultsFilter, setTestResultsFilter] = useState({
+    status: 'all',
+    language: 'all',
+    search: ''
+  });
+  const [testResultsPagination, setTestResultsPagination] = useState({
+    currentPage: 1,
+    itemsPerPage: 10,
+    totalResults: 0
+  });
+  const [showTestDetails, setShowTestDetails] = useState(false);
+  const [selectedTestResult, setSelectedTestResult] = useState<OnboardingTest & { user: User } | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -325,8 +345,16 @@ const AdminDashboard: React.FC = () => {
   const loadSentences = useCallback(async () => {
     try {
       const targetLanguage = languageFilter === 'all' ? undefined : languageFilter;
-      const sentencesData = await adminAPI.getAdminSentences(0, 100, targetLanguage);
+      const skip = (currentPage - 1) * itemsPerPage;
+      
+      // Load sentences with server-side pagination
+      const [sentencesData, totalCount] = await Promise.all([
+        adminAPI.getAdminSentences(skip, itemsPerPage, targetLanguage),
+        adminAPI.getAdminSentencesCount(targetLanguage)
+      ]);
+      
       setSentences(sentencesData);
+      setTotalSentences(totalCount);
       
       // Set loading state for annotations
       setIsLoadingAnnotations(true);
@@ -381,7 +409,7 @@ const AdminDashboard: React.FC = () => {
     } finally {
       setIsLoadingAnnotations(false);
     }
-  }, [languageFilter]);
+  }, [languageFilter, currentPage, itemsPerPage, audioUrls]);
 
   // Load Users with Pagination
   const loadUsers = useCallback(async () => {
@@ -418,6 +446,31 @@ const AdminDashboard: React.FC = () => {
       loadUsers();
     }
   }, [activeTab, loadUsers]);
+
+  // Load test results when tab changes
+  const loadTestResults = useCallback(async () => {
+    setIsLoadingTestResults(true);
+    try {
+      const results = await adminAPI.getAllUserTestResults();
+      setUserTestResults(results);
+      setTestResultsPagination(prev => ({
+        ...prev,
+        totalResults: results.length
+      }));
+    } catch (error) {
+      logger.apiError('loadTestResults', error as Error, {
+        component: 'AdminDashboard'
+      });
+    } finally {
+      setIsLoadingTestResults(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'test-results') {
+      loadTestResults();
+    }
+  }, [activeTab, loadTestResults]);
 
   // CRUD Handlers for User Management
 
@@ -545,6 +598,17 @@ const AdminDashboard: React.FC = () => {
   // Pagination handlers
   const handleUserPageChange = (newPage: number) => {
     setUsersPagination(prev => ({ ...prev, currentPage: newPage }));
+  };
+
+  // Test Results filter handlers
+  const handleTestResultsFilterChange = (newFilter: Partial<typeof testResultsFilter>) => {
+    setTestResultsFilter(prev => ({ ...prev, ...newFilter }));
+    setTestResultsPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
+  };
+
+  // Test Results pagination handlers
+  const handleTestResultsPageChange = (newPage: number) => {
+    setTestResultsPagination(prev => ({ ...prev, currentPage: newPage }));
   };
 
   // Generate secure password
@@ -858,11 +922,12 @@ const AdminDashboard: React.FC = () => {
     return 'text-red-600';
   };
 
-  // Filter, sort, and paginate sentences
+  // Note: With server-side pagination, filtering and sorting should ideally be done server-side
+  // For now, we'll apply client-side filtering only to the current page of results
   const filteredAndSortedSentences = useCallback(() => {
     let filtered = sentences;
 
-    // Apply search filter
+    // Apply search filter (client-side for current page only)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(sentence => 
@@ -872,7 +937,8 @@ const AdminDashboard: React.FC = () => {
       );
     }
 
-    // Apply sorting
+    // Apply sorting (client-side for current page only)
+    // Data is already sorted by ID from server, apply additional sorting if needed
     const sorted = [...filtered].sort((a, b) => {
       const aAnnotations = sentenceAnnotations.get(a.id) || [];
       const bAnnotations = sentenceAnnotations.get(b.id) || [];
@@ -887,21 +953,20 @@ const AdminDashboard: React.FC = () => {
         case 'least_annotated':
           return aAnnotations.length - bAnnotations.length;
         default:
-          return 0;
+          // Default: keep ID order (ascending) from server
+          return a.id - b.id;
       }
     });
 
     return sorted;
   }, [sentences, searchQuery, sortBy, sentenceAnnotations]);
 
-  // Paginate sentences
+  // Use filtered and sorted sentences (client-side filtering on current page)
   const paginatedSentences = useCallback(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredAndSortedSentences().slice(startIndex, endIndex);
-  }, [filteredAndSortedSentences, currentPage, itemsPerPage]);
+    return filteredAndSortedSentences();
+  }, [filteredAndSortedSentences]);
 
-  const totalPages = Math.ceil(filteredAndSortedSentences().length / itemsPerPage);
+  const totalPages = Math.ceil(totalSentences / itemsPerPage);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -1057,6 +1122,50 @@ const AdminDashboard: React.FC = () => {
     setQuestionCurrentPage(1);
   }, [questionSearchQuery, questionSortBy, questionLanguageFilter, questionTypeFilter, questionDifficultyFilter]);
 
+  // Filter, sort, and paginate test results
+  const filteredAndSortedTestResults = useCallback(() => {
+    let filtered = userTestResults;
+
+    // Apply status filter
+    if (testResultsFilter.status !== 'all') {
+      filtered = filtered.filter(result => result.status === testResultsFilter.status);
+    }
+
+    // Apply language filter
+    if (testResultsFilter.language !== 'all') {
+      filtered = filtered.filter(result => result.language.toLowerCase() === testResultsFilter.language.toLowerCase());
+    }
+
+    // Apply search filter
+    if (testResultsFilter.search.trim()) {
+      const query = testResultsFilter.search.toLowerCase();
+      filtered = filtered.filter(result => 
+        result.user?.first_name?.toLowerCase().includes(query) ||
+        result.user?.last_name?.toLowerCase().includes(query) ||
+        result.user?.email?.toLowerCase().includes(query) ||
+        result.user?.username?.toLowerCase().includes(query) ||
+        result.language?.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort by creation date (newest first)
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [userTestResults, testResultsFilter]);
+
+  // Paginate test results
+  const paginatedTestResults = useCallback(() => {
+    const startIndex = (testResultsPagination.currentPage - 1) * testResultsPagination.itemsPerPage;
+    const endIndex = startIndex + testResultsPagination.itemsPerPage;
+    return filteredAndSortedTestResults().slice(startIndex, endIndex);
+  }, [filteredAndSortedTestResults, testResultsPagination.currentPage, testResultsPagination.itemsPerPage]);
+
+  const testResultsTotalPages = Math.ceil(filteredAndSortedTestResults().length / testResultsPagination.itemsPerPage);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setTestResultsPagination(prev => ({ ...prev, currentPage: 1 }));
+  }, [testResultsFilter.status, testResultsFilter.language, testResultsFilter.search]);
+
   // Get question type color
   const getQuestionTypeColor = (type: string) => {
     switch (type) {
@@ -1089,8 +1198,29 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Get test status color
+  const getTestStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': 
+        return 'bg-green-100 text-green-800';
+      case 'failed': 
+        return 'bg-red-100 text-red-800';
+      case 'in_progress': 
+        return 'bg-yellow-100 text-yellow-800';
+      default: 
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Get test score color
+  const getTestScoreColor = (score?: number) => {
+    if (!score) return 'text-gray-400';
+    if (score >= 70) return 'text-green-600';
+    if (score >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
   // Audio playback functions - using native audio element approach
-  const [audioUrls, setAudioUrls] = useState<{[key: string]: string}>({});
   const [audioLoading, setAudioLoading] = useState<{[key: string]: boolean}>({});
   const [audioErrors, setAudioErrors] = useState<{[key: string]: string}>({});
 
@@ -1285,6 +1415,7 @@ const AdminDashboard: React.FC = () => {
                 { key: 'users', label: 'Users', icon: Users },
                 { key: 'sentences', label: 'Sentences', icon: FileText },
                 { key: 'onboarding-tests', label: 'Tests', fullLabel: 'Onboarding Tests', icon: BookOpen },
+                { key: 'test-results', label: 'Results', fullLabel: 'Test Results', icon: Award },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -1298,7 +1429,7 @@ const AdminDashboard: React.FC = () => {
                 >
                   <tab.icon className="h-4 w-4 flex-shrink-0" />
                   <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.key === 'onboarding-tests' ? 'Tests' : tab.label}</span>
+                  <span className="sm:hidden">{tab.key === 'onboarding-tests' ? 'Tests' : tab.key === 'test-results' ? 'Results' : tab.label}</span>
                 </button>
               ))}
             </div>
@@ -1316,6 +1447,7 @@ const AdminDashboard: React.FC = () => {
                   { key: 'users', label: 'Users', icon: Users },
                   { key: 'sentences', label: 'Sentences', icon: FileText },
                   { key: 'onboarding-tests', label: 'Onboarding Tests', icon: BookOpen },
+                  { key: 'test-results', label: 'Test Results', icon: Award },
                 ].find(tab => tab.key === activeTab);
                 
                 if (!currentTab) return null;
@@ -2403,7 +2535,11 @@ const AdminDashboard: React.FC = () => {
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  Annotation Overview for {languageFilter === 'all' ? 'All Languages' : languageFilter.toUpperCase()}
+                  Annotation Overview for {languageFilter === 'all' ? 'All Languages' : 
+                    languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
+                    languageFilter === 'ceb' ? 'Cebuano' : 
+                    languageFilter === 'ilo' ? 'Ilokano' : 
+                    languageFilter.toUpperCase()}
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {(() => {
@@ -2470,9 +2606,9 @@ const AdminDashboard: React.FC = () => {
                       className="flex-1 border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
                     >
                       <option value="all">All Languages</option>
-                      <option value="tagalog">Tagalog (Filipino)</option>
-                      <option value="cebuano">Cebuano</option>
-                      <option value="ilokano">Ilokano</option>
+                      <option value="tgl">Tagalog (Filipino)</option>
+                      <option value="ceb">Cebuano</option>
+                      <option value="ilo">Ilokano</option>
                     </select>
                   </div>
 
@@ -2947,7 +3083,11 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-500">Showing:</span>
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-beauty-bush-100 text-beauty-bush-800 border border-beauty-bush-200">
-                      {languageFilter === 'all' ? 'All Languages' : languageFilter.toUpperCase()}
+                      {languageFilter === 'all' ? 'All Languages' : 
+                        languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
+                        languageFilter === 'ceb' ? 'Cebuano' : 
+                        languageFilter === 'ilo' ? 'Ilokano' : 
+                        languageFilter.toUpperCase()}
                     </span>
                   </div>
                 </div>
@@ -3360,7 +3500,11 @@ const AdminDashboard: React.FC = () => {
                         {searchQuery ? (
                           <>No sentences match your search criteria.</>
                         ) : (
-                          <>No sentences available for the selected language filter: <span className="font-semibold">{languageFilter === 'all' ? 'All Languages' : languageFilter.toUpperCase()}</span></>
+                          <>No sentences available for the selected language filter: <span className="font-semibold">{languageFilter === 'all' ? 'All Languages' : 
+                            languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
+                            languageFilter === 'ceb' ? 'Cebuano' : 
+                            languageFilter === 'ilo' ? 'Ilokano' : 
+                            languageFilter.toUpperCase()}</span></>
                         )}
                       </p>
                     </div>
@@ -3383,7 +3527,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-sm text-gray-700">
                     Showing page {currentPage} of {totalPages} 
                     <span className="ml-2 text-gray-500">
-                      ({((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredAndSortedSentences().length)} of {filteredAndSortedSentences().length} total)
+                      ({((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalSentences)} of {totalSentences} total)
                     </span>
                   </div>
                   
@@ -4076,7 +4220,389 @@ const AdminDashboard: React.FC = () => {
         )}
       </div>
 
+        {/* Test Results Tab */}
+        {activeTab === 'test-results' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">User Test Results</h3>
+                <p className="text-sm text-gray-600 mt-1">View and analyze user onboarding test results and performance</p>
+              </div>
+            </div>
 
+            {/* Test Results Statistics */}
+            {userTestResults.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-beauty-bush-100 rounded-lg">
+                      <Award className="h-5 w-5 text-beauty-bush-600" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Total Tests</p>
+                      <p className="text-xl font-bold text-gray-900">{userTestResults.length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Eye className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Completed</p>
+                      <p className="text-xl font-bold text-gray-900">{userTestResults.filter(t => t.status === 'completed').length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <Filter className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Failed</p>
+                      <p className="text-xl font-bold text-gray-900">{userTestResults.filter(t => t.status === 'failed').length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-yellow-100 rounded-lg">
+                      <BookOpen className="h-5 w-5 text-yellow-600" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Languages</p>
+                      <p className="text-xl font-bold text-gray-900">{[...new Set(userTestResults.map(t => t.language))].length}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="bg-white p-4 border border-gray-200 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="test-status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    id="test-status-filter"
+                    value={testResultsFilter.status}
+                    onChange={(e) => handleTestResultsFilterChange({ status: e.target.value })}
+                    className="select-field"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                    <option value="in_progress">In Progress</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="test-language-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Language
+                  </label>
+                  <select
+                    id="test-language-filter"
+                    value={testResultsFilter.language}
+                    onChange={(e) => handleTestResultsFilterChange({ language: e.target.value })}
+                    className="select-field"
+                  >
+                    <option value="all">All Languages</option>
+                    <option value="tagalog">Tagalog</option>
+                    <option value="cebuano">Cebuano</option>
+                    <option value="ilokano">Ilokano</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="test-search" className="block text-sm font-medium text-gray-700 mb-1">
+                    Search
+                  </label>
+                  <input
+                    id="test-search"
+                    type="text"
+                    placeholder="Search by user name, email, or username..."
+                    value={testResultsFilter.search}
+                    onChange={(e) => handleTestResultsFilterChange({ search: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-beauty-bush-500 focus:border-beauty-bush-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Test Results Table */}
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              {isLoadingTestResults ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-beauty-bush-600"></div>
+                  <span className="ml-2 text-gray-600">Loading test results...</span>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Language
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Score
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedTestResults().map((testResult) => (
+                      <tr key={testResult.id || testResult.user_id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {testResult.user?.first_name} {testResult.user?.last_name}
+                              </div>
+                              <div className="text-sm text-gray-500">@{testResult.user?.username}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {testResult.language}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTestStatusColor(testResult.status)}`}>
+                            {testResult.status === 'completed' ? 'Completed' : 
+                             testResult.status === 'failed' ? 'Failed' : 'In Progress'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`text-sm font-medium ${getTestScoreColor(testResult.score)}`}>
+                            {testResult.score ? `${testResult.score}%` : 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(testResult.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-1">
+                            <button
+                              onClick={() => {
+                                setSelectedTestResult(testResult);
+                                setShowTestDetails(true);
+                              }}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                              title="View Test Details"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Pagination */}
+            {testResultsTotalPages > 1 && (
+              <div className="bg-white px-4 py-3 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-700">Showing</span>
+                    <select
+                      value={testResultsPagination.itemsPerPage}
+                      onChange={(e) => setTestResultsPagination(prev => ({ ...prev, itemsPerPage: Number(e.target.value), currentPage: 1 }))}
+                      className="select-field text-sm"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <span className="text-sm text-gray-700">per page</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleTestResultsPageChange(testResultsPagination.currentPage - 1)}
+                      disabled={testResultsPagination.currentPage === 1}
+                      className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Previous
+                    </button>
+                    <span className="text-sm text-gray-700">
+                      Page {testResultsPagination.currentPage} of {testResultsTotalPages}
+                    </span>
+                    <button
+                      onClick={() => handleTestResultsPageChange(testResultsPagination.currentPage + 1)}
+                      disabled={testResultsPagination.currentPage >= testResultsTotalPages}
+                      className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoadingTestResults && paginatedTestResults().length === 0 && (
+              <div className="p-12 text-center">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                    <Award className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No test results found</h3>
+                    <p className="text-gray-500">
+                      {testResultsFilter.search ? (
+                        <>No test results match your search criteria.</>
+                      ) : (
+                        <>No test results available for the selected filters.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Test Details Modal */}
+        {showTestDetails && selectedTestResult && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl border w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Test Details</h3>
+                  <button
+                    onClick={() => setShowTestDetails(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Test Summary */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Test Summary</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600">User</label>
+                        <p className="text-base font-medium text-gray-900">{selectedTestResult.user?.first_name} {selectedTestResult.user?.last_name}</p>
+                        <p className="text-sm text-gray-500">{selectedTestResult.user?.email}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600">Language</label>
+                        <p className="text-base font-medium text-gray-900">{selectedTestResult.language}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600">Score</label>
+                        <p className={`text-base font-bold ${getTestScoreColor(selectedTestResult.score)}`}>
+                          {selectedTestResult.score || 'N/A'}%
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600">Date</label>
+                        <p className="text-base text-gray-900">{new Date(selectedTestResult.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Test Results */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Question Results</h4>
+                    <div className="space-y-4">
+                      {selectedTestResult.answers && selectedTestResult.answers.length > 0 ? (
+                        selectedTestResult.answers.map((answer, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="text-sm font-medium text-gray-600">Question {index + 1}</span>
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    answer.is_correct ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {answer.is_correct ? '✓ Correct' : '✗ Incorrect'}
+                                  </span>
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {answer.type}
+                                  </span>
+                                </div>
+                                <p className="text-base text-gray-900 mb-3">{answer.question}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-gray-700 mb-2">Options:</div>
+                              {answer.options?.map((option, optionIndex) => (
+                                <div key={optionIndex} className={`p-2 rounded border ${
+                                  optionIndex === answer.selected_answer 
+                                    ? (answer.is_correct 
+                                        ? 'bg-green-50 border-green-200' 
+                                        : 'bg-red-50 border-red-200')
+                                    : optionIndex === answer.correct_answer
+                                    ? 'bg-green-50 border-green-200'
+                                    : 'bg-gray-50 border-gray-200'
+                                }`}>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-medium text-gray-600">{String.fromCharCode(65 + optionIndex)}.</span>
+                                    <span className="text-sm text-gray-900">{option}</span>
+                                    {optionIndex === answer.correct_answer && (
+                                      <span className="text-xs text-green-600 font-medium">✓ Correct</span>
+                                    )}
+                                    {optionIndex === answer.selected_answer && optionIndex !== answer.correct_answer && (
+                                      <span className="text-xs text-red-600 font-medium">✗ Selected</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {answer.explanation && (
+                              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                                <div className="text-sm font-medium text-blue-900 mb-1">Explanation:</div>
+                                <p className="text-sm text-blue-800">{answer.explanation}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No detailed answers available for this test.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end mt-6 pt-6 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowTestDetails(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Edit User Modal */}
       {showEditUser && selectedUser && (

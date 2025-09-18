@@ -1,350 +1,249 @@
 # Contributing to Lakra
 
-Thank you for your interest in contributing to Lakra! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to Lakra! This guide reflects the current state of the project and explains how to set up your environment, make changes, and submit high-quality pull requests.
 
 ## Table of Contents
 
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Contributing Guidelines](#contributing-guidelines)
-- [Pull Request Process](#pull-request-process)
-- [Code Standards](#code-standards)
-- [Testing](#testing)
-- [Documentation](#documentation)
-- [Issue Reporting](#issue-reporting)
-- [Feature Requests](#feature-requests)
+- [Contributing to Lakra](#contributing-to-lakra)
+  - [Table of Contents](#table-of-contents)
+  - [Project Overview](#project-overview)
+  - [Repository Structure](#repository-structure)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+  - [Local Development](#local-development)
+  - [Environment Variables](#environment-variables)
+  - [Available Scripts](#available-scripts)
+  - [Conventions](#conventions)
+    - [Branching](#branching)
+    - [Commit Messages](#commit-messages)
+    - [Pull Requests](#pull-requests)
+    - [Code Style](#code-style)
+  - [Project Notes](#project-notes)
+    - [Supabase Usage](#supabase-usage)
+    - [CSV Imports](#csv-imports)
+  - [Issue Reporting](#issue-reporting)
+  - [Feature Requests](#feature-requests)
+  - [Getting Help](#getting-help)
+  - [License](#license)
 
-## Code of Conduct
+## Project Overview
 
-This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+Lakra is a frontend web app built with React 19, TypeScript, Vite, TailwindCSS, and Supabase (Auth, Postgres, Storage, and RLS). The app now lives at the repository root (no separate `frontend/` folder). All data operations go through Supabase.
+
+Key paths:
+- Root Vite app with `src/`, `public/`, `index.html`
+
+For a detailed feature list and tech stack, see the main `README.md`.
+
+## Repository Structure
+
+```text
+lakra/
+├─ package.json
+├─ bun.lock
+├─ index.html
+├─ eslint.config.js
+├─ postcss.config.js
+├─ tailwind.config.js
+├─ tsconfig.json
+├─ tsconfig.app.json
+├─ tsconfig.node.json
+├─ vite.config.ts
+├─ public/
+│  ├─ lakra.svg
+│  ├─ favicon.svg
+│  ├─ _redirects
+│  └─ (images, sitemap, robots.txt)
+├─ src/
+│  ├─ main.tsx
+│  ├─ App.tsx
+│  ├─ index.css
+│  ├─ assets/
+│  ├─ components/
+│  │  ├─ auth/ (Login, Register, Forgot/Reset Password)
+│  │  ├─ layout/ (Navbar, Footer, Layout, AnimatedBackground)
+│  │  ├─ modals/ (Confirmation, Guidelines, QuizSuccess/Failure)
+│  │  ├─ pages/ (Landing, About, Dashboards, Interfaces)
+│  │  ├─ ui/ (Logo, SEO, VoiceRecorder)
+│  │  └─ index.ts (barrel exports)
+│  ├─ contexts/ (AuthContext.tsx)
+│  ├─ hooks/ (useSEO.ts, useSEO-new.ts)
+│  ├─ services/ (api.ts, supabase-api.ts)
+│  ├─ types/ (index.ts)
+│  └─ utils/ (logger.ts, seo.ts, supabase.ts)
+├─ CONTRIBUTING.md
+├─ README.md
+├─ vercel.json
+└─ _redirects (optional root-level for static hosts)
+```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.8+
-- Node.js 16+
-- npm or yarn
+- Node.js 18+
+- npm, yarn, or bun (any one)
 - Git
+- A Supabase project (free tier works)
 
-### Development Setup
+## Local Development
 
-1. **Fork the repository**
+1. Clone the repository
    ```bash
-   git clone https://github.com/your-username/lakra.git
+   git clone <repository-url>
    cd lakra
    ```
 
-2. **Backend Setup**
+2. Install dependencies (at repo root)
    ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   python init_db.py
-   ```
-
-3. **Frontend Setup**
-   ```bash
-   cd frontend
    npm install
+   # or: yarn install
+   # or: bun install
    ```
 
-4. **Start Development Servers**
+3. Configure environment variables (see next section), then start the dev server
    ```bash
-   # Backend (Terminal 1)
-   cd backend
-   python main.py
-
-   # Frontend (Terminal 2)
-   cd frontend
    npm run dev
+   # or: yarn dev
+   # or: bun dev
    ```
 
-## Contributing Guidelines
+The app will be available at `http://localhost:5173`.
 
-### Types of Contributions
+## Environment Variables
 
-We welcome various types of contributions:
+Create a `.env` file at the repository root with the following:
+```
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-- **Bug fixes**: Help us fix issues in the codebase
-- **Feature enhancements**: Add new functionality or improve existing features
-- **Documentation**: Improve or add to our documentation
-- **Testing**: Add or improve tests
-- **UI/UX improvements**: Enhance the user interface and experience
-- **Performance optimizations**: Make the application faster and more efficient
+- Do not commit secrets. Use project/environment-scoped variables in your hosting provider.
 
-### Branch Naming Convention
+## Available Scripts
 
-Use descriptive branch names that clearly indicate the purpose:
+Run these at the repository root:
 
-- `feature/annotation-improvements`
-- `bugfix/evaluation-score-calculation`
-- `docs/api-documentation`
-- `test/annotation-interface`
-- `refactor/database-queries`
+- `npm run dev` — Start Vite dev server
+- `npm run build` — Type-check (`tsc -b`) and build for production
+- `npm run preview` — Preview the production build locally
+- `npm run lint` — Lint code with ESLint
 
-### Commit Message Guidelines
+Notes:
+- The Vite config removes `console.log`, `console.debug`, `console.info`, and `console.warn` during production builds. Prefer structured logging via the in-app logger where necessary.
 
-Follow conventional commit format:
+## Conventions
 
+### Branching
+
+- Base branch: `master`
+- Create topic branches from `master` using descriptive names:
+  - `feature/annotation-improvements`
+  - `bugfix/login-username-auth`
+  - `docs/update-contributing`
+  - `refactor/api-hooks`
+
+### Commit Messages
+
+Use Conventional Commits:
 ```
 type(scope): description
 
 [optional body]
-
 [optional footer]
 ```
 
-**Types:**
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, semicolons, etc.)
-- `refactor`: Code refactoring without changing functionality
-- `test`: Adding or modifying tests
-- `chore`: Maintenance tasks
+Common types: `feat`, `fix`, `docs`, `style`, `refactor`, `chore`.
 
-**Examples:**
+Examples:
 ```
-feat(annotation): add voice recording functionality
-fix(evaluation): correct score calculation algorithm
-docs(api): update authentication endpoint documentation
-test(frontend): add tests for annotation interface
+feat(auth): support username-based login via RPC lookup
+fix(csv-import): validate language codes and domains
+docs(readme): add setup steps for Supabase
 ```
 
-## Pull Request Process
+### Pull Requests
 
-1. **Before Starting Work**
-   - Check existing issues and PRs to avoid duplication
-   - Create or comment on an issue to discuss your proposed changes
-   - Get approval from maintainers for significant changes
+Before opening a PR:
+- Ensure the app builds: `npm run build`
+- Ensure lint passes: `npm run lint`
+- Smoke test relevant flows locally (auth, navigation, pages you touched)
+- Update docs when behavior or setup changes
 
-2. **Development Process**
-   - Create a new branch from `main`
-   - Make your changes following our code standards
-   - Write or update tests as needed
-   - Update documentation if necessary
-   - Test your changes thoroughly
+PR checklist:
+- Clear title and description of changes
+- Link related issues
+- Screenshots/GIFs for UI changes
+- Call out any migrations or environment variable changes
 
-3. **Submitting a Pull Request**
-   - Push your branch to your fork
-   - Create a pull request against the `main` branch
-   - Fill out the PR template completely
-   - Link to any related issues
-   - Request review from maintainers
+### Code Style
 
-4. **PR Review Process**
-   - Maintainers will review your PR
-   - Address any feedback or requested changes
-   - Once approved, your PR will be merged
+- TypeScript everywhere; add/extend types rather than using `any`
+- React 19 with functional components and hooks
+- Avoid `React.FC`; use named functions with typed props
+- Keep components small, focused, and reusable; colocate UI and logic prudently
+- Prefer early returns and guard clauses; minimize deep nesting
+- Follow existing formatting; run ESLint (`npm run lint`) before committing
+- Client routing lives in `src/App.tsx` today; align with current patterns when adding routes
 
-## Code Standards
+## Project Notes
 
-### Python (Backend)
+### Supabase Usage
 
-- Follow PEP 8 style guidelines
-- Use type hints where appropriate
-- Write docstrings for functions and classes
-- Use meaningful variable and function names
-- Keep functions small and focused
-- Use proper exception handling
+- Auth: `@supabase/supabase-js` is used for email and username-based login
+- Database: Row-Level Security (RLS) is expected; queries are client-side with policies enforced on Supabase
+- Storage: Voice recordings are uploaded to a private `voice-recordings` bucket, and access is provided via signed URLs
 
-**Example:**
-```python
-def create_annotation(
-    db: Session, 
-    annotation_data: AnnotationCreate, 
-    user_id: int
-) -> Annotation:
-    """
-    Create a new annotation in the database.
-    
-    Args:
-        db: Database session
-        annotation_data: Annotation data from request
-        user_id: ID of the user creating the annotation
-    
-    Returns:
-        Created annotation object
-    
-    Raises:
-        HTTPException: If annotation creation fails
-    """
-    # Implementation here
-```
+### CSV Imports
 
-### TypeScript/React (Frontend)
-
-- Use TypeScript for type safety
-- Follow React best practices
-- Use functional components with hooks
-- Write reusable components
-- Use proper prop types
-- Follow consistent naming conventions
-
-**Example:**
-```typescript
-interface AnnotationProps {
-  sentence: Sentence;
-  onSubmit: (annotation: AnnotationData) => void;
-  isLoading?: boolean;
-}
-
-const AnnotationInterface: React.FC<AnnotationProps> = ({
-  sentence,
-  onSubmit,
-  isLoading = false
-}) => {
-  // Component implementation
-};
-```
-
-### Database
-
-- Use descriptive table and column names
-- Add appropriate indexes for queries
-- Include proper foreign key relationships
-- Write migration scripts for schema changes
-- Document schema changes in commit messages
-
-## Testing
-
-### Backend Testing
-
-- Write unit tests for utility functions
-- Test API endpoints with various inputs
-- Test database operations
-- Test authentication and authorization
-- Use pytest for testing framework
-
-### Frontend Testing
-
-- Write component tests using Jest/React Testing Library
-- Test user interactions and workflows
-- Test error handling and edge cases
-- Test accessibility features
-
-### Running Tests
-
-```bash
-# Backend tests
-cd backend
-python -m pytest
-
-# Frontend tests
-cd frontend
-npm test
-```
-
-## Documentation
-
-### Code Documentation
-
-- Write clear docstrings for Python functions
-- Add JSDoc comments for complex TypeScript functions
-- Document API endpoints with examples
-- Include inline comments for complex logic
-
-### User Documentation
-
-- Update user guides when adding new features
-- Include screenshots for UI changes
-- Write clear step-by-step instructions
-- Test documentation with new users
+- CSV imports for sentences require: `source_text`, `machine_translation`, `source_language`, `target_language`
+- Optional fields include `domain`
+- The `back_translation` column should be excluded from CSV files; the database handles it as optional data
 
 ## Issue Reporting
 
-### Before Reporting
+Before reporting:
+- Search existing issues and discussions
+- Verify with the latest `master`
+- Include steps to reproduce, expected vs actual behavior, environment info, and relevant logs
 
-- Search existing issues to avoid duplicates
-- Check if the issue exists in the latest version
-- Try to reproduce the issue consistently
-
-### Bug Reports
-
-Include the following information:
-
-- **Description**: Clear description of the issue
-- **Steps to Reproduce**: Detailed steps to reproduce the bug
-- **Expected Behavior**: What should happen
-- **Actual Behavior**: What actually happens
-- **Environment**: OS, browser, Python version, etc.
-- **Screenshots**: If applicable
-- **Logs**: Any relevant error messages
-
-### Use the Bug Report Template
-
+Bug report template:
 ```markdown
 ## Bug Description
-A clear and concise description of the bug.
 
 ## Steps to Reproduce
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+1. ...
 
 ## Expected Behavior
-What you expected to happen.
 
 ## Actual Behavior
-What actually happened.
 
 ## Environment
-- OS: [e.g., macOS 12.0]
-- Browser: [e.g., Chrome 95]
-- Python Version: [e.g., 3.9]
-- Node Version: [e.g., 16.0]
+- OS: ...
+- Browser: ...
+- Node: ...
 
 ## Additional Context
-Any other information about the problem.
 ```
 
 ## Feature Requests
 
-### Before Requesting
-
-- Check if the feature already exists
-- Search existing feature requests
-- Consider if the feature fits the project's scope
-
-### Feature Request Template
-
-```markdown
-## Feature Description
-A clear and concise description of the feature.
-
-## Problem Statement
-What problem does this feature solve?
-
-## Proposed Solution
-How should this feature work?
-
-## Alternatives Considered
-Other solutions you've considered.
-
-## Additional Context
-Any other information about the feature.
-```
+When proposing a feature, include:
+- Problem statement and scope
+- Proposed solution and alternatives
+- Impact on users and maintainers
+- Any schema or environment changes
 
 ## Getting Help
 
-- **GitHub Issues**: For bug reports and feature requests
-- **GitHub Discussions**: For general questions and community discussions
-- **Email**: For security issues (see SECURITY.md)
-
-## Recognition
-
-Contributors will be recognized in:
-- `CONTRIBUTORS.md` file
-- Release notes for significant contributions
-- GitHub contributor graphs
+- GitHub Issues — bugs and feature requests
+- GitHub Discussions — questions and design discussions
+- Security issues — please email the maintainers (see `SECURITY.md` if available)
 
 ## License
 
-By contributing to Lakra, you agree that your contributions will be licensed under the same license as the project (MIT License).
+By contributing to Lakra, you agree that your contributions will be licensed under the project’s MIT License.
 
 ---
 
-Thank you for contributing to Lakra! Your help makes this project better for everyone. 
+Thank you for contributing to Lakra! Your help makes the project better for everyone. 

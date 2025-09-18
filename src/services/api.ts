@@ -314,12 +314,20 @@ export const adminAPI = {
     return response.data;
   },
 
-  getAdminSentences: async (skip = 0, limit = 100, targetLanguage?: string, sourceLanguage?: string): Promise<Sentence[]> => {
+  getAdminSentences: async (skip = 0, limit = 10000, targetLanguage?: string, sourceLanguage?: string): Promise<Sentence[]> => {
     let url = `/admin/sentences?skip=${skip}&limit=${limit}`;
     if (targetLanguage) url += `&target_language=${targetLanguage}`;
     if (sourceLanguage) url += `&source_language=${sourceLanguage}`;
     const response = await api.get(url);
     return response.data;
+  },
+
+  getAdminSentencesCount: async (targetLanguage?: string, sourceLanguage?: string): Promise<number> => {
+    let url = `/admin/sentences/count`;
+    if (targetLanguage) url += `?target_language=${targetLanguage}`;
+    if (sourceLanguage) url += `${targetLanguage ? '&' : '?'}source_language=${sourceLanguage}`;
+    const response = await api.get(url);
+    return response.data.count;
   },
 
   getSentenceCountsByLanguage: async (): Promise<{[key: string]: number}> => {
