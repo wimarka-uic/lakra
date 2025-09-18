@@ -25,6 +25,7 @@ import MyEvaluations from './components/pages/MyEvaluations';
 import MTQualityInterface from './components/pages/MTQualityInterface';
 import OnboardingTest from './components/pages/OnboardingTest';
 import About from './components/pages/About';
+import { Analytics } from '@vercel/analytics/react';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ 
@@ -462,6 +463,7 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
+      <Analytics />
       <AppContent />
     </AuthProvider>
   );
