@@ -18,7 +18,7 @@ const Landing: React.FC = () => {
         <div className="max-w-6xl mx-auto text-center">
           <Logo size="large" className="h-24 md:h-32 w-auto mx-auto" />
           <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto">
-            Advanced machine translation evaluation platform for Philippine languages, 
+            Machine translation evaluation platform for Philippine languages, 
             featuring human annotation interfaces and AI-powered quality assessment.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
