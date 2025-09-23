@@ -270,7 +270,6 @@ export const authAPI = {
         user_onboarding_completed_at: userData.onboarding_passed ? new Date().toISOString() : null
       };
 
-      console.log('Creating user profile with data:', profileData);
 
       const { error: profileError } = await supabase
         .rpc('create_user_profile', profileData);
@@ -287,7 +286,6 @@ export const authAPI = {
           languages_param: userData.languages
         };
         
-        console.log('Creating user languages with data:', languageData);
         
         const { error: langError } = await supabase
           .rpc('create_user_languages', languageData);
@@ -306,7 +304,6 @@ export const authAPI = {
           test_session_id_param: userData.test_session_id
         };
         
-        console.log('Creating user test answers with data:', testAnswersData);
         
         const { error: testAnswersError } = await supabase
           .rpc('create_user_test_answers', testAnswersData);
@@ -395,6 +392,64 @@ export const authAPI = {
       ...userProfile,
       languages: languages?.map(l => l.language) || [],
     };
+  },
+
+  checkEmailExists: async (email: string): Promise<boolean> => {
+    try {
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .single();
+
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 is "no rows returned" which means email doesn't exist
+        throw error;
+      }
+
+      // If we get data, email exists; if no data (PGRST116), email doesn't exist
+      const exists = !!data;
+      return exists;
+    } catch (error) {
+      logger.error('Error checking email existence', {
+        component: 'authAPI',
+        action: 'checkEmailExists',
+        metadata: { email: email, error: (error as Error).message }
+      });
+      throw new Error('Unable to verify email availability. Please try again.');
+    }
+  },
+
+  checkUsernameExists: async (username: string): Promise<boolean> => {
+    try {
+      const normalizedUsername = username.toLowerCase().trim();
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', normalizedUsername)
+        .single();
+
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 is "no rows returned" which means username doesn't exist
+        throw error;
+      }
+
+      // If we get data, username exists; if no data (PGRST116), username doesn't exist
+      const exists = !!data;
+      return exists;
+    } catch (error) {
+      logger.error('Error checking username existence', {
+        component: 'authAPI',
+        action: 'checkUsernameExists',
+        metadata: { username: username, error: (error as Error).message }
+      });
+      throw new Error('Unable to verify username availability. Please try again.');
+    }
   },
 
   markGuidelinesSeen: async (): Promise<User> => {
