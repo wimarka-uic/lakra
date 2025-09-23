@@ -83,20 +83,6 @@ export const useSEO = (overrides?: Partial<SEOConfig>) => {
       canonicalLink = document.createElement('link');
       canonicalLink.rel = 'canonical';
       canonicalLink.href = `${window.location.origin}${pathname}`;
-    // Update Open Graph tags (no Twitter since we removed it)
-    updateMetaTag('og:title', config.title, true);
-    updateMetaTag('og:description', config.description, true);
-    updateMetaTag('og:image', config.image || '/seo-image.jpg', true);
-    updateMetaTag('og:type', config.type || 'website', true);
-
-    // Update canonical URL (use relative path, no domain)
-    let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
-    if (canonicalLink) {
-      canonicalLink.href = pathname;
-    } else {
-      canonicalLink = document.createElement('link');
-      canonicalLink.rel = 'canonical';
-      canonicalLink.href = pathname;
       document.head.appendChild(canonicalLink);
     }
 
