@@ -14,10 +14,6 @@ const Process: React.FC = () => {
           <div className="h-[360px] md:h-[420px] bg-[radial-gradient(110%_90%_at_20%_10%,rgba(236,72,153,0.35),rgba(255,255,255,0)_45%),radial-gradient(80%_60%_at_80%_0%,rgba(236,72,153,0.25),rgba(255,255,255,0)_40%),linear-gradient(to_bottom,rgba(244,244,245,1),rgba(255,255,255,1))]"></div>
         </div>
         <div className="relative max-w-6xl mx-auto pt-24 md:pt-28 pb-10 md:pb-16 px-6 text-center">
-          <p className="inline-flex items-center text-xs md:text-sm text-gray-600 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1 mb-4 md:mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-beauty-bush-600 mr-2"></span>
-            Process
-          </p>
           <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-8">
             Research Process
           </h1>
