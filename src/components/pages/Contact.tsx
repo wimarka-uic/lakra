@@ -1,19 +1,23 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import AnimatedBackground from '../layout/AnimatedBackground';
 import Navbar from '../layout/Navbar';
 import Footer from '../layout/Footer';
 
 const Contact: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-white via-gray-50 to-beauty-bush-50 overflow-hidden">
-      <AnimatedBackground />
-      
+    <div className="relative min-h-screen bg-white">
       <Navbar activePage="contact" />
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-32 pb-20 px-6">
-        <div className="max-w-6xl mx-auto text-center">
+      <section className="relative">
+        <div className="absolute inset-0">
+          <div className="h-[360px] md:h-[420px] bg-[radial-gradient(110%_90%_at_20%_10%,rgba(236,72,153,0.35),rgba(255,255,255,0)_45%),radial-gradient(80%_60%_at_80%_0%,rgba(236,72,153,0.25),rgba(255,255,255,0)_40%),linear-gradient(to_bottom,rgba(244,244,245,1),rgba(255,255,255,1))]"></div>
+        </div>
+        <div className="relative max-w-6xl mx-auto pt-24 md:pt-28 pb-10 md:pb-16 px-6 text-center">
+          <p className="inline-flex items-center text-xs md:text-sm text-gray-600 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1 mb-4 md:mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-beauty-bush-600 mr-2"></span>
+            Contact
+          </p>
           <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-8">
             Contact Us
           </h1>
@@ -25,7 +29,7 @@ const Contact: React.FC = () => {
       </section>
 
       {/* Contact Information */}
-      <section className="relative z-10 py-20 px-6">
+      <section className="relative z-10 py-20 px-6 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-800 text-center mb-16">
             Get in Touch
@@ -156,16 +160,16 @@ const Contact: React.FC = () => {
       <section className="relative z-10 py-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-8">
-            Ready to get started?
+            Ready to participate in the research?
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            Join the WiMarka research project and contribute to advancing machine translation for Philippine languages.
+            Join the WiMarka research project and help advance machine translation evaluation for Philippine languages.
           </p>
           <Link 
             to="/register" 
             className="bg-beauty-bush-600 hover:bg-beauty-bush-700 text-white px-10 py-4 rounded-lg text-xl font-semibold transition-colors inline-flex items-center"
           >
-            Get Started
+            Join the Research
             <svg className="ml-2 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
