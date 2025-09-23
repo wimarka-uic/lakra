@@ -136,7 +136,7 @@ export const authAPI = {
           throw new Error('Invalid username or password');
         }
         if (error.message.includes('Email not confirmed')) {
-          throw new Error('Please check your email and confirm your account before signing in with username');
+          throw new Error('Please check your email and confirm your account before signing in.');
         }
       }
       
@@ -150,6 +150,16 @@ export const authAPI = {
         metadata: { email: email, isUsernameLogin }
       });
       throw new Error('Authentication failed. Please try again.');
+    }
+
+    // Check if email is confirmed
+    if (!data.user.email_confirmed_at) {
+      logger.warn('Login attempted with unconfirmed email', {
+        component: 'authAPI',
+        action: 'login',
+        metadata: { email: email, userId: data.user.id, isUsernameLogin }
+      });
+      throw new Error('Please check your email and confirm your account before signing in.');
     }
 
     // Get user profile from our users table
@@ -451,6 +461,7 @@ export const authAPI = {
       throw new Error('Unable to verify username availability. Please try again.');
     }
   },
+
 
   markGuidelinesSeen: async (): Promise<User> => {
     const { data: { user } } = await supabase.auth.getUser();

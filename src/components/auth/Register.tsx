@@ -50,10 +50,6 @@ const Register: React.FC = () => {
   // Confirmation modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showTosModal, setShowTosModal] = useState(false);
-  const [hasViewedTos, setHasViewedTos] = useState(false);
-  const [hasScrolledTosEnd, setHasScrolledTosEnd] = useState(false);
-  const [modalAgeConfirmed, setModalAgeConfirmed] = useState(false);
-  const tosScrollRef = useRef<HTMLDivElement | null>(null);
   
   // Email validation state
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
@@ -138,18 +134,10 @@ const Register: React.FC = () => {
 
   const openTosModal = () => {
     setShowTosModal(true);
-    if (!hasViewedTos) setHasViewedTos(true);
   };
 
   const closeTosModal = () => {
     setShowTosModal(false);
-  };
-
-  const handleTosScroll = () => {
-    const el = tosScrollRef.current;
-    if (!el) return;
-    const reachedEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
-    if (reachedEnd) setHasScrolledTosEnd(true);
   };
 
   // Email validation function
@@ -480,11 +468,11 @@ const Register: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     
     setFormData({
       ...formData,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     });
     
     // Reset email check state when email changes
@@ -606,6 +594,14 @@ const Register: React.FC = () => {
       errors.languages = 'Please select at least one language';
     }
 
+    if (!formData.accepted_terms) {
+      errors.accepted_terms = 'You must agree to the Terms of Service';
+    }
+
+    if (!formData.is_over_18) {
+      errors.is_over_18 = 'You must be 18 years old or above';
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -648,14 +644,6 @@ const Register: React.FC = () => {
         return;
       }
       
-      // Gate on legal acceptance; open modal if not accepted yet
-      if (!formData.accepted_terms || !formData.is_over_18) {
-        setModalAgeConfirmed(false);
-        setHasScrolledTosEnd(false);
-        openTosModal();
-        return;
-      }
-
       await processRegistrationStep3();
       return;
     }
@@ -1097,6 +1085,50 @@ const Register: React.FC = () => {
                   </div>
                   {hasError('confirmPassword') && <p className="mt-1 text-sm text-red-600">{getFieldError('confirmPassword')}</p>}
                 </div>
+
+                {/* Terms and Age Agreement */}
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      id="accepted_terms"
+                      name="accepted_terms"
+                      type="checkbox"
+                      checked={formData.accepted_terms}
+                      onChange={handleChange}
+                      className={`h-4 w-4 mt-0.5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded ${
+                        hasError('accepted_terms') ? 'border-red-300' : ''
+                      }`}
+                    />
+                    <label htmlFor="accepted_terms" className="text-sm text-gray-700">
+                      I agree to the{' '}
+                      <button
+                        type="button"
+                        onClick={openTosModal}
+                        className="text-primary-600 hover:text-primary-500 underline font-medium"
+                      >
+                        Terms of Service
+                      </button>
+                    </label>
+                  </div>
+                  {hasError('accepted_terms') && <p className="mt-1 text-sm text-red-600">{getFieldError('accepted_terms')}</p>}
+
+                  <div className="flex items-start gap-3">
+                    <input
+                      id="is_over_18"
+                      name="is_over_18"
+                      type="checkbox"
+                      checked={formData.is_over_18}
+                      onChange={handleChange}
+                      className={`h-4 w-4 mt-0.5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded ${
+                        hasError('is_over_18') ? 'border-red-300' : ''
+                      }`}
+                    />
+                    <label htmlFor="is_over_18" className="text-sm text-gray-700">
+                      I am 18 years old or above
+                    </label>
+                  </div>
+                  {hasError('is_over_18') && <p className="mt-1 text-sm text-red-600">{getFieldError('is_over_18')}</p>}
+                </div>
               </div>
             )}
 
@@ -1393,15 +1425,9 @@ const Register: React.FC = () => {
         onClose={closeTosModal}
         title="Terms of Service"
         size="xl"
-        closeOnBackdropClick={false}
-        closeOnEscape={false}
       >
-        <div className="p-6 space-y-4">
-          <div
-            ref={tosScrollRef}
-            onScroll={handleTosScroll}
-            className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50"
-          >
+        <div className="p-6">
+          <div className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Welcome to Lakra</h3>
             <p className="text-sm text-gray-700 mb-3">
               These Terms of Service ("Terms") govern your access to and use of the Lakra platform.
@@ -1438,46 +1464,6 @@ const Register: React.FC = () => {
               We may update these Terms from time to time. Continued use of the platform constitutes acceptance of
               the updated Terms.
             </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 rounded-md p-3 border border-gray-200 bg-white">
-              <input
-                id="modal_is_over_18"
-                name="modal_is_over_18"
-                type="checkbox"
-                checked={modalAgeConfirmed}
-                onChange={(e) => setModalAgeConfirmed(e.target.checked)}
-                className="h-4 w-4 mt-0.5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label htmlFor="modal_is_over_18" className="text-sm text-gray-700">
-                I confirm that I am at least 18 years old.
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div />
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={closeTosModal}
-                  className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  disabled={!hasScrolledTosEnd || !modalAgeConfirmed}
-                  onClick={() => {
-                    setFormData({ ...formData, accepted_terms: true, is_over_18: true });
-                    setShowTosModal(false);
-                  }}
-                  className={`px-4 py-2 text-sm rounded-md ${hasScrolledTosEnd && modalAgeConfirmed ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
-                >
-                  I Agree
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </Modal>
