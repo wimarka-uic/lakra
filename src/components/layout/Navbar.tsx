@@ -1,8 +1,4 @@
-
 import React, { useState } from 'react';
-
-import React from 'react';
-
 import { Link } from 'react-router-dom';
 import Logo from '../ui/Logo';
 
@@ -11,7 +7,6 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ activePage = 'landing' }) => {
-
   const [isOpen, setIsOpen] = useState(false);
   return (
     <header className="relative z-50 px-4 py-4 md:px-6 lg:px-12">
@@ -25,18 +20,6 @@ const Navbar: React.FC<NavbarProps> = ({ activePage = 'landing' }) => {
         {/* Center nav for md+ */}
         <nav className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2">
           <div className="flex items-center space-x-8">
-
-  return (
-    <header className="relative z-10 flex items-center justify-between px-6 py-6 lg:px-12">
-      <div className="flex items-center">
-        <Link to="/landing">
-          <Logo size="medium" className="h-12 w-auto" />
-        </Link>
-      </div>
-      
-      <nav className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2">
-        <div className="flex items-center space-x-8">
-
           <Link 
             to="/features" 
             className={`transition-colors ${
@@ -77,7 +60,6 @@ const Navbar: React.FC<NavbarProps> = ({ activePage = 'landing' }) => {
           >
             Contact
           </Link>
-
           </div>
         </nav>
 
@@ -141,24 +123,6 @@ const Navbar: React.FC<NavbarProps> = ({ activePage = 'landing' }) => {
             <Link to="/register" onClick={() => setIsOpen(false)} className="px-3 py-3 rounded-md bg-beauty-bush-600 text-white text-center hover:bg-beauty-bush-700">Get Started</Link>
           </nav>
         </div>
-
-        </div>
-      </nav>
-      
-      <div className="flex items-center space-x-4">
-        <Link 
-          to="/login" 
-          className="text-gray-700 hover:text-beauty-bush-600 transition-colors"
-        >
-          Login
-        </Link>
-        <Link 
-          to="/register" 
-          className="bg-beauty-bush-600 hover:bg-beauty-bush-700 text-white px-6 py-2 rounded-lg transition-colors"
-        >
-          Get Started
-        </Link>
-
       </div>
     </header>
   );
