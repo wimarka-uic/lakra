@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { languageProficiencyAPI, authAPI } from '../../services/supabase-api';
 import { languageProficiencyAPI } from '../../services/supabase-api';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, Eye, EyeOff, Brain, Globe, Users, FileText, Check, UserCheck, Clock, Loader2, ArrowRight, X } from 'lucide-react';
@@ -50,16 +51,46 @@ const Register: React.FC = () => {
   // Confirmation modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showTosModal, setShowTosModal] = useState(false);
+
+  
+  // Email validation state
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [emailExists, setEmailExists] = useState(false);
+  const [emailCheckAttempted, setEmailCheckAttempted] = useState(false);
+  
+  // Username validation state
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameExists, setUsernameExists] = useState(false);
+  const [usernameCheckAttempted, setUsernameCheckAttempted] = useState(false);
+  
+  // Debounce timer refs for checking
+  const usernameCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const emailCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [hasViewedTos, setHasViewedTos] = useState(false);
   const [hasScrolledTosEnd, setHasScrolledTosEnd] = useState(false);
   const [modalAgeConfirmed, setModalAgeConfirmed] = useState(false);
   const tosScrollRef = useRef<HTMLDivElement | null>(null);
+  
   
   // Use ref to track if questions have been loaded for current languages
   const questionsLoadedRef = useRef<string>('');
 
   const { register } = useAuth();
   const navigate = useNavigate();
+
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (usernameCheckTimeoutRef.current) {
+        clearTimeout(usernameCheckTimeoutRef.current);
+      }
+      if (emailCheckTimeoutRef.current) {
+        clearTimeout(emailCheckTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Generate unique test session ID
   const generateSessionId = () => {
@@ -112,12 +143,93 @@ const Register: React.FC = () => {
 
   const openTosModal = () => {
     setShowTosModal(true);
+
+
     if (!hasViewedTos) setHasViewedTos(true);
+
   };
 
   const closeTosModal = () => {
     setShowTosModal(false);
   };
+
+
+  // Email validation function
+  const checkEmailExists = async (email: string): Promise<boolean> => {
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      return false; // Invalid email format
+    }
+
+    setIsCheckingEmail(true);
+    setEmailCheckAttempted(true);
+    
+    try {
+      const exists = await authAPI.checkEmailExists(email);
+      console.log('Email check result:', { email, exists }); // Debug log
+      setEmailExists(exists);
+      return exists;
+    } catch (error) {
+      console.error('Error checking email existence:', error);
+      setError('Unable to verify email availability. Please try again.');
+      return false;
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
+  // Username validation function
+  const checkUsernameExists = async (username: string): Promise<boolean> => {
+    if (!username || username.length < 3) {
+      return false; // Invalid username format
+    }
+
+    setIsCheckingUsername(true);
+    setUsernameCheckAttempted(true);
+    
+    try {
+      const exists = await authAPI.checkUsernameExists(username);
+      console.log('Username check result:', { username, exists }); // Debug log
+      setUsernameExists(exists);
+      return exists;
+    } catch (error) {
+      console.error('Error checking username existence:', error);
+      setError('Unable to verify username availability. Please try again.');
+      return false;
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
+  // Debounced username checking function
+  const debouncedCheckUsername = (username: string) => {
+    // Clear existing timeout
+    if (usernameCheckTimeoutRef.current) {
+      clearTimeout(usernameCheckTimeoutRef.current);
+    }
+
+    // Set new timeout
+    usernameCheckTimeoutRef.current = setTimeout(async () => {
+      if (username && username.length >= 3) {
+        await checkUsernameExists(username);
+      }
+    }, 500); // 500ms delay
+  };
+
+  // Debounced email checking function
+  const debouncedCheckEmail = (email: string) => {
+    // Clear existing timeout
+    if (emailCheckTimeoutRef.current) {
+      clearTimeout(emailCheckTimeoutRef.current);
+    }
+
+    // Set new timeout
+    emailCheckTimeoutRef.current = setTimeout(async () => {
+      if (email && /\S+@\S+\.\S+/.test(email)) {
+        await checkEmailExists(email);
+      }
+    }, 500); // 500ms delay
+  };
+
 
   const handleTosScroll = () => {
     const el = tosScrollRef.current;
@@ -125,6 +237,7 @@ const Register: React.FC = () => {
     const reachedEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
     if (reachedEnd) setHasScrolledTosEnd(true);
   };
+
 
   // Extracted processing for Step 3 submit (after legal gate)
   const processRegistrationStep3 = async () => {
@@ -377,6 +490,46 @@ const Register: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    
+    setFormData({
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value,
+    });
+    
+    // Reset email check state when email changes
+    if (name === 'email') {
+      setEmailCheckAttempted(false);
+      setEmailExists(false);
+      // Clear email validation error when user starts typing
+      if (validationErrors.email) {
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.email;
+          return newErrors;
+        });
+      }
+      
+      // Trigger debounced email checking
+      debouncedCheckEmail(value);
+    }
+    
+    // Reset username check state when username changes
+    if (name === 'username') {
+      setUsernameCheckAttempted(false);
+      setUsernameExists(false);
+      // Clear username validation error when user starts typing
+      if (validationErrors.username) {
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.username;
+          return newErrors;
+        });
+      }
+      
+      // Trigger debounced username checking
+      debouncedCheckUsername(value);
+    }
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -441,12 +594,17 @@ const Register: React.FC = () => {
       errors.username = 'Username is required';
     } else if (formData.username.length < 3) {
       errors.username = 'Username must be at least 3 characters long';
+    } else if (usernameCheckAttempted && usernameExists) {
+      errors.username = 'This username is already taken. Please choose a different username.';
     }
 
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Email is invalid';
+    } else if (emailCheckAttempted && emailExists) {
+      errors.email = 'This email is already registered. Please use a different email address.';
+
     }
 
     if (!formData.password) {
@@ -461,6 +619,15 @@ const Register: React.FC = () => {
 
     if (formData.languages.length === 0) {
       errors.languages = 'Please select at least one language';
+    }
+
+
+    if (!formData.accepted_terms) {
+      errors.accepted_terms = 'You must agree to the Terms of Service';
+    }
+
+    if (!formData.is_over_18) {
+      errors.is_over_18 = 'You must be 18 years old or above';
     }
 
     setValidationErrors(errors);
@@ -492,6 +659,21 @@ const Register: React.FC = () => {
         setError('Please correct the errors before submitting');
         return;
       }
+
+      
+      // Check if username is already taken (should be checked automatically)
+      if (usernameCheckAttempted && usernameExists) {
+        setError('Username is already taken. Please choose a different username.');
+        return;
+      }
+      
+      // Check if email is already registered (should be checked automatically)
+      if (emailCheckAttempted && emailExists) {
+        setError('Email is already registered. Please use a different email address.');
+        return;
+      }
+      
+
       // Gate on legal acceptance; open modal if not accepted yet
       if (!formData.accepted_terms || !formData.is_over_18) {
         setModalAgeConfirmed(false);
@@ -499,6 +681,7 @@ const Register: React.FC = () => {
         openTosModal();
         return;
       }
+
 
       await processRegistrationStep3();
       return;
@@ -798,6 +981,31 @@ const Register: React.FC = () => {
                   <label htmlFor="username" className="block text-sm font-medium text-gray-700">
                     Username
                   </label>
+                  <div className="relative">
+                    <input
+                      id="username"
+                      name="username"
+                      type="text"
+                      required
+                      value={formData.username}
+                      onChange={handleChange}
+                      className={`${getInputClass('username')} ${isCheckingUsername ? 'pr-10' : ''}`}
+                      placeholder="Choose a username"
+                      disabled={isCheckingUsername}
+                    />
+                    {isCheckingUsername && (
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  {hasError('username') && <p className="mt-1 text-sm text-red-600">{getFieldError('username')}</p>}
+                  {usernameCheckAttempted && !usernameExists && formData.username && !hasError('username') && !isCheckingUsername && (
+                    <p className="mt-1 text-sm text-green-600">✓ Username is available</p>
+                  )}
+                  {usernameCheckAttempted && usernameExists && formData.username && (
+                    <p className="mt-1 text-sm text-red-600">✗ Username is already taken</p>
+                  )}
                   <input
                     id="username"
                     name="username"
@@ -815,6 +1023,32 @@ const Register: React.FC = () => {
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                     Email address
                   </label>
+                  <div className="relative">
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      className={`${getInputClass('email')} ${isCheckingEmail ? 'pr-10' : ''}`}
+                      placeholder="Enter your email"
+                      disabled={isCheckingEmail}
+                    />
+                    {isCheckingEmail && (
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  {hasError('email') && <p className="mt-1 text-sm text-red-600">{getFieldError('email')}</p>}
+                  {emailCheckAttempted && !emailExists && formData.email && !hasError('email') && !isCheckingEmail && (
+                    <p className="mt-1 text-sm text-green-600">✓ Email is available</p>
+                  )}
+                  {emailCheckAttempted && emailExists && formData.email && (
+                    <p className="mt-1 text-sm text-red-600">✗ Email is already registered</p>
+                  )}
                   <input
                     id="email"
                     name="email"
@@ -827,6 +1061,7 @@ const Register: React.FC = () => {
                     placeholder="Enter your email"
                   />
                   {hasError('email') && <p className="mt-1 text-sm text-red-600">{getFieldError('email')}</p>}
+
                 </div>
 
                 <div>
@@ -912,6 +1147,50 @@ const Register: React.FC = () => {
                     </button>
                   </div>
                   {hasError('confirmPassword') && <p className="mt-1 text-sm text-red-600">{getFieldError('confirmPassword')}</p>}
+                </div>
+
+                {/* Terms and Age Agreement */}
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      id="accepted_terms"
+                      name="accepted_terms"
+                      type="checkbox"
+                      checked={formData.accepted_terms}
+                      onChange={handleChange}
+                      className={`h-4 w-4 mt-0.5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded ${
+                        hasError('accepted_terms') ? 'border-red-300' : ''
+                      }`}
+                    />
+                    <label htmlFor="accepted_terms" className="text-sm text-gray-700">
+                      I agree to the{' '}
+                      <button
+                        type="button"
+                        onClick={openTosModal}
+                        className="text-primary-600 hover:text-primary-500 underline font-medium"
+                      >
+                        Terms of Service
+                      </button>
+                    </label>
+                  </div>
+                  {hasError('accepted_terms') && <p className="mt-1 text-sm text-red-600">{getFieldError('accepted_terms')}</p>}
+
+                  <div className="flex items-start gap-3">
+                    <input
+                      id="is_over_18"
+                      name="is_over_18"
+                      type="checkbox"
+                      checked={formData.is_over_18}
+                      onChange={handleChange}
+                      className={`h-4 w-4 mt-0.5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded ${
+                        hasError('is_over_18') ? 'border-red-300' : ''
+                      }`}
+                    />
+                    <label htmlFor="is_over_18" className="text-sm text-gray-700">
+                      I am 18 years old or above
+                    </label>
+                  </div>
+                  {hasError('is_over_18') && <p className="mt-1 text-sm text-red-600">{getFieldError('is_over_18')}</p>}
                 </div>
               </div>
             )}
@@ -1201,13 +1480,15 @@ const Register: React.FC = () => {
         cancelText="Continue Test"
         type="warning"
       />
-
       {/* Terms of Service Modal */}
       <Modal
         isOpen={showTosModal}
         onClose={closeTosModal}
         title="Terms of Service"
         size="xl"
+      >
+        <div className="p-6">
+          <div className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50">
         closeOnBackdropClick={false}
         closeOnEscape={false}
       >
@@ -1217,6 +1498,7 @@ const Register: React.FC = () => {
             onScroll={handleTosScroll}
             className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50"
           >
+
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Welcome to Lakra</h3>
             <p className="text-sm text-gray-700 mb-3">
               These Terms of Service ("Terms") govern your access to and use of the Lakra platform.

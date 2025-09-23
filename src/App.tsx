@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+
+import { useSEO } from './hooks/useSEO';
+
+
 import Layout from './components/layout/Layout';
 import Landing from './components/pages/Landing';
 import Login from './components/auth/Login';
@@ -211,6 +215,14 @@ const AboutPage: React.FC = () => {
   return isAuthenticated ? <About /> : <AboutLanding />;
 };
 
+
+// SEO Manager Component
+const SEOManager: React.FC = () => {
+  useSEO(); // This will automatically update based on current pathname
+  return null;
+};
+  
+  
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, markGuidelinesSeen } = useAuth();
   const [showGuidelines, setShowGuidelines] = useState(false);
@@ -243,6 +255,7 @@ const AppContent: React.FC = () => {
 
   return (
     <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+      <SEOManager />
       <Layout onShowGuidelines={handleShowGuidelines}>
         <Routes>
           {/* Public Routes */}

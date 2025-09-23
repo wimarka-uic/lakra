@@ -51,6 +51,38 @@ export const useSEO = (overrides?: Partial<SEOConfig>) => {
     // Update robots meta tag
     updateMetaTag('robots', config.noIndex ? 'noindex, nofollow' : 'index, follow');
 
+    // Generate absolute URL for image if it's a relative path
+    const getAbsoluteImageUrl = (imagePath: string) => {
+      if (imagePath.startsWith('http')) {
+        return imagePath; // Already absolute
+      }
+      // For deployed app, use the deployment URL
+      const baseUrl = window.location.origin;
+      return `${baseUrl}${imagePath.startsWith('/') ? imagePath : `/${imagePath}`}`;
+    };
+    
+    const absoluteImageUrl = getAbsoluteImageUrl(config.image || '/seo-image.jpg');
+
+    // Update Open Graph tags (no Twitter since we removed it)
+    updateMetaTag('og:title', config.title, true);
+    updateMetaTag('og:description', config.description, true);
+    updateMetaTag('og:image', absoluteImageUrl, true);
+    updateMetaTag('og:image:alt', config.title, true);
+    updateMetaTag('og:image:type', 'image/jpeg', true);
+    updateMetaTag('og:image:width', '1200', true);
+    updateMetaTag('og:image:height', '630', true);
+    updateMetaTag('og:url', `${window.location.origin}${pathname}`, true);
+    updateMetaTag('og:type', config.type || 'website', true);
+    updateMetaTag('og:site_name', 'Lakra', true);
+
+    // Update canonical URL (use absolute URL)
+    let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+    if (canonicalLink) {
+      canonicalLink.href = `${window.location.origin}${pathname}`;
+    } else {
+      canonicalLink = document.createElement('link');
+      canonicalLink.rel = 'canonical';
+      canonicalLink.href = `${window.location.origin}${pathname}`;
     // Update Open Graph tags (no Twitter since we removed it)
     updateMetaTag('og:title', config.title, true);
     updateMetaTag('og:description', config.description, true);

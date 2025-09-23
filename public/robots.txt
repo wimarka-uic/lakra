@@ -1,10 +1,32 @@
 # Robots.txt for Lakra - Smart Annotation Tool for WiMarka
 # This is a research platform with restricted access
 
+
+# Allow social media crawlers for link previews
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
+
+# Block general crawlers but allow public assets
+User-agent: *
+Disallow: /
+
 User-agent: *
 Disallow: /
 
 # Allow access to public assets
+
 Allow: /seo-image.jpg
 Allow: /favicon.svg
 Allow: /lakra.svg
