@@ -16,7 +16,7 @@ export const defaultSEO: SEOConfig = {
   title: 'Lakra - Smart Annotation Tool for WiMarka',
   description: 'Smart annotation tool for WiMarka project with AI-powered evaluation, error detection, and comprehensive quality analysis capabilities.',
   keywords: 'annotation tool, WiMarka, smart annotation, AI evaluation, translation quality, error detection, linguistic annotation, research tool',
-  image: '/seo-image.jpg',
+  image: './public/seo-image.jpg',
   type: 'website',
   noIndex: true // Keep noindex until production ready
 };

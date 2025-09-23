@@ -22,7 +22,7 @@ const SEO: React.FC<SEOProps> = ({
     const finalTitle = title || defaultConfig.title;
     const finalDescription = description || defaultConfig.description;
     const finalKeywords = keywords || defaultConfig.keywords;
-    const finalImage = image || defaultConfig.image || '/seo-image.jpg';
+    const finalImage = image || defaultConfig.image || './public/seo-image.jpg';
     const finalType = type || defaultConfig.type || 'website';
     const finalNoIndex = noIndex !== undefined ? noIndex : defaultConfig.noIndex || false;
     const currentUrl = window.location.pathname;
