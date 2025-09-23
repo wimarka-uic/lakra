@@ -22,10 +22,22 @@ const SEO: React.FC<SEOProps> = ({
     const finalTitle = title || defaultConfig.title;
     const finalDescription = description || defaultConfig.description;
     const finalKeywords = keywords || defaultConfig.keywords;
-    const finalImage = image || defaultConfig.image || './public/seo-image.jpg';
+    const finalImage = image || defaultConfig.image || '/seo-image.jpg';
     const finalType = type || defaultConfig.type || 'website';
     const finalNoIndex = noIndex !== undefined ? noIndex : defaultConfig.noIndex || false;
     const currentUrl = window.location.pathname;
+    
+    // Generate absolute URL for image if it's a relative path
+    const getAbsoluteImageUrl = (imagePath: string) => {
+      if (imagePath.startsWith('http')) {
+        return imagePath; // Already absolute
+      }
+      // For deployed app, use the deployment URL
+      const baseUrl = window.location.origin;
+      return `${baseUrl}${imagePath.startsWith('/') ? imagePath : `/${imagePath}`}`;
+    };
+    
+    const absoluteImageUrl = getAbsoluteImageUrl(finalImage);
 
     // Update document title
     document.title = finalTitle;
@@ -59,9 +71,14 @@ const SEO: React.FC<SEOProps> = ({
     // Update Open Graph tags
     updateMetaTag('og:title', finalTitle, true);
     updateMetaTag('og:description', finalDescription, true);
-    updateMetaTag('og:image', finalImage, true);
-    updateMetaTag('og:url', currentUrl, true);
+    updateMetaTag('og:image', absoluteImageUrl, true);
+    updateMetaTag('og:image:alt', finalTitle, true);
+    updateMetaTag('og:image:type', 'image/jpeg', true);
+    updateMetaTag('og:image:width', '1200', true);
+    updateMetaTag('og:image:height', '630', true);
+    updateMetaTag('og:url', `${window.location.origin}${currentUrl}`, true);
     updateMetaTag('og:type', finalType, true);
+    updateMetaTag('og:site_name', 'Lakra', true);
 
     // Remove Twitter Card tags since we don't have Twitter
     // Just keep minimal social media support via Open Graph
@@ -69,11 +86,11 @@ const SEO: React.FC<SEOProps> = ({
     // Update canonical URL
     let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
     if (canonicalLink) {
-      canonicalLink.href = currentUrl;
+      canonicalLink.href = `${window.location.origin}${currentUrl}`;
     } else {
       canonicalLink = document.createElement('link');
       canonicalLink.rel = 'canonical';
-      canonicalLink.href = currentUrl;
+      canonicalLink.href = `${window.location.origin}${currentUrl}`;
       document.head.appendChild(canonicalLink);
     }
 
