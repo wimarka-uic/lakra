@@ -26,6 +26,7 @@ const SEO: React.FC<SEOProps> = ({
     const finalType = type || defaultConfig.type || 'website';
     const finalNoIndex = noIndex !== undefined ? noIndex : defaultConfig.noIndex || false;
     const currentUrl = window.location.pathname;
+
     
     // Generate absolute URL for image if it's a relative path
     const getAbsoluteImageUrl = (imagePath: string) => {
@@ -79,6 +80,9 @@ const SEO: React.FC<SEOProps> = ({
     updateMetaTag('og:url', `${window.location.origin}${currentUrl}`, true);
     updateMetaTag('og:type', finalType, true);
     updateMetaTag('og:site_name', 'Lakra', true);
+    updateMetaTag('og:image', finalImage, true);
+    updateMetaTag('og:url', currentUrl, true);
+    updateMetaTag('og:type', finalType, true);
 
     // Remove Twitter Card tags since we don't have Twitter
     // Just keep minimal social media support via Open Graph
@@ -91,6 +95,11 @@ const SEO: React.FC<SEOProps> = ({
       canonicalLink = document.createElement('link');
       canonicalLink.rel = 'canonical';
       canonicalLink.href = `${window.location.origin}${currentUrl}`;
+      canonicalLink.href = currentUrl;
+    } else {
+      canonicalLink = document.createElement('link');
+      canonicalLink.rel = 'canonical';
+      canonicalLink.href = currentUrl;
       document.head.appendChild(canonicalLink);
     }
 

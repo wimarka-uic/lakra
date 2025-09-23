@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { languageProficiencyAPI, authAPI } from '../../services/supabase-api';
+import { languageProficiencyAPI } from '../../services/supabase-api';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, Eye, EyeOff, Brain, Globe, Users, FileText, Check, UserCheck, Clock, Loader2, ArrowRight, X } from 'lucide-react';
 import type { LanguageProficiencyQuestion } from '../../types';
@@ -50,6 +51,7 @@ const Register: React.FC = () => {
   // Confirmation modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showTosModal, setShowTosModal] = useState(false);
+
   
   // Email validation state
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
@@ -64,12 +66,19 @@ const Register: React.FC = () => {
   // Debounce timer refs for checking
   const usernameCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const emailCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [hasViewedTos, setHasViewedTos] = useState(false);
+  const [hasScrolledTosEnd, setHasScrolledTosEnd] = useState(false);
+  const [modalAgeConfirmed, setModalAgeConfirmed] = useState(false);
+  const tosScrollRef = useRef<HTMLDivElement | null>(null);
+  
   
   // Use ref to track if questions have been loaded for current languages
   const questionsLoadedRef = useRef<string>('');
 
   const { register } = useAuth();
   const navigate = useNavigate();
+
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -134,11 +143,16 @@ const Register: React.FC = () => {
 
   const openTosModal = () => {
     setShowTosModal(true);
+
+
+    if (!hasViewedTos) setHasViewedTos(true);
+
   };
 
   const closeTosModal = () => {
     setShowTosModal(false);
   };
+
 
   // Email validation function
   const checkEmailExists = async (email: string): Promise<boolean> => {
@@ -214,6 +228,14 @@ const Register: React.FC = () => {
         await checkEmailExists(email);
       }
     }, 500); // 500ms delay
+  };
+
+
+  const handleTosScroll = () => {
+    const el = tosScrollRef.current;
+    if (!el) return;
+    const reachedEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+    if (reachedEnd) setHasScrolledTosEnd(true);
   };
 
 
@@ -508,6 +530,10 @@ const Register: React.FC = () => {
       // Trigger debounced username checking
       debouncedCheckUsername(value);
     }
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   // Handle user type selection
@@ -578,6 +604,7 @@ const Register: React.FC = () => {
       errors.email = 'Email is invalid';
     } else if (emailCheckAttempted && emailExists) {
       errors.email = 'This email is already registered. Please use a different email address.';
+
     }
 
     if (!formData.password) {
@@ -593,6 +620,7 @@ const Register: React.FC = () => {
     if (formData.languages.length === 0) {
       errors.languages = 'Please select at least one language';
     }
+
 
     if (!formData.accepted_terms) {
       errors.accepted_terms = 'You must agree to the Terms of Service';
@@ -631,6 +659,7 @@ const Register: React.FC = () => {
         setError('Please correct the errors before submitting');
         return;
       }
+
       
       // Check if username is already taken (should be checked automatically)
       if (usernameCheckAttempted && usernameExists) {
@@ -644,6 +673,16 @@ const Register: React.FC = () => {
         return;
       }
       
+
+      // Gate on legal acceptance; open modal if not accepted yet
+      if (!formData.accepted_terms || !formData.is_over_18) {
+        setModalAgeConfirmed(false);
+        setHasScrolledTosEnd(false);
+        openTosModal();
+        return;
+      }
+
+
       await processRegistrationStep3();
       return;
     }
@@ -967,6 +1006,17 @@ const Register: React.FC = () => {
                   {usernameCheckAttempted && usernameExists && formData.username && (
                     <p className="mt-1 text-sm text-red-600">✗ Username is already taken</p>
                   )}
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    required
+                    value={formData.username}
+                    onChange={handleChange}
+                    className={getInputClass('username')}
+                    placeholder="Choose a username"
+                  />
+                  {hasError('username') && <p className="mt-1 text-sm text-red-600">{getFieldError('username')}</p>}
                 </div>
 
                 <div>
@@ -999,6 +1049,19 @@ const Register: React.FC = () => {
                   {emailCheckAttempted && emailExists && formData.email && (
                     <p className="mt-1 text-sm text-red-600">✗ Email is already registered</p>
                   )}
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={getInputClass('email')}
+                    placeholder="Enter your email"
+                  />
+                  {hasError('email') && <p className="mt-1 text-sm text-red-600">{getFieldError('email')}</p>}
+
                 </div>
 
                 <div>
@@ -1417,8 +1480,6 @@ const Register: React.FC = () => {
         cancelText="Continue Test"
         type="warning"
       />
-
-
       {/* Terms of Service Modal */}
       <Modal
         isOpen={showTosModal}
@@ -1428,6 +1489,16 @@ const Register: React.FC = () => {
       >
         <div className="p-6">
           <div className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50">
+        closeOnBackdropClick={false}
+        closeOnEscape={false}
+      >
+        <div className="p-6 space-y-4">
+          <div
+            ref={tosScrollRef}
+            onScroll={handleTosScroll}
+            className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50"
+          >
+
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Welcome to Lakra</h3>
             <p className="text-sm text-gray-700 mb-3">
               These Terms of Service ("Terms") govern your access to and use of the Lakra platform.
@@ -1464,6 +1535,46 @@ const Register: React.FC = () => {
               We may update these Terms from time to time. Continued use of the platform constitutes acceptance of
               the updated Terms.
             </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 rounded-md p-3 border border-gray-200 bg-white">
+              <input
+                id="modal_is_over_18"
+                name="modal_is_over_18"
+                type="checkbox"
+                checked={modalAgeConfirmed}
+                onChange={(e) => setModalAgeConfirmed(e.target.checked)}
+                className="h-4 w-4 mt-0.5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+              />
+              <label htmlFor="modal_is_over_18" className="text-sm text-gray-700">
+                I confirm that I am at least 18 years old.
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeTosModal}
+                  className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasScrolledTosEnd || !modalAgeConfirmed}
+                  onClick={() => {
+                    setFormData({ ...formData, accepted_terms: true, is_over_18: true });
+                    setShowTosModal(false);
+                  }}
+                  className={`px-4 py-2 text-sm rounded-md ${hasScrolledTosEnd && modalAgeConfirmed ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                >
+                  I Agree
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </Modal>
