@@ -5,9 +5,6 @@
       "name": "frontend",
       "dependencies": {
         "@gsap/react": "^2.1.2",
-        "@supabase/supabase-js": "^2.53.0",
-        "@vercel/analytics": "^1.5.0",
-        "axios": "^1.6.2",
         "gsap": "^3.13.0",
         "@supabase/supabase-js": "^2.53.0",
         "@vercel/analytics": "^1.5.0",
@@ -17,7 +14,7 @@
         "react-dom": "^19.1.0",
         "react-router-dom": "^6.20.1",
         "recharts": "^2.15.3",
-        "supabase": "^2.33.9",
+        "supabase": "^2.33.9"
       },
       "devDependencies": {
         "@eslint/js": "^9.25.0",
@@ -33,9 +30,9 @@
         "tailwindcss": "^3.3.6",
         "typescript": "~5.8.3",
         "typescript-eslint": "^8.30.1",
-        "vite": "^6.3.5",
-      },
-    },
+        "vite": "^6.3.5"
+      }
+    }
   },
   "packages": {
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
@@ -874,6 +871,6 @@
 
     "wrap-ansi-cjs/string-width/emoji-regex": ["emoji-regex@8.0.0", "", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
 
-    "wrap-ansi-cjs/strip-ansi/ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
+    "wrap-ansi-cjs/strip-ansi/ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="]
   }
 }
