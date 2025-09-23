@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI, sentencesAPI, languageProficiencyAPI, annotationsAPI } from '../../services/supabase-api';
-import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion, OnboardingTest } from '../../types';
+import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion, OnboardingTest, Evaluation } from '../../types';
 import { logger } from '../../utils/logger';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -100,6 +100,14 @@ const AdminDashboard: React.FC = () => {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   
+  // Sentences sub-tab: annotator vs evaluators
+  const [sentencesSubTab, setSentencesSubTab] = useState<'annotator' | 'evaluators'>('annotator');
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [evalTotal, setEvalTotal] = useState<number>(0);
+  const [evalPage, setEvalPage] = useState<number>(1);
+  const [evalPerPage, setEvalPerPage] = useState<number>(10);
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState<boolean>(false);
+
   // Analytics data
   const [analyticsData, setAnalyticsData] = useState({
     userGrowth: [] as Array<{month: string, users: number, annotations: number}>,
@@ -619,6 +627,30 @@ const AdminDashboard: React.FC = () => {
       loadSentences();
     }
   }, [activeTab, loadSentences]);
+
+  const loadEvaluations = useCallback(async () => {
+    try {
+      setIsLoadingEvaluations(true);
+      const skip = (evalPage - 1) * evalPerPage;
+      const targetLang = languageFilter === 'all' ? undefined : languageFilter;
+      const [data, total] = await Promise.all([
+        adminAPI.getAdminEvaluations(skip, evalPerPage, targetLang),
+        adminAPI.getAdminEvaluationsCount(targetLang)
+      ]);
+      setEvaluations(data);
+      setEvalTotal(total);
+    } catch (error) {
+      logger.apiError('loadEvaluations', error as Error, { component: 'AdminDashboard' });
+    } finally {
+      setIsLoadingEvaluations(false);
+    }
+  }, [evalPage, evalPerPage, languageFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'sentences' && sentencesSubTab === 'evaluators') {
+      loadEvaluations();
+    }
+  }, [activeTab, sentencesSubTab, loadEvaluations]);
 
   const handleAddSentence = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2341,7 +2373,7 @@ const AdminDashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setShowAddSentence(true)}
-                  className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
+                  className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" 
                 >
                   <Plus className="h-4 w-4" />
                   <span>Add Sentence</span>
@@ -2582,6 +2614,22 @@ const AdminDashboard: React.FC = () => {
 
             {/* Search and Filter Controls */}
             <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
+              {/* Sub-tabs: Annotator | Evaluators */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSentencesSubTab('annotator')}
+                  className={`px-3 py-2 text-sm rounded-md border ${sentencesSubTab === 'annotator' ? 'bg-beauty-bush-500 text-white border-beauty-bush-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Annotator
+                </button>
+                <button
+                  onClick={() => setSentencesSubTab('evaluators')}
+                  className={`px-3 py-2 text-sm rounded-md border ${sentencesSubTab === 'evaluators' ? 'bg-beauty-bush-500 text-white border-beauty-bush-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Evaluators
+                </button>
+              </div>
+
               <div className="flex flex-col space-y-4">
                 {/* Search Bar */}
                 <div className="relative">
@@ -3118,7 +3166,8 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-              {paginatedSentences().length > 0 ? (
+            {sentencesSubTab === 'annotator' ? (
+              paginatedSentences().length > 0 ? (
                 <div className="divide-y divide-gray-100">
                   {paginatedSentences().map((sentence) => {
                     const annotations = sentenceAnnotations.get(sentence.id) || [];
@@ -3517,7 +3566,98 @@ const AdminDashboard: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              )}
+              )
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-lg">
+                <div className="p-4 sm:p-6 border-b">
+                  <h4 className="text-sm font-semibold text-gray-900">Evaluator Works</h4>
+                  <p className="text-xs text-gray-600 mt-1">All evaluations across sentences and annotations</p>
+                </div>
+                <div className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <div className="text-sm text-gray-600">
+                      {isLoadingEvaluations ? 'Loading evaluations…' : `Showing ${(Math.min(evalPage * evalPerPage, evalTotal) - Math.min(evalPerPage - 1, evalTotal)).toString()}-${Math.min(evalPage * evalPerPage, evalTotal)} of ${evalTotal}`}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={evalPerPage}
+                        onChange={(e) => { setEvalPerPage(Number(e.target.value)); setEvalPage(1); }}
+                        className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      >
+                        <option value={10}>10 per page</option>
+                        <option value={20}>20 per page</option>
+                        <option value={50}>50 per page</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Evaluations list */}
+                  <div className="divide-y divide-gray-100">
+                    {isLoadingEvaluations && (
+                      <div className="py-8 text-center text-sm text-gray-500">Loading…</div>
+                    )}
+                    {!isLoadingEvaluations && evaluations.length === 0 && (
+                      <div className="py-8 text-center text-sm text-gray-500">No evaluations found.</div>
+                    )}
+                    {!isLoadingEvaluations && evaluations.map((ev) => (
+                      <div key={ev.id} className="p-4 sm:p-5">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="text-sm text-gray-800">
+                              <span className="font-medium">Evaluator:</span> {ev.evaluator?.first_name} {ev.evaluator?.last_name}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              <span className="font-medium">Sentence:</span> {ev.annotation?.sentence?.source_text?.slice(0, 120)}{ev.annotation?.sentence?.source_text && ev.annotation.sentence.source_text.length > 120 ? '…' : ''}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              <span className="font-medium">Translation:</span> {ev.annotation?.sentence?.machine_translation?.slice(0, 120)}{ev.annotation?.sentence?.machine_translation && ev.annotation.sentence.machine_translation.length > 120 ? '…' : ''}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              {typeof ev.overall_rating === 'number' && (
+                                <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">Overall: {ev.overall_rating}/5</span>
+                              )}
+                              {ev.evaluation_status && (
+                                <span className={`px-2 py-1 rounded-full text-xs ${ev.evaluation_status === 'completed' ? 'bg-blue-100 text-blue-800' : ev.evaluation_status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{ev.evaluation_status}</span>
+                              )}
+                              <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{new Date(ev.created_at).toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <div className="text-sm text-gray-700 sm:text-right">
+                            <div><span className="font-medium">Fluency:</span> {ev.fluency_rating ?? '—'}</div>
+                            <div><span className="font-medium">Adequacy:</span> {ev.adequacy_rating ?? '—'}</div>
+                            <div className="mt-1"><span className="font-medium">Time:</span> {ev.time_spent_seconds ? `${Math.round(ev.time_spent_seconds)}s` : '—'}</div>
+                          </div>
+                        </div>
+                        {ev.feedback && (
+                          <div className="mt-3 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">{ev.feedback}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Evaluations pagination */}
+                  {evalTotal > evalPerPage && (
+                    <div className="mt-4 flex items-center justify-between">
+                      <button
+                        onClick={() => setEvalPage(Math.max(1, evalPage - 1))}
+                        disabled={evalPage === 1}
+                        className="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <div className="text-sm text-gray-600">Page {evalPage} of {Math.max(1, Math.ceil(evalTotal / evalPerPage))}</div>
+                      <button
+                        onClick={() => setEvalPage(Math.min(Math.ceil(evalTotal / evalPerPage), evalPage + 1))}
+                        disabled={evalPage >= Math.ceil(evalTotal / evalPerPage)}
+                        className="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             </div>
 
             {/* Pagination Controls */}

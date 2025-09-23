@@ -1579,6 +1579,69 @@ export const adminAPI = {
     return counts;
   },
 
+  // Admin Evaluations Management
+  getAdminEvaluations: async (skip: number = 0, limit: number = 50, targetLanguage?: string): Promise<Evaluation[]> => {
+    // Optional filter by target language via annotations -> sentences
+    let annotationIds: number[] | null = null;
+    if (targetLanguage) {
+      const { data: annotationsForLang, error: annoErr } = await supabase
+        .from('annotations')
+        .select('id, sentence:sentences(target_language)')
+        .eq('sentences.target_language', targetLanguage);
+
+      if (annoErr) throw annoErr;
+      annotationIds = (annotationsForLang || []).map((a: any) => a.id);
+      if (!annotationIds || annotationIds.length === 0) return [];
+    }
+
+    let query = supabase
+      .from('evaluations')
+      .select(`
+        *,
+        evaluator:users(*),
+        annotation:annotations(*,
+          sentence:sentences(*),
+          annotator:users(*)
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(skip, skip + limit - 1);
+
+    if (annotationIds) {
+      query = query.in('annotation_id', annotationIds);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []) as unknown as Evaluation[];
+  },
+
+  getAdminEvaluationsCount: async (targetLanguage?: string): Promise<number> => {
+    if (!targetLanguage) {
+      const { count, error } = await supabase
+        .from('evaluations')
+        .select('*', { count: 'exact', head: true });
+      if (error) throw error;
+      return count || 0;
+    }
+
+    // Filter by target language through annotations -> sentences
+    const { data: annotationsForLang, error: annoErr } = await supabase
+      .from('annotations')
+      .select('id, sentence:sentences(target_language)')
+      .eq('sentences.target_language', targetLanguage);
+    if (annoErr) throw annoErr;
+    const annotationIds = (annotationsForLang || []).map((a: any) => a.id);
+    if (annotationIds.length === 0) return 0;
+
+    const { count, error } = await supabase
+      .from('evaluations')
+      .select('*', { count: 'exact', head: true })
+      .in('annotation_id', annotationIds);
+    if (error) throw error;
+    return count || 0;
+  },
+
   // Analytics Functions
   getUserGrowthAnalytics: async (months: number = 6): Promise<Array<{month: string, users: number, annotations: number}>> => {
     // This is a simplified implementation
