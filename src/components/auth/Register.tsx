@@ -792,25 +792,34 @@ const Register: React.FC = () => {
                     </div>
 
                     <div
-                      className="relative rounded-lg border-2 p-4 cursor-not-allowed transition-all border-gray-200 bg-gray-50 opacity-60"
+                      onClick={() => handleUserTypeChange('evaluator')}
+                      className={`relative rounded-lg border-2 p-4 cursor-pointer transition-all ${
+                        formData.user_type === 'evaluator'
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
                     >
                       <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <UserCheck className="h-6 w-6 text-gray-400" />
+                          <UserCheck className={`h-6 w-6 ${
+                            formData.user_type === 'evaluator' ? 'text-primary-600' : 'text-gray-400'
+                          }`} />
                         </div>
                         <div className="ml-3 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-sm font-medium text-gray-500">
-                              Evaluator
-                            </h3>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              Coming Soon
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-400">
-                            Evaluate and review annotations made by other users for quality assurance.
+                          <h3 className={`text-sm font-medium ${
+                            formData.user_type === 'evaluator' ? 'text-primary-900' : 'text-gray-900'
+                          }`}>
+                            Evaluator
+                          </h3>
+                          <p className={`text-sm ${
+                            formData.user_type === 'evaluator' ? 'text-primary-700' : 'text-gray-500'
+                          }`}>
+                            Review annotations and assess translation quality for your chosen language.
                           </p>
                         </div>
+                        {formData.user_type === 'evaluator' && (
+                          <Check className="h-5 w-5 text-primary-600" />
+                        )}
                       </div>
                     </div>
                   </div>

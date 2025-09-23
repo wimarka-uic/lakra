@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { evaluationsAPI } from '../../services/supabase-api';
 import type { Evaluation } from '../../types';
 import { Star, Calendar, FileText, Search } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const MyEvaluations: React.FC = () => {
+  const { user } = useAuth();
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,13 @@ const MyEvaluations: React.FC = () => {
         <p className="mt-1 text-sm text-gray-600">
           View and manage your completed evaluations
         </p>
+        {user?.is_evaluator && (
+          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-900">
+              <span className="font-medium">Assigned language:</span> {user.preferred_language || '—'}. Evaluations and tasks are filtered to this language.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Filters */}

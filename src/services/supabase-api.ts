@@ -1848,8 +1848,26 @@ export const evaluationsAPI = {
     
     if (!user) throw new Error('No authenticated user');
 
-    // Get completed annotations that haven't been evaluated by current user
-    const { data, error } = await supabase
+    // Get evaluator preferred language to filter tasks
+    const { data: profile } = await supabase
+      .from('users')
+      .select('preferred_language')
+      .eq('id', user.id)
+      .single();
+
+    // Resolve language code used by sentences.target_language
+    const preferredLang = profile?.preferred_language || null;
+
+    // First, collect annotation_ids already evaluated by this user
+    const { data: alreadyEvaluated } = await supabase
+      .from('evaluations')
+      .select('annotation_id')
+      .eq('evaluator_id', user.id);
+
+    const evaluatedIds = (alreadyEvaluated || []).map(r => r.annotation_id).filter(Boolean);
+
+    // Build base query for completed annotations not yet evaluated by this user
+    let query = supabase
       .from('annotations')
       .select(`
         *,
@@ -1857,11 +1875,34 @@ export const evaluationsAPI = {
         annotator:users(*),
         highlights:text_highlights(*)
       `)
-      .eq('annotation_status', 'completed')
-      .not('id', 'in', `(
-        SELECT annotation_id FROM evaluations WHERE evaluator_id = '${user.id}'
-      )`)
-      .range(skip, skip + limit - 1);
+      .eq('annotation_status', 'completed');
+
+    // Exclude annotations already evaluated by this user
+    if (evaluatedIds.length > 0) {
+      // PostgREST requires a string list for NOT IN
+      const evaluatedList = `(${evaluatedIds.join(',')})`;
+      query = query.not('id', 'in', evaluatedList);
+    }
+
+    // If we have a preferred language, filter annotations by sentence language
+    if (preferredLang) {
+      const targetCode = getLanguageCode(preferredLang);
+      // Fetch sentence ids for that language, then filter annotations by sentence_id
+      const { data: sentenceIds } = await supabase
+        .from('sentences')
+        .select('id')
+        .eq('target_language', targetCode);
+
+      const ids = (sentenceIds || []).map(s => s.id);
+      if (ids.length > 0) {
+        query = query.in('sentence_id', ids as number[]);
+      } else {
+        // No tasks in this language
+        return [];
+      }
+    }
+
+    const { data, error } = await query.range(skip, skip + limit - 1);
 
     if (error) throw error;
     return data || [];
@@ -2162,15 +2203,55 @@ export const mtQualityAPI = {
     
     if (!user) throw new Error('No authenticated user');
 
-    // Get active sentences that haven't been assessed by current user
-    const { data, error } = await supabase
+    // Fetch evaluator preferred language
+    const { data: profile } = await supabase
+      .from('users')
+      .select('preferred_language')
+      .eq('id', user.id)
+      .single();
+
+    const preferredLang = profile?.preferred_language || null;
+
+    // First, collect sentence_ids already assessed by this user
+    const { data: alreadyAssessed } = await supabase
+      .from('mt_quality_assessments')
+      .select('sentence_id')
+      .eq('evaluator_id', user.id);
+
+    const assessedSentenceIds = (alreadyAssessed || []).map(r => r.sentence_id).filter(Boolean);
+
+    // Next, collect sentence_ids that have been annotated by annotators (completed annotations)
+    const { data: annotatedRows } = await supabase
+      .from('annotations')
+      .select('sentence_id')
+      .eq('annotation_status', 'completed');
+
+    const annotatedSentenceIds = (annotatedRows || []).map(r => r.sentence_id).filter(Boolean);
+    if (annotatedSentenceIds.length === 0) {
+      return [];
+    }
+
+    // Get active sentences that haven't been assessed by current user, filtered by language if available
+    let query = supabase
       .from('sentences')
       .select('*')
-      .eq('is_active', true)
-      .not('id', 'in', `(
-        SELECT sentence_id FROM mt_quality_assessments WHERE evaluator_id = '${user.id}'
-      )`)
-      .range(skip, skip + limit - 1);
+      .eq('is_active', true);
+
+    if (assessedSentenceIds.length > 0) {
+      const assessedList = `(${assessedSentenceIds.join(',')})`;
+      query = query.not('id', 'in', assessedList);
+    }
+
+    // Only include sentences that have at least one completed annotation
+    const annotatedList = `(${annotatedSentenceIds.join(',')})`;
+    query = query.in('id', annotatedList);
+
+    if (preferredLang) {
+      const targetCode = getLanguageCode(preferredLang);
+      query = query.eq('target_language', targetCode);
+    }
+
+    const { data, error } = await query.range(skip, skip + limit - 1);
 
     if (error) throw error;
     return data || [];

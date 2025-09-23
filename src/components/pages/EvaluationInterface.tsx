@@ -10,6 +10,7 @@ import {
   User,
   FileText
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface RatingButtonsProps {
   value?: number;
@@ -44,6 +45,7 @@ const RatingButtons: React.FC<RatingButtonsProps> = ({ value, onChange, label })
 const EvaluationInterface: React.FC = () => {
   const { annotationId } = useParams<{ annotationId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const [annotation, setAnnotation] = useState<Annotation | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationCreate>({
@@ -285,6 +287,16 @@ const EvaluationInterface: React.FC = () => {
           <p className="mt-2 text-gray-600">
             Review and evaluate the quality of this annotation
           </p>
+          {user?.is_evaluator && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-900"><span className="font-medium">Assigned language:</span> {user.preferred_language || '—'}</p>
+              <ul className="mt-2 list-disc list-inside text-sm text-blue-900 space-y-1">
+                <li>Click highlighted spans to inspect errors.</li>
+                <li>Correct the annotation if necessary and provide feedback.</li>
+                <li>Rate per MQM dimensions and save. Time is tracked automatically.</li>
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Message */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { mtQualityAPI } from '../../services/supabase-api';
 import type { EvaluatorStats, Sentence, MTQualityAssessment } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   FileText, 
   Clock, 
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 
 const EvaluatorDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<EvaluatorStats | null>(null);
   const [pendingSentences, setPendingSentences] = useState<Sentence[]>([]);
   const [recentAssessments, setRecentAssessments] = useState<MTQualityAssessment[]>([]);
@@ -93,8 +95,29 @@ const EvaluatorDashboard: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Machine Translation Evaluator</h1>
           </div>
           <p className="text-sm sm:text-base text-gray-600">
-            DistilBERT-powered machine translation quality assessment platform
+            Machine translation quality assessment platform
           </p>
+          {user?.is_evaluator && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-blue-900"><span className="font-medium">Assigned language:</span> {user.preferred_language || '—'}</p>
+                  <p className="mt-2 text-sm text-blue-900">
+                    As an evaluator, review annotators' work and WiMarka outputs. Tasks:
+                  </p>
+                  <ul className="mt-1 list-disc list-inside text-sm text-blue-900 space-y-1">
+                    <li><span className="font-medium">Annotation Checking</span>: verify correctness, correct if needed.</li>
+                    <li><span className="font-medium">Annotation Correction</span>: click a highlighted annotation to revise.
+                    </li>
+                    <li><span className="font-medium">Evaluation Review</span>: assess source→target, model errors, scores, explanations, and corrected sentence per MQM.</li>
+                  </ul>
+                  <p className="mt-2 text-xs text-blue-800">
+                    Note: Your queue is filtered to your chosen language from registration.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -191,17 +214,7 @@ const EvaluatorDashboard: React.FC = () => {
                   </p>
                   <p className="text-sm text-gray-500">out of 5.0</p>
                 </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Brain className="h-5 w-5 text-purple-500" />
-                    <h3 className="text-sm font-medium text-gray-700">AI Agreement</h3>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stats?.human_agreement_rate ? Math.round(stats.human_agreement_rate * 100) : 0}%
-                  </p>
-                  <p className="text-sm text-gray-500">human-AI agreement</p>
-                </div>
+                {/* Secondary metric intentionally simplified for clarity */}
               </div>
 
               {/* Quality Breakdown */}
@@ -230,44 +243,30 @@ const EvaluatorDashboard: React.FC = () => {
             <div className="space-y-3">
               <a
                 href="/mt-assess"
-                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all min-h-[60px] hover:scale-105 active:scale-95"
+                className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-h-[60px]"
               >
-                <Zap className="h-5 w-5 text-blue-500 mr-3" />
-                <div>
+                <span className="flex-shrink-0 inline-flex items-center justify-center h-8 w-8 md:h-9 md:w-9 rounded-md bg-blue-50 text-blue-600">
+                  <Zap className="h-5 w-5" />
+                </span>
+                <div className="leading-tight">
                   <p className="font-medium text-gray-900">Start MT Assessment</p>
-                  <p className="text-sm text-gray-500">Analyze translation quality with AI</p>
+                  <p className="text-sm text-gray-500">Assess translation quality</p>
                 </div>
               </a>
               
               <a
                 href="/my-assessments"
-                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all min-h-[60px] hover:scale-105 active:scale-95"
+                className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-h-[60px]"
               >
-                <FileText className="h-5 w-5 text-green-500 mr-3" />
-                <div>
+                <span className="flex-shrink-0 inline-flex items-center justify-center h-8 w-8 md:h-9 md:w-9 rounded-md bg-green-50 text-green-600">
+                  <FileText className="h-5 w-5" />
+                </span>
+                <div className="leading-tight">
                   <p className="font-medium text-gray-900">My Assessments</p>
                   <p className="text-sm text-gray-500">View completed MT assessments</p>
                 </div>
               </a>
-
-              {/* Error Detection Stats */}
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">AI Error Detection</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Syntax Errors Found</span>
-                    <span className="font-medium">{stats?.total_syntax_errors_found || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Semantic Errors Found</span>
-                    <span className="font-medium">{stats?.total_semantic_errors_found || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Model Confidence</span>
-                    <span className="font-medium">{stats?.average_model_confidence ? Math.round(stats.average_model_confidence * 100) : 0}%</span>
-                  </div>
-                </div>
-              </div>
+              {/* Removed AI-specific error detection for simplified UX */}
             </div>
           </div>
         </div>
