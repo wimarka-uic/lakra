@@ -119,7 +119,7 @@ const Profile: React.FC = () => {
   const availableLanguages = [
     { id: 'tagalog', name: 'Tagalog' },
     { id: 'cebuano', name: 'Cebuano' },
-    { id: 'ilokano', name: 'Ilokano' },
+    { id: 'Ilocano', name: 'Ilocano' },
     { id: 'hiligaynon', name: 'Hiligaynon' },
     { id: 'waray', name: 'Waray' },
     { id: 'bicolano', name: 'Bicolano' },

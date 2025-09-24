@@ -567,7 +567,7 @@ const getLanguageCode = (displayName: string): string => {
     'filipino': 'tgl',
     'cebuano': 'ceb',
     'ilocano': 'ilo',
-    'ilokano': 'ilo',
+    'Ilocano': 'ilo',
     'english': 'en',
     // Direct language codes should match themselves
     'tgl': 'tgl',
@@ -1777,6 +1777,35 @@ export const adminAPI = {
       completionRate: totalAnnotations > 0 ? (completedAnnotations.length / totalAnnotations) * 100 : 0,
     };
   },
+
+  getAllAnnotations: async (): Promise<Annotation[]> => {
+    const { data, error } = await supabase
+      .from('annotations')
+      .select(`
+        *,
+        sentence:sentences(*),
+        annotator:users(*),
+        highlights:text_highlights(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  getAllEvaluations: async (): Promise<Evaluation[]> => {
+    const { data, error } = await supabase
+      .from('evaluations')
+      .select(`
+        *,
+        annotation:annotations(*),
+        evaluator:users(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
 };
 
 // Evaluations API
@@ -1873,15 +1902,13 @@ export const languageProficiencyAPI = {
   getQuestionsByLanguages: async (languages: string[]): Promise<LanguageProficiencyQuestion[]> => {
     // Capitalize language names to match database format
     const capitalizedLanguages = languages.map(lang => lang.charAt(0).toUpperCase() + lang.slice(1));
-    
+
+    // Remove ordering to allow for proper randomization - questions will be returned in insertion order
     const { data, error } = await supabase
       .from('language_proficiency_questions')
       .select('*')
       .in('language', capitalizedLanguages)
-      .eq('is_active', true)
-      .order('language')
-      .order('type')
-      .order('difficulty');
+      .eq('is_active', true);
 
     if (error) throw error;
     return data || [];

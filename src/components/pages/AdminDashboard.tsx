@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI, sentencesAPI, languageProficiencyAPI, annotationsAPI } from '../../services/supabase-api';
-import type { AdminStats, User, Sentence, Annotation, TextHighlight, LanguageProficiencyQuestion, OnboardingTest } from '../../types';
+import type { AdminStats, User, Sentence, Annotation, Evaluation, TextHighlight, LanguageProficiencyQuestion, OnboardingTest } from '../../types';
 import { logger } from '../../utils/logger';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -61,6 +61,11 @@ const AdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAnnotations, setIsLoadingAnnotations] = useState(false);
   
+  // User-specific work data
+  const [annotationsByUser, setAnnotationsByUser] = useState<Map<number, Annotation[]>>(new Map());
+  const [evaluationsByUser, setEvaluationsByUser] = useState<Map<number, Evaluation[]>>(new Map());
+  const [isLoadingUserWork, setIsLoadingUserWork] = useState(false);
+  
   // Audio playback state
   const [audioUrls, setAudioUrls] = useState<{[key: string]: string}>({});
   
@@ -76,6 +81,9 @@ const AdminDashboard: React.FC = () => {
   }, [location.pathname]);
   
   const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results'>(getActiveTabFromUrl());
+  
+  // Inner tabs for sentences section
+  const [sentencesInnerTab, setSentencesInnerTab] = useState<'all' | 'annotators' | 'evaluators'>('all');
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -411,6 +419,164 @@ const AdminDashboard: React.FC = () => {
     }
   }, [languageFilter, currentPage, itemsPerPage, audioUrls]);
 
+  // Load annotations by user
+  const loadAnnotationsByUser = useCallback(async () => {
+    try {
+      setIsLoadingUserWork(true);
+      const annotations = await adminAPI.getAllAnnotations();
+      const userAnnotationsMap = new Map<number, Annotation[]>();
+      
+      annotations.forEach(annotation => {
+        const userId = annotation.annotator_id;
+        if (!userAnnotationsMap.has(userId)) {
+          userAnnotationsMap.set(userId, []);
+        }
+        userAnnotationsMap.get(userId)!.push(annotation);
+      });
+      
+      setAnnotationsByUser(userAnnotationsMap);
+    } catch (error) {
+      console.error('Error loading annotations by user:', error);
+    } finally {
+      setIsLoadingUserWork(false);
+    }
+  }, []);
+
+  // Load evaluations by user
+  const loadEvaluationsByUser = useCallback(async () => {
+    try {
+      setIsLoadingUserWork(true);
+      const evaluations = await adminAPI.getAllEvaluations();
+      const userEvaluationsMap = new Map<number, Evaluation[]>();
+      
+      evaluations.forEach(evaluation => {
+        const userId = evaluation.evaluator_id;
+        if (!userEvaluationsMap.has(userId)) {
+          userEvaluationsMap.set(userId, []);
+        }
+        userEvaluationsMap.get(userId)!.push(evaluation);
+      });
+      
+      setEvaluationsByUser(userEvaluationsMap);
+    } catch (error) {
+      console.error('Error loading evaluations by user:', error);
+    } finally {
+      setIsLoadingUserWork(false);
+    }
+  }, []);
+
+  // Export functions
+  const exportAnnotationsToJSON = useCallback(() => {
+    const allAnnotations = Array.from(annotationsByUser.values()).flat();
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      totalAnnotations: allAnnotations.length,
+      annotations: allAnnotations.map(annotation => ({
+        id: annotation.id,
+        sentenceId: annotation.sentence_id,
+        annotatorId: annotation.annotator_id,
+        annotatorName: `${annotation.annotator?.first_name} ${annotation.annotator?.last_name}`,
+        annotatorUsername: annotation.annotator?.username,
+        fluencyScore: annotation.fluency_score,
+        adequacyScore: annotation.adequacy_score,
+        overallQuality: annotation.overall_quality,
+        errorsFound: annotation.errors_found,
+        suggestedCorrection: annotation.suggested_correction,
+        comments: annotation.comments,
+        finalForm: annotation.final_form,
+        voiceRecordingUrl: annotation.voice_recording_url,
+        voiceRecordingDuration: annotation.voice_recording_duration,
+        timeSpentSeconds: annotation.time_spent_seconds,
+        annotationStatus: annotation.annotation_status,
+        createdAt: annotation.created_at,
+        updatedAt: annotation.updated_at,
+        sentence: {
+          id: annotation.sentence?.id,
+          sourceText: annotation.sentence?.source_text,
+          machineTranslation: annotation.sentence?.machine_translation,
+          backTranslation: annotation.sentence?.back_translation,
+          sourceLanguage: annotation.sentence?.source_language,
+          targetLanguage: annotation.sentence?.target_language,
+          domain: annotation.sentence?.domain
+        },
+        highlights: annotation.highlights?.map(highlight => ({
+          id: highlight.id,
+          highlightedText: highlight.highlighted_text,
+          startIndex: highlight.start_index,
+          endIndex: highlight.end_index,
+          textType: highlight.text_type,
+          comment: highlight.comment,
+          errorType: highlight.error_type,
+          createdAt: highlight.created_at
+        }))
+      }))
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `annotations_export_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [annotationsByUser]);
+
+  const exportEvaluationsToJSON = useCallback(() => {
+    const allEvaluations = Array.from(evaluationsByUser.values()).flat();
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      totalEvaluations: allEvaluations.length,
+      evaluations: allEvaluations.map(evaluation => ({
+        id: evaluation.id,
+        annotationId: evaluation.annotation_id,
+        evaluatorId: evaluation.evaluator_id,
+        evaluatorName: `${evaluation.evaluator?.first_name} ${evaluation.evaluator?.last_name}`,
+        evaluatorUsername: evaluation.evaluator?.username,
+        fluencyRating: evaluation.fluency_rating,
+        adequacyRating: evaluation.adequacy_rating,
+        overallRating: evaluation.overall_rating,
+        feedback: evaluation.feedback,
+        evaluationStatus: evaluation.evaluation_status,
+        timeSpentSeconds: evaluation.time_spent_seconds,
+        createdAt: evaluation.created_at,
+        updatedAt: evaluation.updated_at,
+        annotation: {
+          id: evaluation.annotation?.id,
+          sentenceId: evaluation.annotation?.sentence_id,
+          annotatorId: evaluation.annotation?.annotator_id,
+          annotatorName: `${evaluation.annotation?.annotator?.first_name} ${evaluation.annotation?.annotator?.last_name}`,
+          fluencyScore: evaluation.annotation?.fluency_score,
+          adequacyScore: evaluation.annotation?.adequacy_score,
+          overallQuality: evaluation.annotation?.overall_quality,
+          annotationStatus: evaluation.annotation?.annotation_status,
+          sentence: {
+            id: evaluation.annotation?.sentence?.id,
+            sourceText: evaluation.annotation?.sentence?.source_text,
+            machineTranslation: evaluation.annotation?.sentence?.machine_translation,
+            backTranslation: evaluation.annotation?.sentence?.back_translation,
+            sourceLanguage: evaluation.annotation?.sentence?.source_language,
+            targetLanguage: evaluation.annotation?.sentence?.target_language,
+            domain: evaluation.annotation?.sentence?.domain
+          }
+        }
+      }))
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `evaluations_export_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [evaluationsByUser]);
+
   // Load Users with Pagination
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
@@ -619,6 +785,17 @@ const AdminDashboard: React.FC = () => {
       loadSentences();
     }
   }, [activeTab, loadSentences]);
+
+  // Load user work data when inner tab changes
+  useEffect(() => {
+    if (activeTab === 'sentences') {
+      if (sentencesInnerTab === 'annotators') {
+        loadAnnotationsByUser();
+      } else if (sentencesInnerTab === 'evaluators') {
+        loadEvaluationsByUser();
+      }
+    }
+  }, [activeTab, sentencesInnerTab, loadAnnotationsByUser, loadEvaluationsByUser]);
 
   const handleAddSentence = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2349,6 +2526,42 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Inner Tab Navigation */}
+            <div className="bg-white border border-gray-200 rounded-lg p-1">
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => setSentencesInnerTab('all')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    sentencesInnerTab === 'all'
+                      ? 'bg-beauty-bush-500 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  All Sentences
+                </button>
+                <button
+                  onClick={() => setSentencesInnerTab('annotators')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    sentencesInnerTab === 'annotators'
+                      ? 'bg-beauty-bush-500 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Annotators
+                </button>
+                <button
+                  onClick={() => setSentencesInnerTab('evaluators')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    sentencesInnerTab === 'evaluators'
+                      ? 'bg-beauty-bush-500 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Evaluators
+                </button>
+              </div>
+            </div>
+
             {/* CSV Import Modal */}
             {showCSVImport && (
               <div 
@@ -2486,7 +2699,10 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Error Type Classification Legend */}
+            {/* Content based on inner tab */}
+            {sentencesInnerTab === 'all' && (
+              <>
+                {/* Error Type Classification Legend */}
             <div className="bg-gradient-to-r from-gray-50 to-beauty-bush-50 border border-gray-200 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-3">
                 <MessageCircle className="h-5 w-5 text-beauty-bush-600" />
@@ -2538,7 +2754,7 @@ const AdminDashboard: React.FC = () => {
                   Annotation Overview for {languageFilter === 'all' ? 'All Languages' : 
                     languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
                     languageFilter === 'ceb' ? 'Cebuano' : 
-                    languageFilter === 'ilo' ? 'Ilokano' : 
+                    languageFilter === 'ilo' ? 'Ilocano' : 
                     languageFilter.toUpperCase()}
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -2608,7 +2824,7 @@ const AdminDashboard: React.FC = () => {
                       <option value="all">All Languages</option>
                       <option value="tgl">Tagalog (Filipino)</option>
                       <option value="ceb">Cebuano</option>
-                      <option value="ilo">Ilokano</option>
+                      <option value="ilo">Ilocano</option>
                     </select>
                   </div>
 
@@ -3086,7 +3302,7 @@ const AdminDashboard: React.FC = () => {
                       {languageFilter === 'all' ? 'All Languages' : 
                         languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
                         languageFilter === 'ceb' ? 'Cebuano' : 
-                        languageFilter === 'ilo' ? 'Ilokano' : 
+                        languageFilter === 'ilo' ? 'Ilocano' : 
                         languageFilter.toUpperCase()}
                     </span>
                   </div>
@@ -3503,7 +3719,7 @@ const AdminDashboard: React.FC = () => {
                           <>No sentences available for the selected language filter: <span className="font-semibold">{languageFilter === 'all' ? 'All Languages' : 
                             languageFilter === 'tgl' ? 'Tagalog (Filipino)' : 
                             languageFilter === 'ceb' ? 'Cebuano' : 
-                            languageFilter === 'ilo' ? 'Ilokano' : 
+                            languageFilter === 'ilo' ? 'Ilocano' : 
                             languageFilter.toUpperCase()}</span></>
                         )}
                       </p>
@@ -3581,6 +3797,190 @@ const AdminDashboard: React.FC = () => {
                       <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+              </>
+            )}
+
+            {/* Annotators Tab */}
+            {sentencesInnerTab === 'annotators' && (
+              <div className="space-y-6">
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-3 sm:space-y-0">
+                    <h4 className="text-lg font-medium text-gray-900">Annotators Work Overview</h4>
+                    <button
+                      onClick={exportAnnotationsToJSON}
+                      disabled={annotationsByUser.size === 0}
+                      className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Export Annotations (JSON)</span>
+                    </button>
+                  </div>
+                  {isLoadingUserWork ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-beauty-bush-600"></div>
+                      <span className="ml-2 text-gray-600">Loading annotators data...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Array.from(annotationsByUser.entries()).map(([userId, annotations]) => {
+                        const user = users.find(u => u.id === userId);
+                        if (!user) return null;
+                        
+                        return (
+                          <div key={userId} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-beauty-bush-100 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-bold text-beauty-bush-700">
+                                    {user.first_name[0]}{user.last_name[0]}
+                                  </span>
+                                </div>
+                                <div>
+                                  <h5 className="font-medium text-gray-900">{user.first_name} {user.last_name}</h5>
+                                  <p className="text-sm text-gray-600">@{user.username}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-beauty-bush-600">{annotations.length}</div>
+                                <div className="text-xs text-gray-500">annotations</div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                              <div className="bg-green-50 rounded-lg p-3">
+                                <div className="text-lg font-bold text-green-600">
+                                  {annotations.filter(a => a.annotation_status === 'completed').length}
+                                </div>
+                                <div className="text-xs text-green-700">Completed</div>
+                              </div>
+                              <div className="bg-yellow-50 rounded-lg p-3">
+                                <div className="text-lg font-bold text-yellow-600">
+                                  {annotations.filter(a => a.annotation_status === 'in_progress').length}
+                                </div>
+                                <div className="text-xs text-yellow-700">In Progress</div>
+                              </div>
+                              <div className="bg-blue-50 rounded-lg p-3">
+                                <div className="text-lg font-bold text-blue-600">
+                                  {annotations.filter(a => a.annotation_status === 'reviewed').length}
+                                </div>
+                                <div className="text-xs text-blue-700">Reviewed</div>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="text-sm text-gray-600">
+                                <strong>Average Quality Score:</strong> {
+                                  annotations.filter(a => a.overall_quality).length > 0
+                                    ? (annotations.filter(a => a.overall_quality).reduce((sum, a) => sum + (a.overall_quality || 0), 0) / annotations.filter(a => a.overall_quality).length).toFixed(1)
+                                    : 'N/A'
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {annotationsByUser.size === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          No annotations found.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Evaluators Tab */}
+            {sentencesInnerTab === 'evaluators' && (
+              <div className="space-y-6">
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-3 sm:space-y-0">
+                    <h4 className="text-lg font-medium text-gray-900">Evaluators Work Overview</h4>
+                    <button
+                      onClick={exportEvaluationsToJSON}
+                      disabled={evaluationsByUser.size === 0}
+                      className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Export Evaluations (JSON)</span>
+                    </button>
+                  </div>
+                  {isLoadingUserWork ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-beauty-bush-600"></div>
+                      <span className="ml-2 text-gray-600">Loading evaluators data...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Array.from(evaluationsByUser.entries()).map(([userId, evaluations]) => {
+                        const user = users.find(u => u.id === userId);
+                        if (!user) return null;
+                        
+                        return (
+                          <div key={userId} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-bold text-purple-700">
+                                    {user.first_name[0]}{user.last_name[0]}
+                                  </span>
+                                </div>
+                                <div>
+                                  <h5 className="font-medium text-gray-900">{user.first_name} {user.last_name}</h5>
+                                  <p className="text-sm text-gray-600">@{user.username}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-purple-600">{evaluations.length}</div>
+                                <div className="text-xs text-gray-500">evaluations</div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                              <div className="bg-green-50 rounded-lg p-3">
+                                <div className="text-lg font-bold text-green-600">
+                                  {evaluations.filter(e => e.evaluation_status === 'completed').length}
+                                </div>
+                                <div className="text-xs text-green-700">Completed</div>
+                              </div>
+                              <div className="bg-yellow-50 rounded-lg p-3">
+                                <div className="text-lg font-bold text-yellow-600">
+                                  {evaluations.filter(e => e.evaluation_status === 'pending').length}
+                                </div>
+                                <div className="text-xs text-yellow-700">Pending</div>
+                              </div>
+                              <div className="bg-blue-50 rounded-lg p-3">
+                                <div className="text-lg font-bold text-blue-600">
+                                  {evaluations.filter(e => e.evaluation_status === 'reviewed').length}
+                                </div>
+                                <div className="text-xs text-blue-700">Reviewed</div>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="text-sm text-gray-600">
+                                <strong>Average Rating:</strong> {
+                                  evaluations.filter(e => e.overall_rating).length > 0
+                                    ? (evaluations.filter(e => e.overall_rating).reduce((sum, e) => sum + (e.overall_rating || 0), 0) / evaluations.filter(e => e.overall_rating).length).toFixed(1)
+                                    : 'N/A'
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {evaluationsByUser.size === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          No evaluations found.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -3680,7 +4080,7 @@ const AdminDashboard: React.FC = () => {
                     <option value="all">All Languages</option>
                     <option value="tagalog">Tagalog (Filipino)</option>
                     <option value="cebuano">Cebuano</option>
-                    <option value="ilokano">Ilokano</option>
+                    <option value="Ilocano">Ilocano</option>
                   </select>
 
                   {/* Type Filter */}
@@ -3784,7 +4184,7 @@ const AdminDashboard: React.FC = () => {
                         >
                           <option value="Tagalog">Tagalog (Filipino)</option>
                           <option value="Cebuano">Cebuano</option>
-                          <option value="Ilokano">Ilokano</option>
+                          <option value="Ilocano">Ilocano</option>
                         </select>
                       </div>
                       
@@ -3932,7 +4332,7 @@ const AdminDashboard: React.FC = () => {
                               >
                                 <option value="Tagalog">Tagalog (Filipino)</option>
                                 <option value="Cebuano">Cebuano</option>
-                                <option value="Ilokano">Ilokano</option>
+                                <option value="Ilocano">Ilocano</option>
                               </select>
                             </div>
                             <div>
@@ -4313,7 +4713,7 @@ const AdminDashboard: React.FC = () => {
                     <option value="all">All Languages</option>
                     <option value="tagalog">Tagalog</option>
                     <option value="cebuano">Cebuano</option>
-                    <option value="ilokano">Ilokano</option>
+                    <option value="Ilocano">Ilocano</option>
                   </select>
                 </div>
                 
@@ -4761,27 +5161,27 @@ const AdminDashboard: React.FC = () => {
                     
                     <div className="flex items-center">
                       <input
-                        id="edit-lang-ilokano"
+                        id="edit-lang-Ilocano"
                         type="checkbox"
-                        value="ilokano"
-                        checked={editUser.languages.includes('ilokano')}
+                        value="Ilocano"
+                        checked={editUser.languages.includes('Ilocano')}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setEditUser(prev => ({ 
                               ...prev, 
-                              languages: [...prev.languages, 'ilokano'].filter((v, i, a) => a.indexOf(v) === i)
+                              languages: [...prev.languages, 'Ilocano'].filter((v, i, a) => a.indexOf(v) === i)
                             }));
                           } else {
                             setEditUser(prev => ({ 
                               ...prev, 
-                              languages: prev.languages.filter(lang => lang !== 'ilokano')
+                              languages: prev.languages.filter(lang => lang !== 'Ilocano')
                             }));
                           }
                         }}
                         className="h-4 w-4 text-beauty-bush-600 focus:ring-beauty-bush-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="edit-lang-ilokano" className="ml-2 block text-sm text-gray-700">
-                        Ilokano
+                      <label htmlFor="edit-lang-Ilocano" className="ml-2 block text-sm text-gray-700">
+                        Ilocano
                       </label>
                     </div>
                   </div>

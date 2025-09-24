@@ -21,6 +21,7 @@ const OnboardingTest: React.FC = () => {
   const [testStarted, setTestStarted] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [testSessionKey, setTestSessionKey] = useState(0); // Forces re-randomization on each test start
   
   // API-fetched questions state
   const [questions, setQuestions] = useState<LanguageProficiencyQuestion[]>([]);
@@ -50,6 +51,39 @@ const OnboardingTest: React.FC = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Helper function to randomly select 10 questions from available questions
+  const selectRandomQuestions = (allQuestions: LanguageProficiencyQuestion[], count: number = 10): LanguageProficiencyQuestion[] => {
+    if (allQuestions.length <= count) {
+      logger.debug('Not enough questions available', {
+        component: 'OnboardingTest',
+        action: 'select_random_questions',
+        metadata: { available: allQuestions.length, requested: count }
+      });
+      return allQuestions; // Return all if we have fewer than requested
+    }
+
+    // More robust randomization using Fisher-Yates shuffle
+    const shuffled = [...allQuestions];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    const selected = shuffled.slice(0, count);
+    logger.debug('Randomized questions selected', {
+      component: 'OnboardingTest',
+      action: 'select_random_questions',
+      metadata: {
+        totalAvailable: allQuestions.length,
+        selectedCount: selected.length,
+        selectedIds: selected.map(q => q.id),
+        languages: [...new Set(selected.map(q => q.language))]
+      }
+    });
+
+    return selected;
+  };
+
   // Handle cancel test with confirmation
   const handleCancelTest = () => {
     setShowCancelModal(true);
@@ -67,7 +101,8 @@ const OnboardingTest: React.FC = () => {
     setQuestionsError('');
     setLoadingQuestions(false);
     setSelectedLanguages([]);
-    
+    setTestSessionKey(0); // Reset session key for fresh start
+
     // Navigate back to dashboard
     navigate('/dashboard');
   };
@@ -145,26 +180,47 @@ const OnboardingTest: React.FC = () => {
   useEffect(() => {
     const fetchQuestions = async () => {
       // Only fetch if test started, have languages, no questions yet, not loading, and haven't tried fetching yet
-      if (testStarted && selectedLanguages.length > 0 && questions.length === 0 && !loadingQuestions && !questionsFetched) {
+      if (testStarted && selectedLanguages.length > 0 && questions.length === 0 && !loadingQuestions && !questionsFetched && testSessionKey > 0) {
         setLoadingQuestions(true);
         setQuestionsError('');
         
         try {
+          logger.debug('Fetching questions for onboarding test', {
+            component: 'OnboardingTest',
+            action: 'fetch_questions',
+            metadata: { languages: selectedLanguages }
+          });
+
           const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(selectedLanguages);
-          
+
+          logger.debug('Questions fetched from API', {
+            component: 'OnboardingTest',
+            action: 'fetch_questions_result',
+            metadata: {
+              count: fetchedQuestions.length,
+              questionIds: fetchedQuestions.map(q => q.id),
+              languages: [...new Set(fetchedQuestions.map(q => q.language))],
+              types: [...new Set(fetchedQuestions.map(q => q.type))],
+              difficulties: [...new Set(fetchedQuestions.map(q => q.difficulty))]
+            }
+          });
+
           // Mark as fetched regardless of result to prevent infinite loops
           setQuestionsFetched(true);
-          
+
           if (fetchedQuestions && fetchedQuestions.length > 0) {
-            setQuestions(fetchedQuestions);
-            // Calculate timer based on number of questions (90 seconds per question)
-            const calculatedTime = fetchedQuestions.length * 90;
+            // Randomly select 10 questions from all available questions
+            const selectedQuestions = selectRandomQuestions(fetchedQuestions, 10);
+            setQuestions(selectedQuestions);
+            // Calculate timer based on 10 questions (90 seconds per question)
+            const calculatedTime = 10 * 90; // Always 900 seconds for 10 questions
             logger.debug('Setting timer', {
               component: 'OnboardingTest',
               action: 'set_timer',
-              metadata: { 
-                calculatedTime, 
-                questionCount: fetchedQuestions.length 
+              metadata: {
+                calculatedTime,
+                questionCount: selectedQuestions.length,
+                totalAvailableQuestions: fetchedQuestions.length
               }
             });
             setTimeRemaining(calculatedTime);
@@ -185,13 +241,14 @@ const OnboardingTest: React.FC = () => {
     };
 
     fetchQuestions();
-  }, [testStarted, selectedLanguages, questions.length, loadingQuestions, questionsFetched]);
+  }, [testStarted, selectedLanguages, questions.length, loadingQuestions, questionsFetched, testSessionKey]);
 
   const handleStartTest = () => {
     if (user?.languages && user.languages.length > 0) {
       setSelectedLanguages(user.languages);
       setShowInstructions(false);
       setTestStarted(true);
+      setTestSessionKey(prev => prev + 1); // Increment to force fresh randomization
     } else {
       alert('Please update your profile to select your languages before taking the proficiency quiz. You need to select at least one language to take the test.');
       navigate('/profile');
@@ -270,6 +327,7 @@ const OnboardingTest: React.FC = () => {
     setLoadingQuestions(false);
     setFinalScore(0);
     setJustCompletedQuiz(false);
+    setTestSessionKey(0); // Reset session key for fresh randomization
   };
 
   const handleSubmitTest = useCallback(async () => {
