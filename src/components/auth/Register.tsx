@@ -113,31 +113,6 @@ const Register: React.FC = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Helper function to randomly select 10 questions from available questions
-  const selectRandomQuestions = (allQuestions: LanguageProficiencyQuestion[], count: number = 10): LanguageProficiencyQuestion[] => {
-    if (allQuestions.length <= count) {
-      console.log(`Not enough questions available. Returning all ${allQuestions.length} questions.`);
-      return allQuestions; // Return all if we have fewer than requested
-    }
-
-    // More robust randomization using Fisher-Yates shuffle
-    const shuffled = [...allQuestions];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    const selected = shuffled.slice(0, count);
-    console.log(`Randomized questions:`, {
-      totalAvailable: allQuestions.length,
-      selectedCount: selected.length,
-      selectedIds: selected.map(q => q.id),
-      languages: [...new Set(selected.map(q => q.language))]
-    });
-
-    return selected;
-  };
-
   // Handle cancel test with confirmation
   const handleCancelTest = () => {
     setShowCancelModal(true);
@@ -253,37 +228,21 @@ const Register: React.FC = () => {
         // Check if questions are available for selected languages before proceeding
         try {
           setError(''); // Clear any previous errors
-          console.log('Fetching questions for languages:', formData.languages);
           const fetchedQuestions = await languageProficiencyAPI.getQuestionsByLanguages(formData.languages);
-
-          console.log('Questions fetched from API:', {
-            count: fetchedQuestions.length,
-            questionIds: fetchedQuestions.map(q => q.id),
-            languages: [...new Set(fetchedQuestions.map(q => q.language))],
-            types: [...new Set(fetchedQuestions.map(q => q.type))],
-            difficulties: [...new Set(fetchedQuestions.map(q => q.difficulty))]
-          });
 
           if (!fetchedQuestions || fetchedQuestions.length === 0) {
             setError(
-              `No proficiency test questions are currently available for your selected languages (${formData.languages.map(lang =>
+              `No proficiency test questions are currently available for your selected languages (${formData.languages.map(lang => 
                 lang.charAt(0).toUpperCase() + lang.slice(1)
               ).join(', ')}). Please try selecting different languages or contact support for assistance.`
             );
             return;
           }
 
-          // Randomly select 10 questions from all available questions
-          const selectedQuestions = selectRandomQuestions(fetchedQuestions, 10);
-          setQuestions(selectedQuestions);
-
-          // Calculate timer based on 10 questions (90 seconds per question)
-          const calculatedTime = 10 * 90; // Always 900 seconds for 10 questions
-          console.log('Setting timer for registration test', {
-            calculatedTime,
-            questionCount: selectedQuestions.length,
-            totalAvailableQuestions: fetchedQuestions.length
-          });
+          // Questions are available, proceed to test
+          setQuestions(fetchedQuestions);
+          // Calculate timer based on number of questions (90 seconds per question)
+          const calculatedTime = fetchedQuestions.length * 90;
           setTimeRemaining(calculatedTime);
 
           if (!testSessionId) {
@@ -913,7 +872,7 @@ const Register: React.FC = () => {
                       {[
                         { id: 'tagalog', name: 'Tagalog' },
                         { id: 'cebuano', name: 'Cebuano' },
-                        { id: 'Ilocano', name: 'Ilocano' }
+                        { id: 'ilokano', name: 'Ilokano' }
                         //{ id: 'hiligaynon', name: 'Hiligaynon' },
                         //{ id: 'bicolano', name: 'Bicolano' },
                         //{ id: 'waray', name: 'Waray' },

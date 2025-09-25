@@ -10,19 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
-
     "@gsap/react": "^2.1.2",
     "@supabase/supabase-js": "^2.53.0",
     "@vercel/analytics": "^1.5.0",
     "axios": "^1.6.2",
     "gsap": "^3.13.0",
-
     "lucide-react": "^0.295.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^6.20.1",
     "recharts": "^2.15.3",
-    "supabase": "^2.33.9"
+    "supabase": "^2.33.9",
+    "vercel": "^48.1.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
