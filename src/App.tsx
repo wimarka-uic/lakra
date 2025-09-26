@@ -22,6 +22,7 @@ import AboutLanding from './components/pages/AboutLanding';
 import Features from './components/pages/Features';
 import Process from './components/pages/Process';
 import Contact from './components/pages/Contact';
+import BugReport from './components/pages/BugReport';
 import GuidelinesModal from './components/modals/GuidelinesModal';
 import EvaluatorDashboard from './components/pages/EvaluatorDashboard';
 import EvaluationInterface from './components/pages/EvaluationInterface';
@@ -382,6 +383,15 @@ const AppContent: React.FC = () => {
             element={
               <AccessibleRoute>
                 <Contact />
+              </AccessibleRoute>
+            } 
+          />
+          
+          <Route 
+            path="/bug-report" 
+            element={
+              <AccessibleRoute>
+                <BugReport />
               </AccessibleRoute>
             } 
           />

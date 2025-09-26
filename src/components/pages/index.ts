@@ -4,6 +4,7 @@ export { default as AboutLanding } from './AboutLanding';
 export { default as Features } from './Features';
 export { default as Process } from './Process';
 export { default as Contact } from './Contact';
+export { default as BugReport } from './BugReport';
 export { default as About } from './About';
 
 // Dashboard pages

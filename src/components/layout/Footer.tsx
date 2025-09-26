@@ -29,6 +29,10 @@ const Footer: React.FC = () => {
               <span>Contact</span>
               {underline}
             </Link>
+            <Link to="/bug-report" className={linkClass}>
+              <span>Report Bug</span>
+              {underline}
+            </Link>
             <Link to="/login" className={linkClass}>
               <span>Login</span>
               {underline}
