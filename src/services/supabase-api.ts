@@ -216,15 +216,16 @@ export const authAPI = {
   },
 
   register: async (userData: RegisterData): Promise<RegisterResult> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let signupData: { user: any; session: any } | null = null;
     let signupError: Error | null = null;
 
     // For users who need onboarding test, validate the test first
     if (userData.onboarding_passed && userData.test_answers && userData.test_answers.length > 0) {
       // Get correct answers for all questions to calculate correctness
-      const questionIds = userData.test_answers.map((answer: any) => answer.question_id);
+      const questionIds = userData.test_answers.map((answer: UserQuestionAnswer) => answer.question_id);
       const { data: questions } = await supabase
-        .from('language_proficiency_questions')
+        .from('language_proficiency_questions') 
         .select('id, correct_answer')
         .in('id', questionIds);
 
@@ -264,11 +265,11 @@ export const authAPI = {
 
       if (error) throw error;
       if (signupError) throw signupError;
-      if (!signupData.user) throw new Error('Registration failed');
+      if (!signupData || !signupData.user) throw new Error('Registration failed');
 
       // NOW: Create user profile using the database function (which has SECURITY DEFINER privileges)
       const profileData = {
-        user_id: signupData.user.id,
+        user_id: signupData!.user.id,
         user_email: userData.email,
         user_username: userData.username,
         user_first_name: userData.first_name,
@@ -292,7 +293,7 @@ export const authAPI = {
       // Add user languages using the database function
       if (userData.languages && userData.languages.length > 0) {
         const languageData = {
-          user_id_param: signupData.user.id,
+          user_id_param: signupData!.user.id,
           languages_param: userData.languages
         };
         
@@ -309,7 +310,7 @@ export const authAPI = {
       // Store test answers if provided using the database function
       if (userData.test_answers && userData.test_answers.length > 0) {
         const testAnswersData = {
-          user_id_param: signupData.user.id,
+          user_id_param: signupData!.user.id,
           test_answers_param: userData.test_answers,
           test_session_id_param: userData.test_session_id
         };
@@ -337,7 +338,7 @@ export const authAPI = {
     const { data: userProfile, error: getError } = await supabase
       .from('users')
       .select('*')
-      .eq('id', signupData.user.id)
+      .eq('id', signupData!.user.id)
       .single();
 
     if (getError) throw getError;
@@ -346,7 +347,7 @@ export const authAPI = {
     const { data: languages } = await supabase
       .from('user_languages')
       .select('language')
-      .eq('user_id', signupData.user.id);
+      .eq('user_id', signupData!.user.id);
 
     const user: User = {
       ...userProfile,
@@ -686,6 +687,71 @@ export const sentencesAPI = {
     return data || [];
   },
 
+  // New method to get sentences prioritized by annotation status
+  getPrioritizedSentences: async (skip = 0, limit = 50): Promise<Sentence[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    // Get user's preferred language
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('preferred_language')
+      .eq('id', user.id)
+      .single();
+
+    if (!userProfile?.preferred_language) return [];
+
+    try {
+      // Try to use the custom RPC function first
+      const { data, error } = await supabase
+        .rpc('get_prioritized_sentences', {
+          user_id: user.id,
+          target_language: getLanguageCode(userProfile.preferred_language),
+          skip_count: skip,
+          limit_count: limit
+        });
+
+      if (error) throw error;
+      return data || [];
+    } catch (rpcError) {
+      // Fallback to manual prioritization if RPC function doesn't exist
+      logger.warn('RPC function not available, using fallback method', {
+        component: 'sentencesAPI',
+        action: 'getPrioritizedSentences',
+        metadata: { error: (rpcError as Error).message }
+      });
+
+      // Get all sentences for the user's language
+      const { data: allSentences, error: sentencesError } = await supabase
+        .from('sentences')
+        .select('*')
+        .eq('is_active', true)
+        .eq('target_language', getLanguageCode(userProfile.preferred_language))
+        .order('created_at', { ascending: false });
+
+      if (sentencesError) throw sentencesError;
+
+      // Get user's annotated sentence IDs
+      const { data: annotatedIds } = await supabase
+        .from('annotations')
+        .select('sentence_id')
+        .eq('annotator_id', user.id);
+
+      const annotatedSentenceIds = new Set(annotatedIds?.map(a => a.sentence_id) || []);
+
+      // Separate unannotated and annotated sentences
+      const unannotated = (allSentences || []).filter(s => !annotatedSentenceIds.has(s.id));
+      const annotated = (allSentences || []).filter(s => annotatedSentenceIds.has(s.id));
+
+      // Combine with unannotated first, then annotated
+      const prioritized = [...unannotated, ...annotated];
+
+      // Apply pagination
+      return prioritized.slice(skip, skip + limit);
+    }
+  },
+
   createSentence: async (sentenceData: {
     source_text: string;
     machine_translation: string;
@@ -965,6 +1031,105 @@ export const annotationsAPI = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  // Get annotations by specific annotator with optional language filter
+  getAnnotationsByAnnotator: async (annotatorId: number, targetLanguage?: string): Promise<Annotation[]> => {
+    // First get annotations for the annotator
+    const query = supabase
+      .from('annotations')
+      .select(`
+        *,
+        sentence:sentences(*),
+        annotator:users(*),
+        highlights:text_highlights(*)
+      `)
+      .eq('annotator_id', annotatorId)
+      .order('created_at', { ascending: false });
+
+    const { data: annotations, error } = await query;
+
+    if (error) throw error;
+
+    // If targetLanguage filter is specified, filter the results
+    if (targetLanguage && annotations) {
+      return annotations.filter(annotation => 
+        annotation.sentence?.target_language === targetLanguage
+      );
+    }
+
+    return annotations || [];
+  },
+
+  // Get all annotators with their annotation counts
+  getAnnotatorsWithStats: async (): Promise<Array<User & { annotation_count: number; languages: string[] }>> => {
+    // First get all active non-admin users
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('is_active', true)
+      .not('is_admin', 'eq', true);
+
+    if (usersError) throw usersError;
+
+    // Then get annotation counts for each user
+    const usersWithStats = await Promise.all(
+      (users || []).map(async (user) => {
+        // Get annotation count for this user
+        const { count: annotationCount } = await supabase
+          .from('annotations')
+          .select('*', { count: 'exact', head: true })
+          .eq('annotator_id', user.id);
+
+        // Get languages from user_languages table
+        const { data: userLanguages } = await supabase
+          .from('user_languages')
+          .select('language')
+          .eq('user_id', user.id);
+
+        return {
+          ...user,
+          annotation_count: annotationCount || 0,
+          languages: userLanguages?.map(l => l.language) || []
+        };
+      })
+    );
+
+    return usersWithStats;
+  },
+
+  // Generate JSON extraction format for annotation data
+  generateAnnotationJSON: (annotation: Annotation): string => {
+    const { sentence, highlights = [] } = annotation;
+    
+    // Build errors string with highlighted text and error types
+    const errorsString = highlights
+      .map(highlight => {
+        const errorType = highlight.error_type || 'MI_SE';
+        return `[${errorType}]${highlight.highlighted_text}[/${errorType}]`;
+      })
+      .join(' ');
+
+    // Build comments string with error explanations
+    const commentsString = highlights
+      .map(highlight => {
+        const errorType = highlight.error_type || 'MI_SE';
+        return `[${errorType}] ${highlight.comment} [/${errorType}]`;
+      })
+      .join(' ');
+
+    const jsonData = {
+      sourceText: `[${sentence.source_language}] ${sentence.source_text}`,
+      machineTranslation: `[${sentence.target_language}] ${sentence.machine_translation}`,
+      errors: errorsString ? `[${sentence.target_language}] ${errorsString}` : '',
+      finalForm: `[${sentence.target_language}] ${annotation.final_form || sentence.machine_translation}`,
+      comments: commentsString,
+      fluencyScore: annotation.fluency_score,
+      adequacyScore: annotation.adequacy_score,
+      overallQuality: annotation.overall_quality
+    };
+
+    return JSON.stringify(jsonData, null, 2);
   },
 
   deleteAnnotation: async (id: number): Promise<{ message: string }> => {
@@ -1441,6 +1606,7 @@ export const adminAPI = {
         testResultsMap.set(sessionId, {
           id: sessionId, // Use session_id as the test id
           user_id: answer.user_id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           language: (answer.language_proficiency_questions as any)?.language || 'Tagalog',
           test_data: [],
           score: null,
@@ -1463,6 +1629,7 @@ export const adminAPI = {
       }
       
       // Add the answer details
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const question = answer.language_proficiency_questions as any;
       testResult.answers.push({
         question_id: question?.id,

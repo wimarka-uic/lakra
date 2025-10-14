@@ -19,6 +19,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import AnnotatorTab from './AnnotatorTab';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   BarChart3, 
@@ -70,17 +71,18 @@ const AdminDashboard: React.FC = () => {
   const [audioUrls, setAudioUrls] = useState<{[key: string]: string}>({});
   
   // Get active tab from URL
-  const getActiveTabFromUrl = useCallback((): 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results' => {
+  const getActiveTabFromUrl = useCallback((): 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results' | 'annotators' => {
     const path = location.pathname;
     if (path.includes('/overview')) return 'overview';
     if (path.includes('/users')) return 'users';
     if (path.includes('/sentences')) return 'sentences';
     if (path.includes('/onboarding-tests')) return 'onboarding-tests';
     if (path.includes('/test-results')) return 'test-results';
+    if (path.includes('/annotators')) return 'annotators';
     return 'home';
   }, [location.pathname]);
   
-  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results'>(getActiveTabFromUrl());
+  const [activeTab, setActiveTab] = useState<'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results' | 'annotators'>(getActiveTabFromUrl());
   
   // Inner tabs for sentences section
   const [sentencesInnerTab, setSentencesInnerTab] = useState<'all' | 'annotators' | 'evaluators'>('all');
@@ -91,7 +93,7 @@ const AdminDashboard: React.FC = () => {
   }, [location.pathname, getActiveTabFromUrl]);
 
   // Handle tab navigation
-  const handleTabChange = (tab: 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results') => {
+  const handleTabChange = (tab: 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results' | 'annotators') => {
     setActiveTab(tab);
     const basePath = '/admin';
     const tabPath = tab === 'home' ? '' : `/${tab}`;
@@ -1591,12 +1593,13 @@ const AdminDashboard: React.FC = () => {
                 { key: 'overview', label: 'Overview', icon: BarChart3 },
                 { key: 'users', label: 'Users', icon: Users },
                 { key: 'sentences', label: 'Sentences', icon: FileText },
+                { key: 'annotators', label: 'Annotators', icon: Users },
                 { key: 'onboarding-tests', label: 'Tests', fullLabel: 'Onboarding Tests', icon: BookOpen },
                 { key: 'test-results', label: 'Results', fullLabel: 'Test Results', icon: Award },
               ].map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => handleTabChange(tab.key as 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests')}
+                  onClick={() => handleTabChange(tab.key as 'home' | 'overview' | 'users' | 'sentences' | 'onboarding-tests' | 'test-results' | 'annotators')}
                   className={`flex items-center space-x-1 sm:space-x-2 py-2 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors duration-200 ${
                     activeTab === tab.key
                       ? 'border-beauty-bush-500 text-beauty-bush-600'
@@ -3984,6 +3987,13 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Annotators Tab */}
+        {activeTab === 'annotators' && (
+          <div className="space-y-6">
+            <AnnotatorTab />
           </div>
         )}
 

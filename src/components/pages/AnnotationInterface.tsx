@@ -138,8 +138,18 @@ const AnnotationInterface: React.FC = () => {
             loadedSentences = await sentencesAPI.getUnannotatedSentences(0, 50);
           }
         } else {
-          // Load unannotated sentences for new annotations
-          loadedSentences = await sentencesAPI.getUnannotatedSentences(0, 50);
+          // Load prioritized sentences (unannotated first, then annotated)
+          try {
+            loadedSentences = await sentencesAPI.getPrioritizedSentences(0, 50);
+          } catch (error) {
+            // Fallback to unannotated sentences if prioritized method fails
+            logger.warn('Failed to load prioritized sentences, falling back to unannotated', {
+              component: 'AnnotationInterface',
+              action: 'loadSentences',
+              metadata: { error: (error as Error).message }
+            });
+            loadedSentences = await sentencesAPI.getUnannotatedSentences(0, 50);
+          }
         }
         
         setSentences(loadedSentences);
