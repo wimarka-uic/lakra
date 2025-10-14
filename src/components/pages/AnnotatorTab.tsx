@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { annotationsAPI } from '../../services/supabase-api';
-import type { Annotation, User } from '../../types';
+import type { Annotation, User, TextHighlight } from '../../types';
 import { logger } from '../../utils/logger';
 import { 
   Users, 
   Filter, 
   Download, 
-  Eye, 
   Calendar, 
   MessageCircle, 
-  Star,
   ChevronDown,
   ChevronUp,
   Copy,
@@ -153,7 +151,7 @@ const AnnotatorTab: React.FC = () => {
     });
   };
 
-  const renderHighlightedText = (text: string, highlights: any[]) => {
+  const renderHighlightedText = (text: string, highlights: TextHighlight[]) => {
     if (!highlights || highlights.length === 0) {
       return <span>{text}</span>;
     }
@@ -168,12 +166,17 @@ const AnnotatorTab: React.FC = () => {
       const highlighted = result.substring(highlight.start_index, highlight.end_index);
       const after = result.substring(highlight.end_index);
       
-      const errorTypeClass = {
-        'MI_ST': 'bg-yellow-200 border-b-2 border-yellow-400',
-        'MI_SE': 'bg-red-200 border-b-2 border-red-400',
-        'MA_ST': 'bg-blue-200 border-b-2 border-blue-400',
-        'MA_SE': 'bg-purple-200 border-b-2 border-purple-400'
-      }[highlight.error_type] || 'bg-gray-200 border-b-2 border-gray-400';
+      const getErrorTypeClass = (errorType: string) => {
+        switch (errorType) {
+          case 'MI_ST': return 'bg-yellow-200 border-b-2 border-yellow-400';
+          case 'MI_SE': return 'bg-red-200 border-b-2 border-red-400';
+          case 'MA_ST': return 'bg-blue-200 border-b-2 border-blue-400';
+          case 'MA_SE': return 'bg-purple-200 border-b-2 border-purple-400';
+          default: return 'bg-gray-200 border-b-2 border-gray-400';
+        }
+      };
+      
+      const errorTypeClass = getErrorTypeClass(highlight.error_type || '');
 
       result = before + 
         `<span class="${errorTypeClass} px-1 rounded cursor-pointer" title="${highlight.comment}">${highlighted}</span>` + 
