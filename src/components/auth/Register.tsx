@@ -872,7 +872,7 @@ const Register: React.FC = () => {
                       {[
                         { id: 'tagalog', name: 'Tagalog' },
                         { id: 'cebuano', name: 'Cebuano' },
-                        { id: 'iloano', name: 'Ilocano' }
+                        { id: 'ilocano', name: 'Ilocano' }
                         //{ id: 'hiligaynon', name: 'Hiligaynon' },
                         //{ id: 'bicolano', name: 'Bicolano' },
                         //{ id: 'waray', name: 'Waray' },
