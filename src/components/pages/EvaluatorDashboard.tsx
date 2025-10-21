@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { mtQualityAPI } from '../../services/supabase-api';
 import type { EvaluatorStats, Sentence, MTQualityAssessment } from '../../types';
 import { 
@@ -9,8 +9,8 @@ import {
   AlertCircle,
   Target,
   Brain,
-  Zap,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from 'lucide-react';
 
 const EvaluatorDashboard: React.FC = () => {
@@ -18,29 +18,60 @@ const EvaluatorDashboard: React.FC = () => {
   const [pendingSentences, setPendingSentences] = useState<Sentence[]>([]);
   const [recentAssessments, setRecentAssessments] = useState<MTQualityAssessment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  // Cache data for 5 minutes to prevent unnecessary re-fetching
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async (forceRefresh = false) => {
+    const now = Date.now();
+    
+    // Check if we should use cached data
+    if (!forceRefresh && lastFetchTime > 0 && (now - lastFetchTime) < CACHE_DURATION) {
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const [statsData, pendingData, assessmentsData] = await Promise.all([
+      // Use Promise.allSettled to handle partial failures gracefully
+      const [statsResult, pendingResult, assessmentsResult] = await Promise.allSettled([
         mtQualityAPI.getEvaluatorStats(),
         mtQualityAPI.getPendingAssessments(0, 5),
         mtQualityAPI.getMyAssessments(0, 5)
       ]);
 
-      setStats(statsData);
-      setPendingSentences(pendingData);
-      setRecentAssessments(assessmentsData);
+      // Handle stats data
+      if (statsResult.status === 'fulfilled') {
+        setStats(statsResult.value);
+      } else {
+        console.error('Error loading stats:', statsResult.reason);
+      }
+
+      // Handle pending sentences data
+      if (pendingResult.status === 'fulfilled') {
+        setPendingSentences(pendingResult.value);
+      } else {
+        console.error('Error loading pending sentences:', pendingResult.reason);
+      }
+
+      // Handle recent assessments data
+      if (assessmentsResult.status === 'fulfilled') {
+        setRecentAssessments(assessmentsResult.value);
+      } else {
+        console.error('Error loading recent assessments:', assessmentsResult.reason);
+      }
+
+      setLastFetchTime(now);
     } catch (error) {
       console.error('Error loading evaluator dashboard data:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [lastFetchTime, CACHE_DURATION]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -53,20 +84,57 @@ const EvaluatorDashboard: React.FC = () => {
 
   const getCompletionRate = (): number => {
     if (!stats || !stats.total_assessments || stats.total_assessments === 0) return 0;
-    return Math.round(((stats.completed_assessments || 0) / stats.total_assessments) * 100);
+    const rate = ((stats.completed_assessments || 0) / stats.total_assessments) * 100;
+    return Math.round(rate);
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex justify-center">
-        <div className="max-w-6xl w-full py-8 px-4">
-          <div className="animate-pulse space-y-8">
-            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
-              ))}
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+          {/* Header Skeleton */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                <div className="h-6 sm:h-8 w-6 sm:w-8 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-8 bg-gray-200 rounded w-64 animate-pulse"></div>
+              </div>
+              <div className="h-10 bg-gray-200 rounded-lg w-20 animate-pulse"></div>
             </div>
+            <div className="h-4 bg-gray-200 rounded w-80 animate-pulse"></div>
+          </div>
+
+          {/* Stats Cards Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="p-3 bg-gray-200 rounded-lg animate-pulse">
+                      <div className="h-6 w-6 bg-gray-300 rounded"></div>
+                    </div>
+                  </div>
+                  <div className="ml-4 flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-24 mb-2 animate-pulse"></div>
+                    <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Content Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-32 mb-4 animate-pulse"></div>
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, j) => (
+                    <div key={j} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -88,9 +156,19 @@ const EvaluatorDashboard: React.FC = () => {
 
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
-            <Brain className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600" />
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Machine Translation Evaluator</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+              <Brain className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Machine Translation Evaluator</h1>
+            </div>
+            <button
+              onClick={() => loadDashboardData(true)}
+              disabled={isLoading}
+              className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
           <p className="text-sm sm:text-base text-gray-600">
             {/* DistilBERT-powered machine translation quality assessment platform */}
@@ -152,7 +230,9 @@ const EvaluatorDashboard: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Avg Time</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats?.average_time_per_assessment ? formatTime(Math.round(stats.average_time_per_assessment)) : '0m'}
+                  {stats?.average_time_per_assessment && stats.average_time_per_assessment > 0 
+                    ? formatTime(Math.round(stats.average_time_per_assessment)) 
+                    : '0m'}
                 </p>
               </div>
             </div>
@@ -188,7 +268,9 @@ const EvaluatorDashboard: React.FC = () => {
                     <h3 className="text-sm font-medium text-gray-700">Avg Quality Score</h3>
                   </div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats?.average_overall_score ? stats.average_overall_score.toFixed(1) : '0.0'}
+                    {stats?.average_overall_score && stats.average_overall_score > 0 
+                      ? stats.average_overall_score.toFixed(1) 
+                      : '0.0'}
                   </p>
                   <p className="text-sm text-gray-500">out of 5.0</p>
                 </div>
@@ -199,7 +281,9 @@ const EvaluatorDashboard: React.FC = () => {
                     <h3 className="text-sm font-medium text-gray-700">AI Agreement</h3>
                   </div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats?.human_agreement_rate ? Math.round(stats.human_agreement_rate * 100) : 0}%
+                    {stats?.human_agreement_rate && stats.human_agreement_rate > 0 
+                      ? Math.round(stats.human_agreement_rate * 100) 
+                      : 0}%
                   </p>
                   <p className="text-sm text-gray-500">human-AI agreement</p>
                 </div>
@@ -212,13 +296,17 @@ const EvaluatorDashboard: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Fluency</span>
                     <span className="font-medium">
-                      {stats?.average_fluency_score ? stats.average_fluency_score.toFixed(1) : '0.0'}/5
+                      {stats?.average_fluency_score && stats.average_fluency_score > 0 
+                        ? stats.average_fluency_score.toFixed(1) 
+                        : '0.0'}/5
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Adequacy</span>
                     <span className="font-medium">
-                      {stats?.average_adequacy_score ? stats.average_adequacy_score.toFixed(1) : '0.0'}/5
+                      {stats?.average_adequacy_score && stats.average_adequacy_score > 0 
+                        ? stats.average_adequacy_score.toFixed(1) 
+                        : '0.0'}/5
                     </span>
                   </div>
                 </div>
@@ -226,51 +314,6 @@ const EvaluatorDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <a
-                href="/mt-assess"
-                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all min-h-[60px] hover:scale-105 active:scale-95"
-              >
-                <Zap className="h-5 w-5 text-blue-500 mr-3" />
-                <div>
-                  <p className="font-medium text-gray-900">Start MT Assessment</p>
-                  <p className="text-sm text-gray-500">Analyze translation quality with AI</p>
-                </div>
-              </a>
-              
-              <a
-                href="/my-assessments"
-                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all min-h-[60px] hover:scale-105 active:scale-95"
-              >
-                <FileText className="h-5 w-5 text-green-500 mr-3" />
-                <div>
-                  <p className="font-medium text-gray-900">My Assessments</p>
-                  <p className="text-sm text-gray-500">View completed MT assessments</p>
-                </div>
-              </a>
-
-              {/* Error Detection Stats */}
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">AI Error Detection</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Syntax Errors Found</span>
-                    <span className="font-medium">{stats?.total_syntax_errors_found || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Semantic Errors Found</span>
-                    <span className="font-medium">{stats?.total_semantic_errors_found || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    {/* <span className="text-gray-600">Model Confidence</span>
-                    <span className="font-medium">{stats?.average_model_confidence ? Math.round(stats.average_model_confidence * 100) : 0}%</span> */}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Pending Sentences */}
@@ -353,18 +396,18 @@ const EvaluatorDashboard: React.FC = () => {
                   
                   <div className="flex items-center space-x-6 text-xs text-gray-500">
                     <span>
-                      Overall: {assessment.overall_quality_score}/5
+                      Overall: {assessment.overall_quality_score ? assessment.overall_quality_score.toFixed(1) : 'N/A'}/5
                     </span>
                     <span>
-                      Fluency: {assessment.fluency_score}/5
+                      Fluency: {assessment.fluency_score ? assessment.fluency_score.toFixed(1) : 'N/A'}/5
                     </span>
                     <span>
-                      Adequacy: {assessment.adequacy_score}/5
+                      Adequacy: {assessment.adequacy_score ? assessment.adequacy_score.toFixed(1) : 'N/A'}/5
                     </span>
                     <span>
                       Assessed: {new Date(assessment.created_at).toLocaleDateString()}
                     </span>
-                    {assessment.time_spent_seconds && (
+                    {assessment.time_spent_seconds && assessment.time_spent_seconds > 0 && (
                       <span>
                         Time: {formatTime(assessment.time_spent_seconds)}
                       </span>
