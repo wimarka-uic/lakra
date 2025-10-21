@@ -21,5 +21,6 @@ export { default as OnboardingTest } from './OnboardingTest';
 // User pages
 export { default as MyAnnotations } from './MyAnnotations';
 export { default as MyEvaluations } from './MyEvaluations';
+export { default as MyMTAssessments } from './MyMTAssessments';
 export { default as Profile } from './Profile';
 export { default as AnnotatorTab } from './AnnotatorTab'; 

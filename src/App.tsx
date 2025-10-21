@@ -27,6 +27,7 @@ import GuidelinesModal from './components/modals/GuidelinesModal';
 import EvaluatorDashboard from './components/pages/EvaluatorDashboard';
 import EvaluationInterface from './components/pages/EvaluationInterface';
 import MyEvaluations from './components/pages/MyEvaluations';
+import MyMTAssessments from './components/pages/MyMTAssessments';
 import MTQualityInterface from './components/pages/MTQualityInterface';
 import OnboardingTest from './components/pages/OnboardingTest';
 import About from './components/pages/About';
@@ -443,7 +444,7 @@ const AppContent: React.FC = () => {
             path="/my-assessments" 
             element={
               <ProtectedRoute evaluatorOnly>
-                <MyEvaluations />
+                <MyMTAssessments />
               </ProtectedRoute>
             } 
           />

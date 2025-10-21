@@ -93,7 +93,8 @@ const EvaluatorDashboard: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Machine Translation Evaluator</h1>
           </div>
           <p className="text-sm sm:text-base text-gray-600">
-            DistilBERT-powered machine translation quality assessment platform
+            {/* DistilBERT-powered machine translation quality assessment platform */}
+            Machine translation quality assessment platform
           </p>
         </div>
 
@@ -263,8 +264,8 @@ const EvaluatorDashboard: React.FC = () => {
                     <span className="font-medium">{stats?.total_semantic_errors_found || 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Model Confidence</span>
-                    <span className="font-medium">{stats?.average_model_confidence ? Math.round(stats.average_model_confidence * 100) : 0}%</span>
+                    {/* <span className="text-gray-600">Model Confidence</span>
+                    <span className="font-medium">{stats?.average_model_confidence ? Math.round(stats.average_model_confidence * 100) : 0}%</span> */}
                   </div>
                 </div>
               </div>

@@ -571,7 +571,8 @@ const Landing: React.FC = () => {
               </div>
               <h3 className="text-2xl font-bold text-gray-800 mb-4">Assisted Quality Assessment</h3>
               <p className="text-gray-600">
-                DistilBERT-based quality scoring with confidence levels, automatic error detection, and human-in-the-loop validation for comprehensive MT quality analysis and evaluation workflows.
+                {/* DistilBERT-based quality scoring with confidence levels, automatic error detection, and human-in-the-loop validation for comprehensive MT quality analysis and evaluation workflows. */}
+                Quality scoring with confidence levels, automatic error detection, and human-in-the-loop validation for comprehensive MT quality analysis and evaluation workflows.
               </p>
             </div>
           </div>

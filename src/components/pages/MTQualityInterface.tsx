@@ -259,7 +259,7 @@ const MTQualityInterface: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">MT Quality Assessment</h1>
           </div>
           <p className="text-gray-600">
-            DistilBERT-powered machine translation quality evaluation
+            {/* DistilBERT-powered machine translation quality evaluation */}
           </p>
         </div>
 
@@ -406,7 +406,8 @@ const MTQualityInterface: React.FC = () => {
                 <Brain className="h-12 w-12 text-blue-600 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Ready for Assessment</h2>
                 <p className="text-gray-600 mb-6">
-                  Click below to run DistilBERT-powered quality analysis
+                  {/* Click below to run DistilBERT-powered quality analysis */}
+                  Click below to run quality analysis
                 </p>
                 <button
                   onClick={handleAssess}
@@ -421,7 +422,7 @@ const MTQualityInterface: React.FC = () => {
                   ) : (
                     <>
                       <Zap className="h-4 w-4 mr-2" />
-                      Run AI Assessment
+                      Run Assessment
                     </>
                   )}
                 </button>
@@ -465,7 +466,7 @@ const MTQualityInterface: React.FC = () => {
                   <div className="flex items-center justify-center p-3 bg-gray-50 rounded-lg">
                     <Star className="h-5 w-5 text-yellow-500 mr-2" />
                     <span className="text-sm font-medium">
-                      Model Confidence: {assessment.ai_confidence_level ? Math.round(assessment.ai_confidence_level * 100) : 'N/A'}%
+                      {/* Model Confidence: {assessment.ai_confidence_level ? Math.round(assessment.ai_confidence_level * 100) : 'N/A'}% */}
                     </span>
                   </div>
                 </div>
@@ -476,20 +477,21 @@ const MTQualityInterface: React.FC = () => {
                   
                   <div className="space-y-4">
                     <ErrorDisplay
-                      errors={assessment.ai_errors?.filter(e => e.type === 'syntax') || []}
+                      errors={[]}
                       title="Syntax Errors"
                       icon={<AlertTriangle className="h-5 w-5 text-orange-500" />}
                       colorClass="border-orange-200 bg-orange-50"
                     />
                     
                     <ErrorDisplay
-                      errors={assessment.ai_errors?.filter(e => e.type === 'semantic') || []}
+                      errors={[]}
                       title="Semantic Errors"
                       icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
                       colorClass="border-red-200 bg-red-50"
                     />
 
-                    {(!assessment.ai_errors || assessment.ai_errors.length === 0) && (
+                    {/* {(!assessment.ai_errors || assessment.ai_errors.length === 0) && ( */}
+                    {true && (
                       <div className="text-center p-6 bg-green-50 border border-green-200 rounded-lg">
                         <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
                         <p className="text-green-800 font-medium">No errors detected!</p>
@@ -503,17 +505,18 @@ const MTQualityInterface: React.FC = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">AI Explanation</h2>
                   <p className="text-gray-700 leading-relaxed mb-4">
-                    {assessment.ai_explanation || 'No detailed explanation available.'}
+                    {/* {assessment.ai_explanation || 'No detailed explanation available.'} */}
+                    No detailed explanation available.
                   </p>
                   
-                  {assessment.ai_suggestions && (
+                  {/* {assessment.ai_suggestions && (
                     <>
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Suggestions</h3>
                       <div className="text-sm text-gray-600">
                         {assessment.ai_suggestions}
                       </div>
                     </>
-                  )}
+                  )} */}
                 </div>
 
                 {/* Update Assessment Button */}

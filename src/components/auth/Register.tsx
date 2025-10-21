@@ -221,8 +221,8 @@ const Register: React.FC = () => {
   const processRegistrationStep3 = async () => {
     setIsLoading(true);
     try {
-      // Check if user is annotator and needs onboarding BEFORE registering
-      const needsOnboardingTest = formData.user_type === 'annotator';
+      // Check if user needs onboarding test BEFORE registering
+      const needsOnboardingTest = formData.user_type === 'annotator' || formData.user_type === 'evaluator';
 
       if (needsOnboardingTest) {
         // Check if questions are available for selected languages before proceeding
@@ -263,23 +263,8 @@ const Register: React.FC = () => {
           return;
         }
       } else {
-        // For evaluators, complete registration normally
-        const registerData = {
-          email: formData.email,
-          username: formData.username,
-          password: formData.password,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          preferred_language: formData.preferred_language,
-          languages: formData.languages,
-          is_evaluator: formData.user_type === 'evaluator',
-          user_type: formData.user_type
-        };
-
-        await register(registerData);
-
-        setRegistrationSuccess(true);
-        setTimeout(() => navigate('/'), 1500);
+        // This should not happen now since both annotators and evaluators need onboarding
+        setError('Invalid user type configuration. Please contact support.');
       }
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -349,7 +334,7 @@ const Register: React.FC = () => {
           last_name: formData.last_name,
           preferred_language: formData.preferred_language,
           languages: formData.languages,
-          is_evaluator: false, // annotator
+          is_evaluator: formData.user_type === 'evaluator',
           user_type: formData.user_type,
           onboarding_passed: true, // Indicate that user passed onboarding test
           test_answers: onboardingAnswers, // Pass test answers to be stored after user creation
@@ -360,7 +345,7 @@ const Register: React.FC = () => {
           await register(registerData);
           
           setRegistrationSuccess(true);
-          setSuccessMessage('Registration successful! You can now log in and start annotating.');
+          setSuccessMessage(`Registration successful! You can now log in and start ${formData.user_type === 'annotator' ? 'annotating' : 'evaluating'}.`);
           setError(''); // Clear any error messages
           setTimeout(() => {
             navigate('/login');
@@ -697,14 +682,10 @@ const Register: React.FC = () => {
               <div 
                 className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary-500 transition-all"
                 style={{ 
-                  width: formData.user_type === 'annotator' ? 
-                    (currentStep === 1 ? '25%' : 
-                     currentStep === 2 ? '50%' : 
-                     currentStep === 3 ? '75%' : 
-                     '100%') :
-                    (currentStep === 1 ? '33.33%' : 
-                     currentStep === 2 ? '66.67%' : 
-                     '100%')
+                  width: (currentStep === 1 ? '25%' : 
+                         currentStep === 2 ? '50%' : 
+                         currentStep === 3 ? '75%' : 
+                         '100%')
                 }}
               ></div>
             </div>
@@ -712,9 +693,7 @@ const Register: React.FC = () => {
               <span className={currentStep >= 1 ? "font-semibold text-primary-600" : ""}>User Type</span>
               <span className={currentStep >= 2 ? "font-semibold text-primary-600" : ""}>Personal Info</span>
               <span className={currentStep >= 3 ? "font-semibold text-primary-600" : ""}>Account Details</span>
-              {formData.user_type === 'annotator' && (
-                <span className={currentStep >= 4 ? "font-semibold text-primary-600" : ""}>Proficiency Test</span>
-              )}
+              <span className={currentStep >= 4 ? "font-semibold text-primary-600" : ""}>Proficiency Test</span>
             </div>
           </div>
         </div>
@@ -792,25 +771,34 @@ const Register: React.FC = () => {
                     </div>
 
                     <div
-                      className="relative rounded-lg border-2 p-4 cursor-not-allowed transition-all border-gray-200 bg-gray-50 opacity-60"
+                      onClick={() => handleUserTypeChange('evaluator')}
+                      className={`relative rounded-lg border-2 p-4 cursor-pointer transition-all ${
+                        formData.user_type === 'evaluator'
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
                     >
                       <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <UserCheck className="h-6 w-6 text-gray-400" />
+                          <UserCheck className={`h-6 w-6 ${
+                            formData.user_type === 'evaluator' ? 'text-primary-600' : 'text-gray-400'
+                          }`} />
                         </div>
                         <div className="ml-3 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-sm font-medium text-gray-500">
-                              Evaluator
-                            </h3>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              Coming Soon
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-400">
-                            Evaluate and review annotations made by other users for quality assurance.
+                          <h3 className={`text-sm font-medium ${
+                            formData.user_type === 'evaluator' ? 'text-primary-900' : 'text-gray-900'
+                          }`}>
+                            Evaluator
+                          </h3>
+                          <p className={`text-sm ${
+                            formData.user_type === 'evaluator' ? 'text-primary-700' : 'text-gray-500'
+                          }`}>
+                            Evaluate and review machine translation quality assessments for quality assurance.
                           </p>
                         </div>
+                        {formData.user_type === 'evaluator' && (
+                          <Check className="h-5 w-5 text-primary-600" />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -921,7 +909,7 @@ const Register: React.FC = () => {
                           ))}
                         </div>
                         <p className="mt-2 text-xs text-gray-500">
-                          This will be your primary language for {formData.user_type === 'evaluator' ? 'evaluation' : 'translation'} work
+                          This will be your primary language for {formData.user_type === 'annotator' ? 'annotation' : 'evaluation'} work
                         </p>
                       </div>
                     )}
@@ -1132,7 +1120,7 @@ const Register: React.FC = () => {
               </div>
             )}
 
-            {currentStep === 4 && formData.user_type === 'annotator' && (
+            {currentStep === 4 && (formData.user_type === 'annotator' || formData.user_type === 'evaluator') && (
               <div className="space-y-6 animate-fadeIn">
                 {/* Info Message */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -1145,7 +1133,7 @@ const Register: React.FC = () => {
                       <p className="text-sm text-blue-800">
                         Complete this language proficiency test to finish your registration. 
                         Your account will be created automatically once you pass with 70% or higher.
-                        This test helps ensure quality annotations and sets you up for success!
+                        This test helps ensure quality {formData.user_type === 'annotator' ? 'annotations' : 'evaluations'} and sets you up for success!
                       </p>
                     </div>
                   </div>
@@ -1202,7 +1190,7 @@ const Register: React.FC = () => {
                         <p className="text-sm text-blue-700">
                           Testing your knowledge in {formData.languages.map(lang => 
                             lang.charAt(0).toUpperCase() + lang.slice(1)
-                          ).join(', ')}
+                          ).join(', ')} for {formData.user_type === 'annotator' ? 'annotation' : 'evaluation'} work
                         </p>
                       </div>
                     </div>
