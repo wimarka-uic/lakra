@@ -2155,6 +2155,209 @@ export const evaluationsAPI = {
   },
 };
 
+// Annotation Revision API
+export const annotationRevisionAPI = {
+  getAnnotationForRevision: async (annotationId: number): Promise<AnnotationWithRevision> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    // Get annotation with all related data
+    const { data: annotation, error: annotationError } = await supabase
+      .from('annotations')
+      .select(`
+        *,
+        sentence:sentences(*),
+        annotator:users(*),
+        highlights:text_highlights(*)
+      `)
+      .eq('id', annotationId)
+      .single();
+
+    if (annotationError) throw annotationError;
+
+    // Get revision history
+    const { data: revisions, error: revisionsError } = await supabase
+      .from('annotation_revisions')
+      .select(`
+        *,
+        evaluator:users(*)
+      `)
+      .eq('annotation_id', annotationId)
+      .order('created_at', { ascending: false });
+
+    if (revisionsError) throw revisionsError;
+
+    // Determine revision status
+    let revision_status: 'pending_review' | 'approved' | 'revised' | 'needs_revision' = 'pending_review';
+    if (revisions && revisions.length > 0) {
+      const latestRevision = revisions[0];
+      if (latestRevision.revision_type === 'approve') {
+        revision_status = 'approved';
+      } else if (latestRevision.revision_type === 'revise') {
+        revision_status = 'revised';
+      }
+    }
+
+    return {
+      ...annotation,
+      revisions: revisions || [],
+      latest_revision: revisions?.[0],
+      revision_status
+    };
+  },
+
+  createRevision: async (revisionData: AnnotationRevisionCreate): Promise<AnnotationRevision> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    // Create revision record
+    const { data: revision, error: revisionError } = await supabase
+      .from('annotation_revisions')
+      .insert({
+        ...revisionData,
+        evaluator_id: user.id,
+      })
+      .select(`
+        *,
+        evaluator:users(*)
+      `)
+      .single();
+
+    if (revisionError) throw revisionError;
+
+    // If it's a revision (not approval), update the original annotation
+    if (revisionData.revision_type === 'revise' && revisionData.revised_annotation) {
+      const { error: updateError } = await supabase
+        .from('annotations')
+        .update({
+          ...revisionData.revised_annotation,
+          annotation_status: 'reviewed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', revisionData.annotation_id);
+
+      if (updateError) throw updateError;
+
+      // Update highlights if provided
+      if (revisionData.revised_annotation.highlights) {
+        // Delete existing highlights
+        await supabase
+          .from('text_highlights')
+          .delete()
+          .eq('annotation_id', revisionData.annotation_id);
+
+        // Insert new highlights
+        if (revisionData.revised_annotation.highlights.length > 0) {
+          const highlightsData = revisionData.revised_annotation.highlights.map(h => ({
+            annotation_id: revisionData.annotation_id,
+            highlighted_text: h.highlighted_text,
+            start_index: h.start_index,
+            end_index: h.end_index,
+            text_type: h.text_type,
+            comment: h.comment,
+            error_type: h.error_type,
+          }));
+
+          const { error: highlightsError } = await supabase
+            .from('text_highlights')
+            .insert(highlightsData);
+
+          if (highlightsError) throw highlightsError;
+        }
+      }
+    } else if (revisionData.revision_type === 'approve') {
+      // Just mark as reviewed
+      const { error: updateError } = await supabase
+        .from('annotations')
+        .update({
+          annotation_status: 'reviewed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', revisionData.annotation_id);
+
+      if (updateError) throw updateError;
+    }
+
+    return revision;
+  },
+
+  getPendingRevisions: async (skip = 0, limit = 50): Promise<AnnotationWithRevision[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    // Get annotations that need review (completed but not yet reviewed)
+    const { data: annotations, error } = await supabase
+      .from('annotations')
+      .select(`
+        *,
+        sentence:sentences(*),
+        annotator:users(*),
+        highlights:text_highlights(*)
+      `)
+      .eq('annotation_status', 'completed')
+      .range(skip, skip + limit - 1)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // For each annotation, get revision history and determine status
+    const annotationsWithRevisions: AnnotationWithRevision[] = [];
+    
+    for (const annotation of annotations || []) {
+      const { data: revisions } = await supabase
+        .from('annotation_revisions')
+        .select(`
+          *,
+          evaluator:users(*)
+        `)
+        .eq('annotation_id', annotation.id)
+        .order('created_at', { ascending: false });
+
+      let revision_status: 'pending_review' | 'approved' | 'revised' | 'needs_revision' = 'pending_review';
+      if (revisions && revisions.length > 0) {
+        const latestRevision = revisions[0];
+        if (latestRevision.revision_type === 'approve') {
+          revision_status = 'approved';
+        } else if (latestRevision.revision_type === 'revise') {
+          revision_status = 'revised';
+        }
+      }
+
+      annotationsWithRevisions.push({
+        ...annotation,
+        revisions: revisions || [],
+        latest_revision: revisions?.[0],
+        revision_status
+      });
+    }
+
+    return annotationsWithRevisions;
+  },
+
+  getMyRevisions: async (skip = 0, limit = 100): Promise<AnnotationRevision[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    const { data, error } = await supabase
+      .from('annotation_revisions')
+      .select(`
+        *,
+        evaluator:users(*),
+        original_annotation:annotations(*)
+      `)
+      .eq('evaluator_id', user.id)
+      .range(skip, skip + limit - 1)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+};
+
 // Language Proficiency API
 export const languageProficiencyAPI = {
   getQuestionsByLanguages: async (languages: string[]): Promise<LanguageProficiencyQuestion[]> => {

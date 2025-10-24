@@ -14,6 +14,8 @@ export { default as EvaluatorDashboard } from './EvaluatorDashboard';
 
 // Interface pages
 export { default as AnnotationInterface } from './AnnotationInterface';
+export { default as AnnotationReviewInterface } from './AnnotationReviewInterface';
+export { default as AnnotationRevisionInterface } from './AnnotationRevisionInterface';
 export { default as EvaluationInterface } from './EvaluationInterface';
 export { default as MTQualityInterface } from './MTQualityInterface';
 export { default as SentencesForEvaluation } from './SentencesForEvaluation';

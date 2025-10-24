@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { mtQualityAPI } from '../../services/supabase-api';
-import type { EvaluatorStats, Sentence, MTQualityAssessment } from '../../types';
+import { useNavigate } from 'react-router-dom';
+import { mtQualityAPI, annotationRevisionAPI } from '../../services/supabase-api';
+import type { EvaluatorStats, Sentence, MTQualityAssessment, AnnotationWithRevision } from '../../types';
 import { 
   FileText, 
   Clock, 
@@ -10,13 +11,16 @@ import {
   Target,
   Brain,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Eye
 } from 'lucide-react';
 
 const EvaluatorDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<EvaluatorStats | null>(null);
   const [pendingSentences, setPendingSentences] = useState<Sentence[]>([]);
   const [recentAssessments, setRecentAssessments] = useState<MTQualityAssessment[]>([]);
+  const [pendingRevisions, setPendingRevisions] = useState<AnnotationWithRevision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
@@ -34,10 +38,11 @@ const EvaluatorDashboard: React.FC = () => {
     setIsLoading(true);
     try {
       // Use Promise.allSettled to handle partial failures gracefully
-      const [statsResult, pendingResult, assessmentsResult] = await Promise.allSettled([
+      const [statsResult, pendingResult, assessmentsResult, revisionsResult] = await Promise.allSettled([
         mtQualityAPI.getEvaluatorStats(),
         mtQualityAPI.getPendingAssessments(0, 5),
-        mtQualityAPI.getMyAssessments(0, 5)
+        mtQualityAPI.getMyAssessments(0, 5),
+        annotationRevisionAPI.getPendingRevisions(0, 5)
       ]);
 
       // Handle stats data
@@ -59,6 +64,13 @@ const EvaluatorDashboard: React.FC = () => {
         setRecentAssessments(assessmentsResult.value);
       } else {
         console.error('Error loading recent assessments:', assessmentsResult.reason);
+      }
+
+      // Handle pending revisions data
+      if (revisionsResult.status === 'fulfilled') {
+        setPendingRevisions(revisionsResult.value);
+      } else {
+        console.error('Error loading pending revisions:', revisionsResult.reason);
       }
 
       setLastFetchTime(now);
@@ -361,6 +373,66 @@ const EvaluatorDashboard: React.FC = () => {
               <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">No pending sentences for assessment</p>
               <p className="text-sm text-gray-400 mt-1">Check back later for new sentences to analyze</p>
+            </div>
+          )}
+        </div>
+
+        {/* Pending Annotation Revisions */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Pending Annotation Reviews</h2>
+            <a 
+              href="/my-evaluations" 
+              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+            >
+              View all
+            </a>
+          </div>
+          
+          {pendingRevisions.length > 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-200">
+              {pendingRevisions.map((annotation) => (
+                <div key={annotation.id} className="p-5 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          Annotation Review
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          by {annotation.annotator.username}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-medium text-gray-900 line-clamp-1 mb-2">
+                        {annotation.sentence.source_text}
+                      </h3>
+                      <p className="text-sm text-gray-600 line-clamp-1 mb-2">
+                        <span className="font-medium">MT:</span> {annotation.sentence.machine_translation}
+                      </p>
+                      <div className="flex items-center space-x-4 text-xs text-gray-500">
+                        <span>Fluency: {annotation.fluency_score || 'N/A'}/5</span>
+                        <span>Adequacy: {annotation.adequacy_score || 'N/A'}/5</span>
+                        <span>Overall: {annotation.overall_quality || 'N/A'}/5</span>
+                      </div>
+                    </div>
+                    <div className="ml-4 flex space-x-2">
+                      <button
+                        onClick={() => navigate(`/review-annotation/${annotation.id}`)}
+                        className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-500 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Review
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+              <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No pending annotation reviews</p>
+              <p className="text-sm text-gray-400 mt-1">All annotations have been reviewed</p>
             </div>
           )}
         </div>

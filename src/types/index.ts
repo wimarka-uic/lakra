@@ -342,6 +342,35 @@ export interface EvaluationUpdate {
   evaluation_status?: 'pending' | 'completed' | 'reviewed';
 }
 
+// Annotation Revision interfaces
+export interface AnnotationRevision {
+  id: number;
+  annotation_id: number;
+  evaluator_id: number;
+  revision_type: 'approve' | 'revise';
+  original_annotation: Annotation;
+  revised_annotation?: Annotation;
+  revision_notes?: string;
+  revision_reason?: string;
+  created_at: string;
+  updated_at: string;
+  evaluator: User;
+}
+
+export interface AnnotationRevisionCreate {
+  annotation_id: number;
+  revision_type: 'approve' | 'revise';
+  revised_annotation?: Partial<Annotation>;
+  revision_notes?: string;
+  revision_reason?: string;
+}
+
+export interface AnnotationWithRevision extends Annotation {
+  revisions: AnnotationRevision[];
+  latest_revision?: AnnotationRevision;
+  revision_status: 'pending_review' | 'approved' | 'revised' | 'needs_revision';
+}
+
 // Evaluator dashboard statistics
 export interface EvaluatorStats {
   total_evaluations: number;

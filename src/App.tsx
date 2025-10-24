@@ -27,6 +27,8 @@ import GuidelinesModal from './components/modals/GuidelinesModal';
 import EvaluatorDashboard from './components/pages/EvaluatorDashboard';
 import EvaluationInterface from './components/pages/EvaluationInterface';
 import MyEvaluations from './components/pages/MyEvaluations';
+import AnnotationRevisionInterface from './components/pages/AnnotationRevisionInterface';
+import AnnotationReviewInterface from './components/pages/AnnotationReviewInterface';
 import MyMTAssessments from './components/pages/MyMTAssessments';
 import MTQualityInterface from './components/pages/MTQualityInterface';
 import OnboardingTest from './components/pages/OnboardingTest';
@@ -445,6 +447,24 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute evaluatorOnly>
                 <MyMTAssessments />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Annotation Review Routes */}
+          <Route 
+            path="/review-annotation/:annotationId" 
+            element={
+              <ProtectedRoute evaluatorOnly>
+                <AnnotationReviewInterface />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/revise-annotation/:annotationId" 
+            element={
+              <ProtectedRoute evaluatorOnly>
+                <AnnotationRevisionInterface />
               </ProtectedRoute>
             } 
           />
