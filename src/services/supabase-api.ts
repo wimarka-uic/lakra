@@ -21,6 +21,14 @@ import type {
   OnboardingTestResult,
   LanguageProficiencyQuestion,
   UserQuestionAnswer,
+  MTQualityAssessment,
+  MTQualityAssessmentCreate,
+  MTQualityAssessmentUpdate,
+  ModelPrediction,
+  ModelPredictionReview,
+  ModelPredictionReviewCreate,
+  ModelPredictionImport,
+  ModelPerformanceMetrics,
 } from '../types';
 
 // Auth storage (using localStorage for compatibility)
@@ -1063,7 +1071,12 @@ export const annotationsAPI = {
         annotator_id: user.id,
         annotation_status: 'completed',
       })
-      .select()
+      .select(`
+        *,
+        sentence:sentences(*),
+        annotator:users(*),
+        highlights:text_highlights(*)
+      `)
       .single();
 
     if (error) throw error;
@@ -1100,6 +1113,7 @@ export const annotationsAPI = {
       .select(`
         *,
         sentence:sentences(*),
+        annotator:users(*),
         highlights:text_highlights(*)
       `)
       .eq('annotator_id', user.id)
@@ -1261,6 +1275,7 @@ export const annotationsAPI = {
       .select(`
         *,
         sentence:sentences(*),
+        annotator:users(*),
         highlights:text_highlights(*)
       `)
       .single();
@@ -2661,6 +2676,550 @@ export const onboardingAPI = {
   },
 };
 
+// MT Quality Assessment API
+export const mtQualityAssessmentAPI = {
+  // Get sentences available for MT quality assessment
+  getSentencesForAssessment: async (limit: number = 10, offset: number = 0): Promise<Sentence[]> => {
+    const { data, error } = await supabase
+      .from('sentences')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Create a new MT quality assessment
+  createAssessment: async (assessment: MTQualityAssessmentCreate): Promise<MTQualityAssessment> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    const { data, error } = await supabase
+      .from('mt_quality_assessments')
+      .insert({
+        ...assessment,
+        evaluator_id: user.id,
+      })
+      .select(`
+        *,
+        sentence:sentences(*),
+        evaluator:users(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Get assessments by evaluator
+  getMyAssessments: async (limit: number = 50, offset: number = 0): Promise<MTQualityAssessment[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    const { data, error } = await supabase
+      .from('mt_quality_assessments')
+      .select(`
+        *,
+        sentence:sentences(*),
+        evaluator:users(*)
+      `)
+      .eq('evaluator_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Update an existing assessment
+  updateAssessment: async (assessmentId: number, updates: MTQualityAssessmentUpdate): Promise<MTQualityAssessment> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    const { data, error } = await supabase
+      .from('mt_quality_assessments')
+      .update(updates)
+      .eq('id', assessmentId)
+      .eq('evaluator_id', user.id)
+      .select(`
+        *,
+        sentence:sentences(*),
+        evaluator:users(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Delete an assessment
+  deleteAssessment: async (assessmentId: number): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    const { error } = await supabase
+      .from('mt_quality_assessments')
+      .delete()
+      .eq('id', assessmentId)
+      .eq('evaluator_id', user.id);
+
+    if (error) throw error;
+  },
+
+  // Get assessment statistics for evaluator
+  getAssessmentStats: async (): Promise<{
+    total_assessments: number;
+    average_fluency: number;
+    average_adequacy: number;
+    average_overall: number;
+    assessments_today: number;
+  }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
+    // Get total assessments
+    const { count: totalAssessments } = await supabase
+      .from('mt_quality_assessments')
+      .select('*', { count: 'exact', head: true })
+      .eq('evaluator_id', user.id);
+
+    // Get assessments for averages
+    const { data: assessments } = await supabase
+      .from('mt_quality_assessments')
+      .select('fluency_score, adequacy_score, overall_quality, created_at')
+      .eq('evaluator_id', user.id);
+
+    // Get today's assessments
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { count: assessmentsToday } = await supabase
+      .from('mt_quality_assessments')
+      .select('*', { count: 'exact', head: true })
+      .eq('evaluator_id', user.id)
+      .gte('created_at', today.toISOString());
+
+    // Calculate averages
+    const validAssessments = assessments?.filter(a => 
+      a.fluency_score && a.adequacy_score && a.overall_quality
+    ) || [];
+
+    const averageFluency = validAssessments.length > 0 
+      ? validAssessments.reduce((sum, a) => sum + (a.fluency_score || 0), 0) / validAssessments.length 
+      : 0;
+
+    const averageAdequacy = validAssessments.length > 0 
+      ? validAssessments.reduce((sum, a) => sum + (a.adequacy_score || 0), 0) / validAssessments.length 
+      : 0;
+
+    const averageOverall = validAssessments.length > 0 
+      ? validAssessments.reduce((sum, a) => sum + (a.overall_quality || 0), 0) / validAssessments.length 
+      : 0;
+
+    return {
+      total_assessments: totalAssessments || 0,
+      average_fluency: Math.round(averageFluency * 10) / 10,
+      average_adequacy: Math.round(averageAdequacy * 10) / 10,
+      average_overall: Math.round(averageOverall * 10) / 10,
+      assessments_today: assessmentsToday || 0,
+    };
+  },
+
+  // Admin: Get all assessments
+  getAllAssessments: async (limit: number = 100, offset: number = 0): Promise<MTQualityAssessment[]> => {
+    const { data, error } = await supabase
+      .from('mt_quality_assessments')
+      .select(`
+        *,
+        sentence:sentences(*),
+        evaluator:users(*)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Admin: Get assessment statistics
+  getSystemAssessmentStats: async (): Promise<{
+    total_assessments: number;
+    unique_evaluators: number;
+    average_scores: {
+      fluency: number;
+      adequacy: number;
+      overall: number;
+    };
+    assessments_by_language: Record<string, number>;
+  }> => {
+    // Get total assessments
+    const { count: totalAssessments } = await supabase
+      .from('mt_quality_assessments')
+      .select('*', { count: 'exact', head: true });
+
+    // Get unique evaluators
+    const { data: evaluators } = await supabase
+      .from('mt_quality_assessments')
+      .select('evaluator_id')
+      .not('evaluator_id', 'is', null);
+
+    const uniqueEvaluators = new Set(evaluators?.map(e => e.evaluator_id) || []).size;
+
+    // Get all assessments for averages
+    const { data: assessments } = await supabase
+      .from('mt_quality_assessments')
+      .select(`
+        fluency_score, 
+        adequacy_score, 
+        overall_quality,
+        sentence:sentences(target_language)
+      `);
+
+    // Calculate averages
+    const validAssessments = assessments?.filter(a => 
+      a.fluency_score && a.adequacy_score && a.overall_quality
+    ) || [];
+
+    const averageFluency = validAssessments.length > 0 
+      ? validAssessments.reduce((sum, a) => sum + (a.fluency_score || 0), 0) / validAssessments.length 
+      : 0;
+
+    const averageAdequacy = validAssessments.length > 0 
+      ? validAssessments.reduce((sum, a) => sum + (a.adequacy_score || 0), 0) / validAssessments.length 
+      : 0;
+
+    const averageOverall = validAssessments.length > 0 
+      ? validAssessments.reduce((sum, a) => sum + (a.overall_quality || 0), 0) / validAssessments.length 
+      : 0;
+
+    // Count by language
+    const languageCounts: Record<string, number> = {};
+    assessments?.forEach(assessment => {
+      const language = (assessment.sentence as any)?.target_language || 'Unknown';
+      languageCounts[language] = (languageCounts[language] || 0) + 1;
+    });
+
+    return {
+      total_assessments: totalAssessments || 0,
+      unique_evaluators: uniqueEvaluators,
+      average_scores: {
+        fluency: Math.round(averageFluency * 10) / 10,
+        adequacy: Math.round(averageAdequacy * 10) / 10,
+        overall: Math.round(averageOverall * 10) / 10,
+      },
+      assessments_by_language: languageCounts,
+    };
+  },
+};
+
+// Model Prediction Review API
+export const modelPredictionAPI = {
+  // Import model predictions (bulk import)
+  importPredictions: async (importData: ModelPredictionImport): Promise<{ imported: number; errors: string[] }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('No authenticated user');
+
+    const errors: string[] = [];
+    let imported = 0;
+
+    try {
+      for (const predictionItem of importData.predictions) {
+        try {
+          // First, create or get source data
+          const { data: sourceData, error: sourceError } = await supabase
+            .from('source_data')
+            .upsert({
+              content: predictionItem.source_data.content,
+              data_type: predictionItem.source_data.data_type,
+              metadata: predictionItem.source_data.metadata || {},
+              domain: predictionItem.source_data.domain,
+              language: predictionItem.source_data.language,
+              is_active: true,
+            }, {
+              onConflict: 'content,data_type',
+              ignoreDuplicates: false
+            })
+            .select()
+            .single();
+
+          if (sourceError) {
+            errors.push(`Failed to create source data: ${sourceError.message}`);
+            continue;
+          }
+
+          // Create model prediction
+          const { error: predictionError } = await supabase
+            .from('model_predictions')
+            .insert({
+              source_data_id: sourceData.id,
+              model_name: importData.model_name,
+              model_version: importData.model_version,
+              prediction_data: predictionItem.prediction_data,
+              confidence_score: predictionItem.confidence_score,
+              prediction_metadata: predictionItem.prediction_metadata || {},
+              status: 'pending_review',
+            });
+
+          if (predictionError) {
+            errors.push(`Failed to create prediction: ${predictionError.message}`);
+            continue;
+          }
+
+          imported++;
+        } catch (error) {
+          errors.push(`Error processing prediction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      return { imported, errors };
+    } catch (error) {
+      throw new Error(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  // Get predictions for review
+  getPredictionsForReview: async (limit: number = 10, offset: number = 0): Promise<ModelPrediction[]> => {
+    const { data, error } = await supabase
+      .from('model_predictions')
+      .select(`
+        *,
+        source_data:source_data(*),
+        reviews:model_prediction_reviews(*)
+      `)
+      .eq('status', 'pending_review')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Get my reviews
+  getMyReviews: async (limit: number = 20, offset: number = 0): Promise<ModelPredictionReview[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('No authenticated user');
+
+    const { data, error } = await supabase
+      .from('model_prediction_reviews')
+      .select(`
+        *,
+        model_prediction:model_predictions(
+          *,
+          source_data:source_data(*)
+        )
+      `)
+      .eq('evaluator_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Create review
+  createReview: async (review: ModelPredictionReviewCreate): Promise<ModelPredictionReview> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('No authenticated user');
+
+    const { data, error } = await supabase
+      .from('model_prediction_reviews')
+      .insert({
+        ...review,
+        evaluator_id: user.id,
+      })
+      .select(`
+        *,
+        model_prediction:model_predictions(
+          *,
+          source_data:source_data(*)
+        ),
+        evaluator:users(*)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    // Update prediction status
+    const { error: updateError } = await supabase
+      .from('model_predictions')
+      .update({ 
+        status: review.review_status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', review.prediction_id);
+
+    if (updateError) {
+      logger.warn('Failed to update prediction status', { 
+        component: 'modelPredictionAPI',
+        metadata: { predictionId: review.prediction_id, error: updateError.message }
+      });
+    }
+
+    return data;
+  },
+
+  // Update review
+  updateReview: async (reviewId: number, updates: Partial<ModelPredictionReviewCreate>): Promise<ModelPredictionReview> => {
+    const { data, error } = await supabase
+      .from('model_prediction_reviews')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', reviewId)
+      .select(`
+        *,
+        model_prediction:model_predictions(
+          *,
+          source_data:source_data(*)
+        ),
+        evaluator:users(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Delete review
+  deleteReview: async (reviewId: number): Promise<void> => {
+    const { error } = await supabase
+      .from('model_prediction_reviews')
+      .delete()
+      .eq('id', reviewId);
+
+    if (error) throw error;
+  },
+
+  // Get model performance metrics
+  getModelPerformanceMetrics: async (modelName?: string): Promise<ModelPerformanceMetrics[]> => {
+    let query = supabase
+      .from('model_predictions')
+      .select(`
+        model_name,
+        status,
+        confidence_score,
+        reviews:model_prediction_reviews(time_spent_seconds)
+      `);
+
+    if (modelName) {
+      query = query.eq('model_name', modelName);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Process metrics by model
+    const metricsMap = new Map<string, ModelPerformanceMetrics>();
+
+    data?.forEach(prediction => {
+      const modelName = prediction.model_name;
+      
+      if (!metricsMap.has(modelName)) {
+        metricsMap.set(modelName, {
+          model_name: modelName,
+          total_predictions: 0,
+          approved_count: 0,
+          revised_count: 0,
+          rejected_count: 0,
+          accuracy_rate: 0,
+          average_confidence: 0,
+          average_review_time: 0,
+        });
+      }
+
+      const metrics = metricsMap.get(modelName)!;
+      metrics.total_predictions++;
+
+      switch (prediction.status) {
+        case 'approved':
+          metrics.approved_count++;
+          break;
+        case 'revised':
+          metrics.revised_count++;
+          break;
+        case 'rejected':
+          metrics.rejected_count++;
+          break;
+      }
+
+      if (prediction.confidence_score) {
+        metrics.average_confidence = (metrics.average_confidence * (metrics.total_predictions - 1) + prediction.confidence_score) / metrics.total_predictions;
+      }
+
+      if (prediction.reviews && prediction.reviews.length > 0) {
+        const totalTime = prediction.reviews.reduce((sum, review) => sum + (review.time_spent_seconds || 0), 0);
+        metrics.average_review_time = (metrics.average_review_time * (metrics.total_predictions - 1) + totalTime) / metrics.total_predictions;
+      }
+    });
+
+    // Calculate accuracy rates
+    metricsMap.forEach(metrics => {
+      const reviewedCount = metrics.approved_count + metrics.revised_count + metrics.rejected_count;
+      if (reviewedCount > 0) {
+        metrics.accuracy_rate = (metrics.approved_count / reviewedCount) * 100;
+      }
+    });
+
+    return Array.from(metricsMap.values());
+  },
+
+  // Get all predictions (admin)
+  getAllPredictions: async (limit: number = 50, offset: number = 0, modelName?: string): Promise<ModelPrediction[]> => {
+    let query = supabase
+      .from('model_predictions')
+      .select(`
+        *,
+        source_data:source_data(*),
+        reviews:model_prediction_reviews(*)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (modelName) {
+      query = query.eq('model_name', modelName);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Get prediction by ID
+  getPredictionById: async (predictionId: number): Promise<ModelPrediction> => {
+    const { data, error } = await supabase
+      .from('model_predictions')
+      .select(`
+        *,
+        source_data:source_data(*),
+        reviews:model_prediction_reviews(*)
+      `)
+      .eq('id', predictionId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Delete prediction (admin)
+  deletePrediction: async (predictionId: number): Promise<void> => {
+    const { error } = await supabase
+      .from('model_predictions')
+      .delete()
+      .eq('id', predictionId);
+
+    if (error) throw error;
+  },
+};
+
 export default {
   authAPI,
   sentencesAPI,
@@ -2669,4 +3228,6 @@ export default {
   evaluationsAPI,
   languageProficiencyAPI,
   onboardingAPI,
+  mtQualityAssessmentAPI,
+  modelPredictionAPI,
 }; 

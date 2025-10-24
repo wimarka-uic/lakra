@@ -11,7 +11,8 @@ import {
   Brain,
   TrendingUp,
   RefreshCw,
-  Eye
+  Eye,
+  BarChart3
 } from 'lucide-react';
 
 const EvaluatorDashboard: React.FC = () => {
@@ -251,6 +252,72 @@ const EvaluatorDashboard: React.FC = () => {
 
         </div>
 
+
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={() => navigate('/mt-quality-assessment')}
+              className="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex-shrink-0">
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Target className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-900">MT Quality Assessment</h3>
+                <p className="text-sm text-gray-500">Evaluate machine translation quality</p>
+              </div>
+            </button>
+            
+        <button
+          onClick={() => navigate('/my-evaluations')}
+          className="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex-shrink-0">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+          <div className="ml-4">
+            <h3 className="text-sm font-medium text-gray-900">My Evaluations</h3>
+            <p className="text-sm text-gray-500">View your evaluation history</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => navigate('/model-prediction-review')}
+          className="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex-shrink-0">
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <Brain className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+          <div className="ml-4">
+            <h3 className="text-sm font-medium text-gray-900">Model Prediction Review</h3>
+            <p className="text-sm text-gray-500">Review AI model predictions</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => navigate('/my-model-reviews')}
+          className="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex-shrink-0">
+            <div className="p-3 bg-indigo-100 rounded-lg">
+              <BarChart3 className="h-6 w-6 text-indigo-600" />
+            </div>
+          </div>
+          <div className="ml-4">
+            <h3 className="text-sm font-medium text-gray-900">My Model Reviews</h3>
+            <p className="text-sm text-gray-500">View your model review history</p>
+          </div>
+        </button>
+          </div>
+        </div>
 
         {/* Pending Annotation Revisions */}
         <div className="mb-8">

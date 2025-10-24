@@ -232,7 +232,7 @@ export interface OnboardingTestResult {
   correct_answers: number;
   score: number; // Percentage (0-100)
   passed: boolean; // True if score >= 70
-  questions_by_language: Record<string, any>; // Results breakdown by language
+  questions_by_language: Record<string, unknown>; // Results breakdown by language
   session_id: string;
   updated_user?: User; // Updated user data after quiz completion
 }
@@ -359,4 +359,134 @@ export interface UserQuestionAnswer {
   is_correct?: boolean;
   answered_at?: string;
   test_session_id?: string;
+}
+
+// MT Quality Assessment interfaces
+export interface MTQualityAssessment {
+  id: number;
+  sentence_id: number;
+  evaluator_id: number;
+  fluency_score?: number;
+  adequacy_score?: number;
+  overall_quality?: number;
+  confidence_level?: number;
+  error_detection?: string;
+  improvement_suggestions?: string;
+  evaluation_notes?: string;
+  time_spent_seconds?: number;
+  created_at: string;
+  updated_at: string;
+  sentence: Sentence;
+  evaluator: User;
+}
+
+export interface MTQualityAssessmentCreate {
+  sentence_id: number;
+  fluency_score?: number;
+  adequacy_score?: number;
+  overall_quality?: number;
+  confidence_level?: number;
+  error_detection?: string;
+  improvement_suggestions?: string;
+  evaluation_notes?: string;
+  time_spent_seconds?: number;
+}
+
+export interface MTQualityAssessmentUpdate {
+  fluency_score?: number;
+  adequacy_score?: number;
+  overall_quality?: number;
+  confidence_level?: number;
+  error_detection?: string;
+  improvement_suggestions?: string;
+  evaluation_notes?: string;
+  time_spent_seconds?: number;
+}
+
+// Model Prediction Review interfaces
+export interface ModelPrediction {
+  id: number;
+  source_data_id: number;
+  model_name: string;
+  model_version?: string;
+  prediction_data: Record<string, unknown>; // Flexible JSON structure for different model outputs
+  confidence_score?: number;
+  prediction_metadata?: Record<string, unknown>; // Additional model metadata
+  status: 'pending_review' | 'approved' | 'revised' | 'rejected';
+  created_at: string;
+  updated_at: string;
+  source_data: SourceData;
+  reviews: ModelPredictionReview[];
+}
+
+export interface SourceData {
+  id: number;
+  data_type: 'text' | 'image' | 'audio' | 'video' | 'structured';
+  content: string; // Main content (text, image URL, etc.)
+  metadata?: Record<string, unknown>; // Additional source data metadata
+  domain?: string;
+  language?: string;
+  created_at: string;
+  is_active: boolean;
+}
+
+export interface ModelPredictionReview {
+  id: number;
+  prediction_id: number;
+  evaluator_id: number;
+  review_status: 'approved' | 'revised' | 'rejected';
+  corrected_prediction?: Record<string, unknown>; // The evaluator's corrected version
+  review_notes?: string;
+  confidence_assessment?: number; // Evaluator's assessment of model confidence
+  time_spent_seconds?: number;
+  created_at: string;
+  updated_at: string;
+  evaluator: User;
+}
+
+export interface ModelPredictionCreate {
+  source_data_id: number;
+  model_name: string;
+  model_version?: string;
+  prediction_data: Record<string, unknown>;
+  confidence_score?: number;
+  prediction_metadata?: Record<string, unknown>;
+}
+
+export interface ModelPredictionReviewCreate {
+  prediction_id: number;
+  review_status: 'approved' | 'revised' | 'rejected';
+  corrected_prediction?: Record<string, unknown>;
+  review_notes?: string;
+  confidence_assessment?: number;
+  time_spent_seconds?: number;
+}
+
+export interface ModelPredictionImport {
+  model_name: string;
+  model_version?: string;
+  predictions: Array<{
+    source_data: {
+      content: string;
+      data_type: 'text' | 'image' | 'audio' | 'video' | 'structured';
+      metadata?: Record<string, unknown>;
+      domain?: string;
+      language?: string;
+    };
+    prediction_data: Record<string, unknown>;
+    confidence_score?: number;
+    prediction_metadata?: Record<string, unknown>;
+  }>;
+}
+
+export interface ModelPerformanceMetrics {
+  model_name: string;
+  total_predictions: number;
+  approved_count: number;
+  revised_count: number;
+  rejected_count: number;
+  accuracy_rate: number;
+  average_confidence: number;
+  average_review_time: number;
+  evaluator_agreement_rate?: number;
 }

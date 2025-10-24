@@ -306,7 +306,7 @@ const EvaluationInterface: React.FC = () => {
               <div className="flex items-center space-x-4 text-sm text-gray-500">
                 <span className="flex items-center">
                   <User className="h-4 w-4 mr-1" />
-                  {annotation.annotator.first_name} {annotation.annotator.last_name}
+                  {annotation.annotator?.first_name || 'Unknown'} {annotation.annotator?.last_name || ''}
                 </span>
                 <span>
                   {new Date(annotation.created_at).toLocaleDateString()}

@@ -31,6 +31,7 @@ import AnnotationRevisionInterface from './components/pages/AnnotationRevisionIn
 import AnnotationReviewInterface from './components/pages/AnnotationReviewInterface';
 import OnboardingTest from './components/pages/OnboardingTest';
 import About from './components/pages/About';
+import { MTQualityAssessment, ModelPredictionReview, ModelPredictionImport, MyModelReviews } from './components/pages';
 import { Analytics } from '@vercel/analytics/react';
 
 // Protected Route Component
@@ -422,6 +423,38 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/mt-quality-assessment" 
+            element={
+              <ProtectedRoute evaluatorOnly>
+                <MTQualityAssessment />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/model-prediction-review" 
+            element={
+              <ProtectedRoute evaluatorOnly>
+                <ModelPredictionReview />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/model-prediction-review/:predictionId" 
+            element={
+              <ProtectedRoute evaluatorOnly>
+                <ModelPredictionReview />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/my-model-reviews" 
+            element={
+              <ProtectedRoute evaluatorOnly>
+                <MyModelReviews />
+              </ProtectedRoute>
+            } 
+          />
           
           
           {/* Annotation Review Routes */}
@@ -456,6 +489,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute adminOnly>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/model-prediction-import" 
+            element={
+              <ProtectedRoute adminOnly>
+                <ModelPredictionImport />
               </ProtectedRoute>
             } 
           />

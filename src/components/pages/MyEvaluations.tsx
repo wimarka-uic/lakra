@@ -145,7 +145,7 @@ const MyEvaluations: React.FC = () => {
                       {evaluation.annotation.sentence.target_language}
                     </span>
                     <span className="text-sm text-gray-500">
-                      by {evaluation.annotation.annotator.first_name} {evaluation.annotation.annotator.last_name}
+                      by {evaluation.annotation.annotator?.first_name || 'Unknown'} {evaluation.annotation.annotator?.last_name || ''}
                     </span>
                   </div>
                   <p className="text-gray-900 text-sm leading-relaxed">

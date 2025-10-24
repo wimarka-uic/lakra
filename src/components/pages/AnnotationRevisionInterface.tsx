@@ -854,7 +854,11 @@ const AnnotationRevisionInterface: React.FC = () => {
                 <div className="flex items-center text-sm">
                   <User className="h-4 w-4 text-gray-400 mr-2" />
                   <span className="text-gray-600">Annotator:</span>
-                  <span className="ml-2 font-medium">{annotation.annotator.username}</span>
+                  <span className="ml-2 font-medium">
+                    {annotation.annotator?.username || 
+                     annotation.annotator?.first_name || 
+                     (annotation.annotator_id ? `User #${annotation.annotator_id}` : 'Unknown')}
+                  </span>
                 </div>
                 <div className="flex items-center text-sm">
                   <Clock className="h-4 w-4 text-gray-400 mr-2" />
