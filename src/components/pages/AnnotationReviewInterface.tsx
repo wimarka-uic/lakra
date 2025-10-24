@@ -7,7 +7,6 @@ import {
   Clock,
   User,
   AlertCircle,
-  Check,
   X,
   Eye,
   Save,
@@ -178,7 +177,7 @@ const AnnotationReviewInterface: React.FC = () => {
 
   const addHighlight = () => {
     const newHighlight: TextHighlight = {
-      id: Date.now().toString(),
+      id: Date.now(),
       highlighted_text: selectedText || '',
       start_index: selectionStart,
       end_index: selectionEnd,
@@ -205,7 +204,6 @@ const AnnotationReviewInterface: React.FC = () => {
       const range = selection.getRangeAt(0);
       const textNode = range.startContainer;
       if (textNode.nodeType === Node.TEXT_NODE) {
-        const text = textNode.textContent || '';
         setSelectionStart(range.startOffset);
         setSelectionEnd(range.endOffset);
       }
@@ -730,7 +728,7 @@ const AnnotationReviewInterface: React.FC = () => {
                   Revision History
                 </h3>
                 <div className="space-y-3">
-                  {annotation.revisions.map((revision, index) => (
+                  {annotation.revisions.map((revision) => (
                     <div key={revision.id} className="border-l-4 border-blue-200 pl-4">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-900">

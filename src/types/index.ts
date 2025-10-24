@@ -253,9 +253,6 @@ export interface Evaluation {
   updated_at: string;
   annotation: Annotation;
   evaluator: User;
-  
-  // Additional evaluation properties
-  overall_evaluation_score?: number;
 }
 
 export interface EvaluationCreate {
@@ -266,12 +263,6 @@ export interface EvaluationCreate {
   overall_evaluation_score?: number;
   feedback?: string;
   time_spent_seconds?: number;
-  
-  // Additional evaluation properties
-  annotation_quality_score?: number;
-  accuracy_score?: number;
-  completeness_score?: number;
-  overall_evaluation_score?: number;
   evaluation_notes?: string;
 }
 

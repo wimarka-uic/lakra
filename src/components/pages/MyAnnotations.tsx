@@ -192,7 +192,7 @@ const MyAnnotations: React.FC = () => {
           }
           return null;
         })
-        .filter(Boolean);
+        .filter((notification): notification is NonNullable<typeof notification> => notification !== null);
       
       if (newNotifications.length > 0) {
         setNotifications(prev => [...prev, ...newNotifications]);
