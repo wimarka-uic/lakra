@@ -17,13 +17,11 @@ export { default as AnnotationInterface } from './AnnotationInterface';
 export { default as AnnotationReviewInterface } from './AnnotationReviewInterface';
 export { default as AnnotationRevisionInterface } from './AnnotationRevisionInterface';
 export { default as EvaluationInterface } from './EvaluationInterface';
-export { default as MTQualityInterface } from './MTQualityInterface';
 export { default as SentencesForEvaluation } from './SentencesForEvaluation';
 export { default as OnboardingTest } from './OnboardingTest';
 
 // User pages
 export { default as MyAnnotations } from './MyAnnotations';
 export { default as MyEvaluations } from './MyEvaluations';
-export { default as MyMTAssessments } from './MyMTAssessments';
 export { default as Profile } from './Profile';
 export { default as AnnotatorTab } from './AnnotatorTab'; 

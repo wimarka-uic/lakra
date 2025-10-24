@@ -2,11 +2,11 @@
   <img src="https://raw.githubusercontent.com/wimarka-uic/lakra/d0abd137499cd39740394f8b5179790e50b3fa56/frontend/public/lakra.svg" alt="Lakra Logo" width="256" height="256">
 </div>
 
-A comprehensive annotation and evaluation system for Machine Translation (MT) quality assessment, designed specifically for the WiMarka project. Built with React, TypeScript, TailwindCSS, and Supabase.
+A comprehensive annotation and evaluation system for machine translation quality assessment, designed specifically for the WiMarka project. Built with React, TypeScript, TailwindCSS, and Supabase.
 
 ## Overview
 
-Lakra is a sophisticated annotation platform that supports multiple annotation workflows for evaluating machine translation quality. The system combines AI-powered assessment with human-in-the-loop evaluation to provide comprehensive MT quality analysis.
+Lakra is a sophisticated annotation platform that supports multiple annotation workflows for evaluating machine translation quality. The system combines AI-powered assessment with human-in-the-loop evaluation to provide comprehensive quality analysis.
 
 ## Features
 
@@ -17,8 +17,8 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 - **Voice Recording**: Audio annotation support for final corrected forms
 - **Real-time Processing**: Immediate feedback and validation
 
-### MT Quality Assessment
-- **AI-Powered Evaluation**: DistilBERT-based quality scoring (0-100) with confidence levels
+### Quality Assessment
+- **AI-Powered Evaluation**: Quality scoring with confidence levels
 - **Error Detection & Classification**: Automatic detection of syntax and semantic errors
 - **Detailed Explanations**: AI-generated explanations for quality scores and detected errors
 - **Improvement Suggestions**: Automated suggestions for translation improvements
@@ -40,7 +40,7 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 
 ### For Evaluators
 - **Annotation Evaluation**: Review and score other annotators' work
-- **MT Quality Assessment**: Evaluate machine translation quality with AI assistance
+- **Quality Assessment**: Evaluate machine translation quality with AI assistance
 - **Feedback System**: Provide detailed feedback on annotations and assessments
 - **Quality Metrics**: Track evaluation accuracy and agreement rates
 - **Batch Processing**: Efficient batch assessment capabilities
@@ -153,7 +153,7 @@ Lakra is a sophisticated annotation platform that supports multiple annotation w
 - Error type classification (MI_ST, MI_SE, MA_ST, MA_SE)
 - Character position tracking for precise error location
 
-**MTQualityAssessment Table:**
+**Quality Assessment Table:**
 - AI-generated quality scores with confidence levels
 - Syntax and semantic error detection
 - Human feedback integration
@@ -220,7 +220,7 @@ The application uses Supabase client libraries for all database operations:
 
 1. **Access Evaluation Interface**: Navigate to evaluation dashboard
 2. **Review Annotations**: Assess other annotators' work quality
-3. **MT Quality Assessment**: Evaluate machine translation quality with AI assistance
+3. **Quality Assessment**: Evaluate machine translation quality with AI assistance
 4. **Provide Feedback**: Give detailed feedback on annotations and assessments
 5. **Track Progress**: Monitor evaluation statistics and agreement rates
 
@@ -239,7 +239,7 @@ The system tracks various quality metrics:
 - **Annotation Quality**: Fluency, adequacy, and overall quality scores
 - **Error Classification**: Detailed error type analysis
 - **Evaluation Agreement**: Inter-evaluator agreement rates
-- **MT Quality Assessment**: AI-assisted quality scoring with human validation
+- **Quality Assessment**: AI-assisted quality scoring with human validation
 - **Processing Time**: Time tracking for efficiency analysis
 - **Onboarding Performance**: Test scores and completion rates
 

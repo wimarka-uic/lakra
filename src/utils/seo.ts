@@ -118,18 +118,6 @@ export const pageSEOConfigs: Record<string, Partial<SEOConfig>> = {
     keywords: 'my evaluations, evaluation history, completed assessments',
     noIndex: true
   },
-  '/mt-assess': {
-    title: 'MT Quality Assessment - Lakra',
-    description: 'Assess machine translation quality using Lakra\'s comprehensive evaluation tools.',
-    keywords: 'MT assessment, machine translation quality, evaluation tools',
-    noIndex: true
-  },
-  '/my-assessments': {
-    title: 'My Assessments - Lakra',
-    description: 'View and manage your completed MT quality assessments in the Lakra platform.',
-    keywords: 'my assessments, MT quality, assessment history',
-    noIndex: true
-  },
   '/admin': {
     title: 'Admin Dashboard - Lakra',
     description: 'Administrative interface for managing the Lakra annotation platform.',

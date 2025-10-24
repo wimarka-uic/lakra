@@ -29,8 +29,6 @@ import EvaluationInterface from './components/pages/EvaluationInterface';
 import MyEvaluations from './components/pages/MyEvaluations';
 import AnnotationRevisionInterface from './components/pages/AnnotationRevisionInterface';
 import AnnotationReviewInterface from './components/pages/AnnotationReviewInterface';
-import MyMTAssessments from './components/pages/MyMTAssessments';
-import MTQualityInterface from './components/pages/MTQualityInterface';
 import OnboardingTest from './components/pages/OnboardingTest';
 import About from './components/pages/About';
 import { Analytics } from '@vercel/analytics/react';
@@ -425,31 +423,6 @@ const AppContent: React.FC = () => {
             } 
           />
           
-          {/* MT Quality Assessment Routes */}
-          <Route 
-            path="/mt-assess" 
-            element={
-              <ProtectedRoute evaluatorOnly>
-                <MTQualityInterface />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/mt-assess/:sentenceId" 
-            element={
-              <ProtectedRoute evaluatorOnly>
-                <MTQualityInterface />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/my-assessments" 
-            element={
-              <ProtectedRoute evaluatorOnly>
-                <MyMTAssessments />
-              </ProtectedRoute>
-            } 
-          />
           
           {/* Annotation Review Routes */}
           <Route 

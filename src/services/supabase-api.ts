@@ -13,11 +13,9 @@ import type {
   AdminStats,
   Evaluation,
   EvaluationCreate,
-
-  EvaluatorStats,
-  MTQualityAssessment,
-  MTQualityCreate,
-  MTQualityUpdate,
+  AnnotationRevision,
+  AnnotationRevisionCreate,
+  AnnotationWithRevision,
   OnboardingTest,
   OnboardingTestQuestion,
   OnboardingTestResult,
@@ -2179,10 +2177,7 @@ export const annotationRevisionAPI = {
     // Get revision history
     const { data: revisions, error: revisionsError } = await supabase
       .from('annotation_revisions')
-      .select(`
-        *,
-        evaluator:users(*)
-      `)
+      .select('*')
       .eq('annotation_id', annotationId)
       .order('created_at', { ascending: false });
 
@@ -2219,10 +2214,7 @@ export const annotationRevisionAPI = {
         ...revisionData,
         evaluator_id: user.id,
       })
-      .select(`
-        *,
-        evaluator:users(*)
-      `)
+      .select('*')
       .single();
 
     if (revisionError) throw revisionError;
@@ -2250,7 +2242,7 @@ export const annotationRevisionAPI = {
 
         // Insert new highlights
         if (revisionData.revised_annotation.highlights.length > 0) {
-          const highlightsData = revisionData.revised_annotation.highlights.map(h => ({
+          const highlightsData = revisionData.revised_annotation.highlights.map((h: any) => ({
             annotation_id: revisionData.annotation_id,
             highlighted_text: h.highlighted_text,
             start_index: h.start_index,
@@ -2309,10 +2301,7 @@ export const annotationRevisionAPI = {
     for (const annotation of annotations || []) {
       const { data: revisions } = await supabase
         .from('annotation_revisions')
-        .select(`
-          *,
-          evaluator:users(*)
-        `)
+        .select('*')
         .eq('annotation_id', annotation.id)
         .order('created_at', { ascending: false });
 
@@ -2346,7 +2335,6 @@ export const annotationRevisionAPI = {
       .from('annotation_revisions')
       .select(`
         *,
-        evaluator:users(*),
         original_annotation:annotations(*)
       `)
       .eq('evaluator_id', user.id)
@@ -2588,294 +2576,6 @@ export const languageProficiencyAPI = {
   },
 };
 
-// MT Quality API
-export const mtQualityAPI = {
-  createAssessment: async (assessmentData: MTQualityCreate): Promise<MTQualityAssessment> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) throw new Error('No authenticated user');
-
-    // Check if evaluator already assessed this sentence
-    const { data: existing } = await supabase
-      .from('mt_quality_assessments')
-      .select('id')
-      .eq('sentence_id', assessmentData.sentence_id)
-      .eq('evaluator_id', user.id)
-      .single();
-
-    if (existing) {
-      throw new Error('You have already assessed this sentence');
-    }
-
-    // Create assessment
-    const { data, error } = await supabase
-      .from('mt_quality_assessments')
-      .insert({
-        ...assessmentData,
-        evaluator_id: user.id,
-        evaluation_status: 'completed',
-      })
-      .select(`
-        *,
-        sentence:sentences(*),
-        evaluator:users(*)
-      `)
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  getMyAssessments: async (skip = 0, limit = 100): Promise<MTQualityAssessment[]> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) throw new Error('No authenticated user');
-
-    const { data, error } = await supabase
-      .from('mt_quality_assessments')
-      .select(`
-        *,
-        sentence:sentences(*),
-        evaluator:users(*)
-      `)
-      .eq('evaluator_id', user.id)
-      .order('created_at', { ascending: false })
-      .range(skip, skip + limit - 1);
-
-    if (error) throw error;
-    return data || [];
-  },
-
-  getPendingAssessments: async (skip = 0, limit = 50): Promise<Sentence[]> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) throw new Error('No authenticated user');
-
-    // Optimize: Only get sentence IDs (not full objects) for assessed sentences
-    const { data: assessedSentenceIds, error: subqueryError } = await supabase
-      .from('mt_quality_assessments')
-      .select('sentence_id')
-      .eq('evaluator_id', user.id)
-      .limit(1000); // Limit to prevent huge arrays
-
-    if (subqueryError) throw subqueryError;
-
-    const assessedIds = assessedSentenceIds?.map(a => a.sentence_id) || [];
-
-    // Get active sentences that haven't been assessed by current user
-    // Order by id to ensure consistent pagination
-    let query = supabase
-      .from('sentences')
-      .select('*')
-      .eq('is_active', true)
-      .order('id', { ascending: true });
-
-    // Only apply the NOT IN filter if there are assessed IDs
-    if (assessedIds.length > 0) {
-      query = query.not('id', 'in', `(${assessedIds.join(',')})`);
-    }
-
-    const { data, error } = await query.range(skip, skip + limit - 1);
-
-    if (error) throw error;
-    return data || [];
-  },
-
-  getAssessmentBySentence: async (sentenceId: number): Promise<MTQualityAssessment | null> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) throw new Error('No authenticated user');
-
-    const { data, error } = await supabase
-      .from('mt_quality_assessments')
-      .select(`
-        *,
-        sentence:sentences(*),
-        evaluator:users(*)
-      `)
-      .eq('sentence_id', sentenceId)
-      .eq('evaluator_id', user.id)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "not found"
-    return data;
-  },
-
-  updateAssessment: async (id: number, updateData: MTQualityUpdate): Promise<MTQualityAssessment> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) throw new Error('No authenticated user');
-
-    const { data, error } = await supabase
-      .from('mt_quality_assessments')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .eq('evaluator_id', user.id)
-      .select(`
-        *,
-        sentence:sentences(*),
-        evaluator:users(*)
-      `)
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  getEvaluatorStats: async (): Promise<EvaluatorStats> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) throw new Error('No authenticated user');
-
-    // Use database aggregations for much better performance
-    // Only fetch counts and sums, not full records
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayISO = today.toISOString();
-
-    const [
-      evaluationsCount,
-      assessmentsCount,
-      evaluationsCompleted,
-      assessmentsCompleted,
-      evaluationsToday,
-      assessmentsToday
-    ] = await Promise.all([
-      // Total evaluations count
-      supabase
-        .from('evaluations')
-        .select('id', { count: 'exact', head: true })
-        .eq('evaluator_id', user.id),
-      // Total assessments count
-      supabase
-        .from('mt_quality_assessments')
-        .select('id', { count: 'exact', head: true })
-        .eq('evaluator_id', user.id),
-      // Completed evaluations count
-      supabase
-        .from('evaluations')
-        .select('id', { count: 'exact', head: true })
-        .eq('evaluator_id', user.id)
-        .eq('evaluation_status', 'completed'),
-      // Completed assessments count
-      supabase
-        .from('mt_quality_assessments')
-        .select('id', { count: 'exact', head: true })
-        .eq('evaluator_id', user.id)
-        .eq('evaluation_status', 'completed'),
-      // Today's evaluations
-      supabase
-        .from('evaluations')
-        .select('id', { count: 'exact', head: true })
-        .eq('evaluator_id', user.id)
-        .gte('created_at', todayISO),
-      // Today's assessments
-      supabase
-        .from('mt_quality_assessments')
-        .select('id', { count: 'exact', head: true })
-        .eq('evaluator_id', user.id)
-        .gte('created_at', todayISO)
-    ]);
-
-    // Get only completed records for averages (limit to recent ones for performance)
-    const [completedEvals, completedAssessments] = await Promise.all([
-      supabase
-        .from('evaluations')
-        .select('overall_rating, fluency_rating, adequacy_rating, time_spent_seconds, created_at')
-        .eq('evaluator_id', user.id)
-        .eq('evaluation_status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(100), // Only get last 100 for averages
-      supabase
-        .from('mt_quality_assessments')
-        .select('overall_quality_score, fluency_score, adequacy_score, time_spent_seconds, created_at')
-        .eq('evaluator_id', user.id)
-        .eq('evaluation_status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(100) // Only get last 100 for averages
-    ]);
-
-    const evaluations = completedEvals.data || [];
-    const assessments = completedAssessments.data || [];
-
-    // Calculate stats from counts
-    const totalEvaluations = evaluationsCount.count || 0;
-    const completedEvaluationsCount = evaluationsCompleted.count || 0;
-    const pendingEvaluations = totalEvaluations - completedEvaluationsCount;
-    
-    const totalAssessments = assessmentsCount.count || 0;
-    const completedAssessmentsCount = assessmentsCompleted.count || 0;
-    const pendingAssessments = totalAssessments - completedAssessmentsCount;
-
-    // Calculate averages from limited dataset
-    const avgRating = evaluations.length > 0 
-      ? evaluations.reduce((sum, e) => sum + (e.overall_rating || 0), 0) / evaluations.length 
-      : 0;
-
-    const avgOverallScore = assessments.length > 0
-      ? assessments.reduce((sum, a) => sum + (a.overall_quality_score || 0), 0) / assessments.length
-      : 0;
-
-    const avgFluencyScore = assessments.length > 0
-      ? assessments.reduce((sum, a) => sum + (a.fluency_score || 0), 0) / assessments.length
-      : 0;
-
-    const avgAdequacyScore = assessments.length > 0
-      ? assessments.reduce((sum, a) => sum + (a.adequacy_score || 0), 0) / assessments.length
-      : 0;
-
-    // Calculate total time spent from limited dataset (estimate)
-    const totalTimeSpent = evaluations.reduce((sum, e) => sum + (e.time_spent_seconds || 0), 0) +
-                          assessments.reduce((sum, a) => sum + (a.time_spent_seconds || 0), 0);
-
-    const evaluationsTodayCount = (evaluationsToday.count || 0) + (assessmentsToday.count || 0);
-
-    // Weekly progress (last 7 days) - use database queries
-    const weeklyProgress = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-      
-      const dayStart = date.toISOString();
-      const dayEnd = nextDate.toISOString();
-      
-      const dayCount = evaluations.filter(e => 
-        e.created_at >= dayStart && e.created_at < dayEnd
-      ).length + assessments.filter(a => 
-        a.created_at >= dayStart && a.created_at < dayEnd
-      ).length;
-      
-      weeklyProgress.push(dayCount);
-    }
-
-    return {
-      total_evaluations: totalEvaluations,
-      completed_evaluations: completedEvaluationsCount,
-      pending_evaluations: pendingEvaluations,
-      average_rating: avgRating,
-      total_time_spent: totalTimeSpent,
-      evaluations_today: evaluationsTodayCount,
-      weekly_progress: weeklyProgress,
-      total_assessments: totalAssessments,
-      completed_assessments: completedAssessmentsCount,
-      pending_assessments: pendingAssessments,
-      average_overall_score: avgOverallScore,
-      average_fluency_score: avgFluencyScore,
-      average_adequacy_score: avgAdequacyScore,
-      average_time_per_assessment: totalAssessments > 0 ? totalTimeSpent / totalAssessments : 0,
-      human_agreement_rate: 0, // This would need to be calculated based on agreement with AI
-      total_syntax_errors_found: 0, // This would need to be calculated from error details
-      total_semantic_errors_found: 0, // This would need to be calculated from error details
-      average_model_confidence: 0, // This would need to be calculated from AI confidence data
-    };
-  },
-};
 
 // Onboarding API
 export const onboardingAPI = {
@@ -2968,6 +2668,5 @@ export default {
   adminAPI,
   evaluationsAPI,
   languageProficiencyAPI,
-  mtQualityAPI,
   onboardingAPI,
 }; 

@@ -537,9 +537,9 @@ const AdminDashboard: React.FC = () => {
         evaluatorId: evaluation.evaluator_id,
         evaluatorName: `${evaluation.evaluator?.first_name} ${evaluation.evaluator?.last_name}`,
         evaluatorUsername: evaluation.evaluator?.username,
-        fluencyRating: evaluation.fluency_rating,
-        adequacyRating: evaluation.adequacy_rating,
-        overallRating: evaluation.overall_rating,
+        fluencyRating: evaluation.annotation_quality_score,
+        adequacyRating: evaluation.accuracy_score,
+        overallRating: evaluation.overall_evaluation_score,
         feedback: evaluation.feedback,
         evaluationStatus: evaluation.evaluation_status,
         timeSpentSeconds: evaluation.time_spent_seconds,
@@ -3967,8 +3967,8 @@ const AdminDashboard: React.FC = () => {
                             <div className="mt-3 pt-3 border-t border-gray-200">
                               <div className="text-sm text-gray-600">
                                 <strong>Average Rating:</strong> {
-                                  evaluations.filter(e => e.overall_rating).length > 0
-                                    ? (evaluations.filter(e => e.overall_rating).reduce((sum, e) => sum + (e.overall_rating || 0), 0) / evaluations.filter(e => e.overall_rating).length).toFixed(1)
+                                  evaluations.filter(e => e.overall_evaluation_score).length > 0
+                                    ? (evaluations.filter(e => e.overall_evaluation_score).reduce((sum, e) => sum + (e.overall_evaluation_score || 0), 0) / evaluations.filter(e => e.overall_evaluation_score).length).toFixed(1)
                                     : 'N/A'
                                 }
                               </div>

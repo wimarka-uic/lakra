@@ -11,7 +11,7 @@ const Landing: React.FC = () => {
   useGSAP(() => {
     // Rotating hero title (4–6 words, describing what Lakra does)
     const titlePhrases: string[] = [
-      'Automate MT quality',
+      'Automate quality evaluation',
       'Streamline human evaluation',
       'Standardize annotations consistently',
       'Collect research-grade data',
@@ -535,44 +535,34 @@ const Landing: React.FC = () => {
               </p>
             </div>
 
-            {/* MT Quality Assessment */}
+            {/* Quality Evaluation */}
             <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
               <div className="mb-6">
                 <div className="bg-beauty-bush-50 rounded-lg p-4 mb-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-700 text-sm">Quality Assessment</span>
+                      <span className="text-gray-700 text-sm">Quality Evaluation</span>
                       <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                        <span className="text-yellow-600 text-xs">Coming Soon</span>
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-green-600 text-xs">Available</span>
                       </div>
                     </div>
                     
-                    {/* Blurred Demo Content */}
-                    <div className="bg-gray-50 rounded p-3 relative overflow-hidden border border-gray-200">
-                      <div className="blur-sm">
-                        <p className="text-gray-800 text-sm mb-2">Original: "Kumusta ka na? Kamusta ang trabaho mo?"</p>
-                        <p className="text-gray-600 text-sm">Translation: "How are you? How is your work?"</p>
-                        <div className="mt-2 flex items-center space-x-2">
-                          <div className="w-16 h-2 bg-gray-400 rounded"></div>
-                          <span className="text-gray-500 text-xs">Quality Score</span>
-                        </div>
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="bg-beauty-bush-600/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-medium">
-                          Coming Soon
-                        </div>
+                    {/* Demo Content */}
+                    <div className="bg-gray-50 rounded p-3 border border-gray-200">
+                      <p className="text-gray-800 text-sm mb-2">Original: "Kumusta ka na? Kamusta ang trabaho mo?"</p>
+                      <p className="text-gray-600 text-sm">Translation: "How are you? How is your work?"</p>
+                      <div className="mt-2 flex items-center space-x-2">
+                        <div className="w-16 h-2 bg-green-400 rounded"></div>
+                        <span className="text-gray-500 text-xs">Quality Score: 4.2/5</span>
                       </div>
                     </div>
-                    
-
                   </div>
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">Assisted Quality Assessment</h3>
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">Assisted Quality Evaluation</h3>
               <p className="text-gray-600">
-                {/* DistilBERT-based quality scoring with confidence levels, automatic error detection, and human-in-the-loop validation for comprehensive MT quality analysis and evaluation workflows. */}
-                Quality scoring with confidence levels, automatic error detection, and human-in-the-loop validation for comprehensive MT quality analysis and evaluation workflows.
+                Quality scoring with confidence levels, automatic error detection, and human-in-the-loop validation for comprehensive quality analysis and evaluation workflows.
               </p>
             </div>
           </div>

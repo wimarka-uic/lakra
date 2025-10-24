@@ -20,7 +20,7 @@ import {
   Zap
 } from 'lucide-react';
 import { annotationRevisionAPI } from '../../services/supabase-api';
-import { AnnotationWithRevision, AnnotationRevisionCreate, TextHighlight } from '../../types';
+import type { AnnotationWithRevision, AnnotationRevisionCreate, TextHighlight } from '../../types';
 import { logger } from '../../utils/logger';
 import ConfirmationModal from '../modals/ConfirmationModal';
 

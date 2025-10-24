@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { annotationsAPI } from '../../services/supabase-api';
 import type { Annotation, TextHighlight, AnnotationUpdate } from '../../types';
-import { BarChart3, Calendar, Clock, Star, MessageCircle, Edit, AlertTriangle, Plus, Trash2, ChevronRight, BookOpen, Volume2 } from 'lucide-react';
+import { BarChart3, Calendar, Clock, Star, MessageCircle, Edit, AlertTriangle, Plus, Trash2, ChevronRight, BookOpen, Volume2, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import VoiceRecorder from '../ui/VoiceRecorder';
 import { logger } from '../../utils/logger';
@@ -96,6 +96,17 @@ const MyAnnotations: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   
+  // Notification states
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    type: 'revision' | 'approval';
+    annotationId: number;
+    message: string;
+    timestamp: Date;
+    read: boolean;
+  }>>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
   // Delete confirmation modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
@@ -163,6 +174,30 @@ const MyAnnotations: React.FC = () => {
     try {
       const data = await annotationsAPI.getMyAnnotations();
       setAnnotations(data);
+      
+      // Check for revised annotations and create notifications
+      const newNotifications = data
+        .filter(annotation => annotation.annotation_status === 'reviewed')
+        .map(annotation => {
+          const existingNotification = notifications.find(n => n.annotationId === annotation.id);
+          if (!existingNotification) {
+            return {
+              id: `revision-${annotation.id}`,
+              type: 'revision' as const,
+              annotationId: annotation.id,
+              message: `Your annotation has been reviewed and revised by an evaluator.`,
+              timestamp: new Date(annotation.updated_at),
+              read: false
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+      
+      if (newNotifications.length > 0) {
+        setNotifications(prev => [...prev, ...newNotifications]);
+        setShowNotifications(true);
+      }
     } catch (error) {
       console.error('Error loading annotations:', error);
     } finally {
@@ -627,7 +662,86 @@ const MyAnnotations: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">My Annotations</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">My Annotations</h1>
+          {notifications.length > 0 && (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-gray-600 hover:text-gray-800 transition-colors"
+                title="Notifications"
+              >
+                <AlertTriangle className="h-5 w-5" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* Notifications Panel */}
+        {showNotifications && notifications.length > 0 && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-blue-900">Notifications</h3>
+              <button
+                onClick={() => setShowNotifications(false)}
+                className="text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`p-3 rounded-lg border ${
+                    notification.read 
+                      ? 'bg-white border-gray-200' 
+                      : 'bg-blue-100 border-blue-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          notification.type === 'revision' 
+                            ? 'bg-orange-100 text-orange-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {notification.type === 'revision' ? '✏️ Revised' : '✓ Approved'}
+                        </span>
+                        {!notification.read && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            New
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-700 mb-1">{notification.message}</p>
+                      <p className="text-xs text-gray-500">
+                        {notification.timestamp.toLocaleDateString()} at {notification.timestamp.toLocaleTimeString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setNotifications(prev => 
+                          prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
+                        );
+                      }}
+                      className="ml-2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Mark as read"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         
         {message && (
           <div className={`mb-6 p-4 rounded-md ${

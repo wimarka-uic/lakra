@@ -30,7 +30,6 @@ components/
 │   ├── EvaluatorDashboard.tsx
 │   ├── AnnotationInterface.tsx
 │   ├── EvaluationInterface.tsx
-│   ├── MTQualityInterface.tsx
 │   ├── OnboardingTest.tsx
 │   ├── MyAnnotations.tsx
 │   ├── MyEvaluations.tsx

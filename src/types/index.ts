@@ -176,66 +176,6 @@ export interface AdminStats {
   active_users: number;
 }
 
-// Machine Translation Quality Assessment interfaces
-export interface MTQualityAssessment {
-  id: number;
-  sentence_id: number;
-  evaluator_id: number; // Numeric ID from database
-  
-  // AI-generated scores
-  ai_fluency_score?: number;
-  ai_adequacy_score?: number;
-  ai_overall_score?: number;
-  ai_confidence_level?: number;
-  ai_errors?: any[];
-  ai_explanation?: string;
-  ai_suggestions?: string;
-  
-  // Human evaluation
-  fluency_score?: number;
-  adequacy_score?: number;
-  overall_quality_score?: number;
-  human_feedback?: string;
-  correction_notes?: string;
-  
-  // Additional properties used in components
-  processing_time_ms?: number;
-  model_confidence?: number;
-  syntax_errors?: ErrorDetails[];
-  semantic_errors?: ErrorDetails[];
-  quality_explanation?: string;
-  correction_suggestions?: CorrectionSuggestion[];
-  evaluation_status?: 'pending' | 'completed' | 'reviewed';
-  
-  // Metadata
-  time_spent_seconds?: number;
-  assessment_status: 'pending' | 'completed' | 'reviewed';
-  created_at: string;
-  updated_at: string;
-  
-  // Relationships
-  sentence: Sentence;
-  evaluator: User;
-}
-
-export interface MTQualityCreate {
-  sentence_id: number;
-  fluency_score?: number;
-  adequacy_score?: number;
-  overall_quality_score?: number;
-  human_feedback?: string;
-  correction_notes?: string;
-  time_spent_seconds?: number;
-}
-
-export interface MTQualityUpdate {
-  fluency_score?: number;
-  adequacy_score?: number;
-  overall_quality_score?: number;
-  human_feedback?: string;
-  correction_notes?: string;
-  time_spent_seconds?: number;
-}
 
 // Onboarding Test interfaces
 export interface OnboardingTest {
@@ -302,9 +242,10 @@ export interface Evaluation {
   id: number;
   annotation_id: number;
   evaluator_id: number; // Numeric ID from database
-  fluency_rating?: number;
-  adequacy_rating?: number;
-  overall_rating?: number;
+  annotation_quality_score?: number;
+  accuracy_score?: number;
+  completeness_score?: number;
+  overall_evaluation_score?: number;
   feedback?: string;
   evaluation_status: 'pending' | 'completed' | 'reviewed';
   time_spent_seconds?: number;
@@ -319,9 +260,10 @@ export interface Evaluation {
 
 export interface EvaluationCreate {
   annotation_id: number;
-  fluency_rating?: number;
-  adequacy_rating?: number;
-  overall_rating?: number;
+  annotation_quality_score?: number;
+  accuracy_score?: number;
+  completeness_score?: number;
+  overall_evaluation_score?: number;
   feedback?: string;
   time_spent_seconds?: number;
   
@@ -334,9 +276,10 @@ export interface EvaluationCreate {
 }
 
 export interface EvaluationUpdate {
-  fluency_rating?: number;
-  adequacy_rating?: number;
-  overall_rating?: number;
+  annotation_quality_score?: number;
+  accuracy_score?: number;
+  completeness_score?: number;
+  overall_evaluation_score?: number;
   feedback?: string;
   time_spent_seconds?: number;
   evaluation_status?: 'pending' | 'completed' | 'reviewed';
@@ -381,18 +324,6 @@ export interface EvaluatorStats {
   evaluations_today: number;
   weekly_progress: number[];
   
-  // MT Quality specific stats
-  total_assessments?: number;
-  completed_assessments?: number;
-  pending_assessments?: number;
-  average_time_per_assessment?: number;
-  average_overall_score?: number;
-  human_agreement_rate?: number;
-  average_fluency_score?: number;
-  average_adequacy_score?: number;
-  total_syntax_errors_found?: number;
-  total_semantic_errors_found?: number;
-  average_model_confidence?: number;
 }
 
 // Error and suggestion types

@@ -14,9 +14,6 @@ import type {
   EvaluationCreate,
   EvaluationUpdate,
   EvaluatorStats,
-  MTQualityAssessment,
-  MTQualityCreate,
-  MTQualityUpdate,
   OnboardingTest,
   OnboardingTestAnswer,
   OnboardingTestResult,
@@ -392,60 +389,6 @@ export const adminAPI = {
   },
 };
 
-// Machine Translation Quality Assessment API
-export const mtQualityAPI = {
-  // Get sentences pending MT quality assessment
-  getPendingAssessments: async (skip = 0, limit = 50): Promise<Sentence[]> => {
-    const response = await api.get(`/mt-quality/pending?skip=${skip}&limit=${limit}`);
-    return response.data;
-  },
-
-  // Create MT quality assessment (AI-powered analysis)
-  createAssessment: async (assessmentData: MTQualityCreate): Promise<MTQualityAssessment> => {
-    const response = await api.post('/mt-quality/assess', assessmentData);
-    return response.data;
-  },
-
-  // Update assessment with human feedback
-  updateAssessment: async (id: number, updateData: MTQualityUpdate): Promise<MTQualityAssessment> => {
-    const response = await api.put(`/mt-quality/${id}`, updateData);
-    return response.data;
-  },
-
-  // Get evaluator's assessments
-  getMyAssessments: async (skip = 0, limit = 100): Promise<MTQualityAssessment[]> => {
-    const response = await api.get(`/mt-quality/my-assessments?skip=${skip}&limit=${limit}`);
-    return response.data;
-  },
-
-  // Get evaluator statistics
-  getEvaluatorStats: async (): Promise<EvaluatorStats> => {
-    const response = await api.get('/mt-quality/stats');
-    return response.data;
-  },
-
-  // Get all assessments (admin)
-  getAllAssessments: async (skip = 0, limit = 100): Promise<MTQualityAssessment[]> => {
-    const response = await api.get(`/admin/mt-quality?skip=${skip}&limit=${limit}`);
-    return response.data;
-  },
-
-  // Get assessment details by sentence ID
-  getAssessmentBySentence: async (sentenceId: number): Promise<MTQualityAssessment | null> => {
-    try {
-      const response = await api.get(`/mt-quality/sentence/${sentenceId}`);
-      return response.data;
-    } catch {
-      return null;
-    }
-  },
-
-  // Batch process sentences for quality assessment
-  batchAssess: async (sentenceIds: number[]): Promise<MTQualityAssessment[]> => {
-    const response = await api.post('/mt-quality/batch-assess', { sentence_ids: sentenceIds });
-    return response.data;
-  },
-};
 
 // Legacy Evaluations API (for backward compatibility)
 export const evaluationsAPI = {

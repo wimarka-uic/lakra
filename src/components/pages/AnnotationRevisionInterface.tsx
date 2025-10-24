@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  CheckCircleIcon, 
-  PencilIcon, 
-  ArrowLeftIcon,
-  ClockIcon,
-  UserIcon,
-  ExclamationTriangleIcon,
-  CheckIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+  CheckCircle, 
+  Pencil, 
+  ArrowLeft,
+  Clock,
+  User,
+  X,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff
+} from 'lucide-react';
 import { annotationRevisionAPI } from '../../services/supabase-api';
-import { AnnotationWithRevision, AnnotationRevisionCreate, TextHighlight, TextSegment } from '../../types';
+import type { AnnotationWithRevision, AnnotationRevisionCreate, TextHighlight } from '../../types';
 import { logger } from '../../utils/logger';
+import VoiceRecorder from '../ui/VoiceRecorder';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const AnnotationRevisionInterface: React.FC = () => {
   const { annotationId } = useParams<{ annotationId: string }>();
@@ -26,6 +30,23 @@ const AnnotationRevisionInterface: React.FC = () => {
   const [revisionData, setRevisionData] = useState<Partial<AnnotationWithRevision>>({});
   const [revisionNotes, setRevisionNotes] = useState('');
   const [revisionReason, setRevisionReason] = useState('');
+  
+  // Enhanced editing state
+  const [selectedText, setSelectedText] = useState('');
+  const [selectedRange, setSelectedRange] = useState<{ start: number; end: number } | null>(null);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [tempComment, setTempComment] = useState('');
+  const [tempErrorType, setTempErrorType] = useState<'MI_ST' | 'MI_SE' | 'MA_ST' | 'MA_SE'>('MI_SE');
+  const [isCommentModalClosing, setIsCommentModalClosing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [highlightToDelete, setHighlightToDelete] = useState<number | null>(null);
+  const [expandedHighlights, setExpandedHighlights] = useState<Set<number>>(new Set());
+  
+  // Voice recording state
+  const [voiceRecordingBlob, setVoiceRecordingBlob] = useState<Blob | null>(null);
+  const [existingVoiceUrl, setExistingVoiceUrl] = useState<string | null>(null);
+  
+  const textRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const loadAnnotation = useCallback(async () => {
     if (!annotationId) return;
@@ -35,6 +56,7 @@ const AnnotationRevisionInterface: React.FC = () => {
       const data = await annotationRevisionAPI.getAnnotationForRevision(parseInt(annotationId));
       setAnnotation(data);
       setRevisionData(data);
+      setExistingVoiceUrl(data.voice_recording_url || null);
     } catch (error) {
       logger.apiError('loadAnnotation', error as Error, {
         component: 'AnnotationRevisionInterface',
@@ -85,6 +107,33 @@ const AnnotationRevisionInterface: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Handle voice recording upload if there's a new recording
+      let voiceRecordingUrl = existingVoiceUrl;
+      let voiceRecordingDuration = revisionData.voice_recording_duration;
+
+      if (voiceRecordingBlob) {
+        try {
+          // Upload the new voice recording
+          const formData = new FormData();
+          formData.append('audio_file', voiceRecordingBlob, 'voice_recording.webm');
+          formData.append('annotation_id', annotation.id.toString());
+          
+          const response = await fetch('/api/annotations/upload-voice', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            voiceRecordingUrl = result.voice_recording_url;
+            voiceRecordingDuration = voiceRecordingDuration || result.voice_recording_duration;
+          }
+        } catch (uploadError) {
+          console.warn('Failed to upload voice recording:', uploadError);
+          // Continue without voice recording
+        }
+      }
+
       const revisionDataPayload: AnnotationRevisionCreate = {
         annotation_id: annotation.id,
         revision_type: 'revise',
@@ -96,7 +145,9 @@ const AnnotationRevisionInterface: React.FC = () => {
           suggested_correction: revisionData.suggested_correction,
           comments: revisionData.comments,
           final_form: revisionData.final_form,
-          highlights: revisionData.highlights
+          highlights: revisionData.highlights,
+          voice_recording_url: voiceRecordingUrl || undefined,
+          voice_recording_duration: voiceRecordingDuration
         },
         revision_notes: revisionNotes,
         revision_reason: revisionReason
@@ -128,18 +179,79 @@ const AnnotationRevisionInterface: React.FC = () => {
   const handleCancelRevision = () => {
     setRevisionMode(false);
     setRevisionData(annotation ? { ...annotation } : {});
-    setRevisionNotes('');
-    setRevisionReason('');
+      setRevisionNotes('');
+      setRevisionReason('');
+      setVoiceRecordingBlob(null);
   };
 
-  const updateRevisionData = (field: string, value: any) => {
+  // Enhanced text selection functionality
+  const handleTextSelection = () => {
+    if (!revisionMode) return;
+    
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+
+    const range = selection.getRangeAt(0);
+    const selectedTextValue = selection.toString().trim();
+    
+    if (selectedTextValue.length === 0) return;
+
+    const refKey = 'machine-translation';
+    const container = textRefs.current.get(refKey);
+    if (!container || !container.contains(range.commonAncestorContainer)) return;
+
+    const originalText = annotation?.sentence.machine_translation;
+    if (!originalText) return;
+
+    const startIndex = originalText.indexOf(selectedTextValue);
+    if (startIndex === -1) return;
+
+    const endIndex = startIndex + selectedTextValue.length;
+    setSelectedText(selectedTextValue);
+    setSelectedRange({ start: startIndex, end: endIndex });
+    setShowCommentModal(true);
+    
+    selection.removeAllRanges();
+  };
+
+  const closeCommentModal = () => {
+    setIsCommentModalClosing(true);
+    setTimeout(() => {
+      setShowCommentModal(false);
+      setIsCommentModalClosing(false);
+      setSelectedText('');
+      setSelectedRange(null);
+      setTempComment('');
+      setTempErrorType('MI_SE');
+    }, 200);
+  };
+
+  const addHighlightFromSelection = () => {
+    if (!selectedRange || !revisionData) return;
+
+    const newHighlight: TextHighlight = {
+      id: Date.now(),
+      highlighted_text: selectedText,
+      start_index: selectedRange.start,
+      end_index: selectedRange.end,
+      text_type: 'machine',
+      comment: tempComment,
+      error_type: tempErrorType
+    };
+
+    const updatedHighlights = [...(revisionData.highlights || []), newHighlight];
+    updateRevisionData('highlights', updatedHighlights);
+    closeCommentModal();
+  };
+
+  const updateRevisionData = (field: string, value: unknown) => {
     setRevisionData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const updateHighlight = (index: number, field: string, value: any) => {
+  const updateHighlight = (index: number, field: string, value: unknown) => {
     if (!revisionData.highlights) return;
     
     const updatedHighlights = [...revisionData.highlights];
@@ -153,13 +265,13 @@ const AnnotationRevisionInterface: React.FC = () => {
 
   const addHighlight = () => {
     const newHighlight: TextHighlight = {
-      id: Date.now().toString(),
+      id: Date.now(),
       highlighted_text: '',
       start_index: 0,
       end_index: 0,
-      text_type: 'error',
+      text_type: 'machine',
       comment: '',
-      error_type: 'MI_ST'
+      error_type: 'MI_SE'
     };
     
     updateRevisionData('highlights', [...(revisionData.highlights || []), newHighlight]);
@@ -172,15 +284,63 @@ const AnnotationRevisionInterface: React.FC = () => {
     updateRevisionData('highlights', updatedHighlights);
   };
 
+  const handleDeleteHighlight = (index: number) => {
+    setHighlightToDelete(index);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteHighlight = () => {
+    if (highlightToDelete !== null) {
+      removeHighlight(highlightToDelete);
+    }
+    setShowDeleteModal(false);
+    setHighlightToDelete(null);
+  };
+
+  const cancelDeleteHighlight = () => {
+    setShowDeleteModal(false);
+    setHighlightToDelete(null);
+  };
+
+  const toggleHighlightExpansion = (index: number) => {
+    const newExpanded = new Set(expandedHighlights);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedHighlights(newExpanded);
+  };
+
+  // Voice recording handlers
+  const handleVoiceRecordingComplete = (audioBlob: Blob) => {
+    setVoiceRecordingBlob(audioBlob);
+    setExistingVoiceUrl(null); // Clear existing URL when new recording is made
+  };
+
+  const handleVoiceRecordingDelete = () => {
+    setVoiceRecordingBlob(null);
+    setExistingVoiceUrl(null);
+  };
+
   const renderHighlightedText = (text: string, highlights: TextHighlight[]) => {
     if (!highlights || highlights.length === 0) {
       return <span>{text}</span>;
     }
 
-    // Sort highlights by start index
-    const sortedHighlights = [...highlights].sort((a, b) => a.start_index - b.start_index);
+    // Sort highlights by start index and remove overlapping ones
+    const sortedHighlights = [...highlights]
+      .sort((a, b) => a.start_index - b.start_index)
+      .filter((highlight, index, arr) => {
+        // Remove highlights that are completely contained within another highlight
+        return !arr.some((other, otherIndex) => 
+          otherIndex !== index && 
+          other.start_index <= highlight.start_index && 
+          other.end_index >= highlight.end_index
+        );
+      });
     
-    let result = [];
+    const result = [];
     let lastIndex = 0;
 
     sortedHighlights.forEach((highlight, index) => {
@@ -193,18 +353,42 @@ const AnnotationRevisionInterface: React.FC = () => {
         );
       }
 
-      // Add highlighted text
-      const highlightClass = highlight.text_type === 'error' 
-        ? 'bg-red-200 text-red-800' 
-        : 'bg-yellow-200 text-yellow-800';
+      // Add highlighted text with error type styling
+      const getErrorTypeClass = (errorType: string) => {
+        switch (errorType) {
+          case 'MI_ST': return 'bg-yellow-200 border-b-2 border-yellow-400 text-yellow-800';
+          case 'MI_SE': return 'bg-orange-200 border-b-2 border-orange-400 text-orange-800';
+          case 'MA_ST': return 'bg-red-200 border-b-2 border-red-400 text-red-800';
+          case 'MA_SE': return 'bg-red-300 border-b-2 border-red-500 text-red-900';
+          default: return 'bg-gray-200 border-b-2 border-gray-400 text-gray-800';
+        }
+      };
+
+      const getErrorTypeLabel = (errorType: string) => {
+        switch (errorType) {
+          case 'MI_ST': return 'Minor Syntax Error';
+          case 'MI_SE': return 'Minor Semantic Error';
+          case 'MA_ST': return 'Major Syntax Error';
+          case 'MA_SE': return 'Major Semantic Error';
+          default: return 'Error';
+        }
+      };
       
       result.push(
         <span 
           key={`highlight-${index}`}
-          className={`px-1 rounded ${highlightClass}`}
-          title={`${highlight.error_type}: ${highlight.comment}`}
+          className={`px-1 rounded cursor-pointer relative group ${getErrorTypeClass(highlight.error_type || 'MI_SE')}`}
+          title={`${getErrorTypeLabel(highlight.error_type || 'MI_SE')}: ${highlight.comment}`}
         >
-          {highlight.highlighted_text}
+          <span className="mx-1">{highlight.highlighted_text}</span>
+          <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-10">
+            <div className="bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap max-w-xs">
+              <div className="font-medium text-yellow-300 mb-1">
+                {getErrorTypeLabel(highlight.error_type || 'MI_SE')}
+              </div>
+              {highlight.comment}
+            </div>
+          </div>
         </span>
       );
 
@@ -230,83 +414,134 @@ const AnnotationRevisionInterface: React.FC = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h4 className="text-lg font-medium text-gray-900">Text Highlights</h4>
-          <button
-            onClick={addHighlight}
-            className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
-          >
-            Add Highlight
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={addHighlight}
+              className="flex items-center px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Highlight
+            </button>
+          </div>
         </div>
         
-        {revisionData.highlights.map((highlight, index) => (
-          <div key={highlight.id || index} className="border rounded-lg p-4 bg-gray-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+        {revisionData.highlights.map((highlight, index) => {
+          const isExpanded = expandedHighlights.has(index);
+          const getErrorTypeColor = (errorType: string) => {
+            switch (errorType) {
+              case 'MI_ST': return 'border-yellow-400 bg-yellow-50';
+              case 'MI_SE': return 'border-orange-400 bg-orange-50';
+              case 'MA_ST': return 'border-red-400 bg-red-50';
+              case 'MA_SE': return 'border-red-500 bg-red-50';
+              default: return 'border-gray-400 bg-gray-50';
+            }
+          };
+
+          return (
+            <div key={highlight.id || index} className={`border-2 rounded-lg p-4 ${getErrorTypeColor(highlight.error_type || 'MI_SE')}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-gray-800">
+                    {highlight.error_type || 'MI_SE'}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {highlight.highlighted_text || 'No text selected'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => toggleHighlightExpansion(index)}
+                    className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    title={isExpanded ? 'Collapse' : 'Expand'}
+                  >
+                    {isExpanded ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteHighlight(index)}
+                    className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                    title="Delete highlight"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              
+              {isExpanded && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Highlighted Text
+                    </label>
+                    <input
+                      type="text"
+                      value={highlight.highlighted_text}
+                      onChange={(e) => updateHighlight(index, 'highlighted_text', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter highlighted text..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Error Type
+                    </label>
+                    <select
+                      value={highlight.error_type}
+                      onChange={(e) => updateHighlight(index, 'error_type', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="MI_ST">MI_ST - Minor Syntax Error</option>
+                      <option value="MI_SE">MI_SE - Minor Semantic Error</option>
+                      <option value="MA_ST">MA_ST - Major Syntax Error</option>
+                      <option value="MA_SE">MA_SE - Major Semantic Error</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Index
+                    </label>
+                    <input
+                      type="number"
+                      value={highlight.start_index}
+                      onChange={(e) => updateHighlight(index, 'start_index', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Index
+                    </label>
+                    <input
+                      type="number"
+                      value={highlight.end_index}
+                      onChange={(e) => updateHighlight(index, 'end_index', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <div className="mt-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Highlighted Text
+                  Comment
                 </label>
-                <input
-                  type="text"
-                  value={highlight.highlighted_text}
-                  onChange={(e) => updateHighlight(index, 'highlighted_text', e.target.value)}
+                <textarea
+                  value={highlight.comment}
+                  onChange={(e) => updateHighlight(index, 'comment', e.target.value)}
+                  rows={2}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Explain the error or correction..."
                 />
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Error Type
-                </label>
-                <select
-                  value={highlight.error_type}
-                  onChange={(e) => updateHighlight(index, 'error_type', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="MI_ST">MI_ST - Minor Syntax</option>
-                  <option value="MI_SE">MI_SE - Minor Semantic</option>
-                  <option value="MA_ST">MA_ST - Major Syntax</option>
-                  <option value="MA_SE">MA_SE - Major Semantic</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Text Type
-                </label>
-                <select
-                  value={highlight.text_type}
-                  onChange={(e) => updateHighlight(index, 'text_type', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="error">Error</option>
-                  <option value="correction">Correction</option>
-                </select>
-              </div>
-              
-              <div className="flex items-end">
-                <button
-                  onClick={() => removeHighlight(index)}
-                  className="px-3 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                >
-                  Remove
-                </button>
-              </div>
             </div>
-            
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Comment
-              </label>
-              <textarea
-                value={highlight.comment}
-                onChange={(e) => updateHighlight(index, 'comment', e.target.value)}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Explain the error or correction..."
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -346,12 +581,12 @@ const AnnotationRevisionInterface: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/evaluator')}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <ArrowLeftIcon className="h-6 w-6" />
-              </button>
+                <button
+                  onClick={() => navigate('/evaluator')}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <ArrowLeft className="h-6 w-6" />
+                </button>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
                   {revisionMode ? 'Revise Annotation' : 'Review Annotation'}
@@ -372,14 +607,14 @@ const AnnotationRevisionInterface: React.FC = () => {
                   disabled={isSubmitting}
                   className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  <CheckCircleIcon className="h-5 w-5 mr-2" />
+                  <CheckCircle className="h-5 w-5 mr-2" />
                   Approve
                 </button>
                 <button
                   onClick={handleStartRevision}
                   className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
                 >
-                  <PencilIcon className="h-5 w-5 mr-2" />
+                  <Pencil className="h-5 w-5 mr-2" />
                   Revise
                 </button>
               </div>
@@ -490,12 +725,26 @@ const AnnotationRevisionInterface: React.FC = () => {
 
               {/* Highlighted Text */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Highlighted Translation</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {revisionMode ? 'Interactive Translation Editor' : 'Highlighted Translation'}
+                </label>
                 <div className="p-4 bg-gray-50 rounded-lg border">
                   {revisionMode ? (
                     <div className="space-y-4">
                       <div className="p-3 bg-white rounded border">
-                        {renderHighlightedText(annotation.sentence.machine_translation, revisionData.highlights || [])}
+                        <div 
+                          ref={(el) => {
+                            if (el) textRefs.current.set('machine-translation', el);
+                          }}
+                          onMouseUp={handleTextSelection}
+                          className="min-h-[60px] p-3 border border-gray-200 rounded cursor-text select-text"
+                          style={{ userSelect: 'text' }}
+                        >
+                          {renderHighlightedText(annotation.sentence.machine_translation, revisionData.highlights || [])}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          💡 Select text in the translation above to add highlights, or use the editor below to manage existing highlights.
+                        </p>
                       </div>
                       {renderHighlightsEditor()}
                     </div>
@@ -576,6 +825,22 @@ const AnnotationRevisionInterface: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Voice Recording Section */}
+                {revisionMode && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Voice Recording</label>
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <VoiceRecorder
+                        onRecordingComplete={handleVoiceRecordingComplete}
+                        onRecordingDelete={handleVoiceRecordingDelete}
+                        existingRecordingUrl={existingVoiceUrl || undefined}
+                        existingDuration={revisionData.voice_recording_duration || 0}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -587,12 +852,12 @@ const AnnotationRevisionInterface: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Annotation Details</h3>
               <div className="space-y-3">
                 <div className="flex items-center text-sm">
-                  <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
+                  <User className="h-4 w-4 text-gray-400 mr-2" />
                   <span className="text-gray-600">Annotator:</span>
                   <span className="ml-2 font-medium">{annotation.annotator.username}</span>
                 </div>
                 <div className="flex items-center text-sm">
-                  <ClockIcon className="h-4 w-4 text-gray-400 mr-2" />
+                  <Clock className="h-4 w-4 text-gray-400 mr-2" />
                   <span className="text-gray-600">Time Spent:</span>
                   <span className="ml-2 font-medium">
                     {annotation.time_spent_seconds ? `${Math.round(annotation.time_spent_seconds / 60)} min` : 'N/A'}
@@ -623,24 +888,70 @@ const AnnotationRevisionInterface: React.FC = () => {
             {annotation.revisions && annotation.revisions.length > 0 && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Revision History</h3>
-                <div className="space-y-3">
-                  {annotation.revisions.map((revision, index) => (
-                    <div key={revision.id} className="border-l-4 border-blue-200 pl-4">
+                <div className="space-y-4">
+                  {annotation.revisions.map((revision) => (
+                    <div key={revision.id} className={`border-l-4 pl-4 ${
+                      revision.revision_type === 'approve' 
+                        ? 'border-green-200 bg-green-50' 
+                        : 'border-orange-200 bg-orange-50'
+                    }`}>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-900">
-                          {revision.revision_type === 'approve' ? 'Approved' : 'Revised'}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            revision.revision_type === 'approve'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {revision.revision_type === 'approve' ? '✓ Approved' : '✏️ Revised'}
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">
+                            by {revision.evaluator.username}
+                          </span>
+                        </div>
                         <span className="text-xs text-gray-500">
-                          {new Date(revision.created_at).toLocaleDateString()}
+                          {new Date(revision.created_at).toLocaleDateString()} at {new Date(revision.created_at).toLocaleTimeString()}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">
-                        by {revision.evaluator.username}
-                      </p>
+                      
                       {revision.revision_notes && (
-                        <p className="text-sm text-gray-500 mt-1">
-                          {revision.revision_notes}
-                        </p>
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-700 font-medium">Notes:</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {revision.revision_notes}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {revision.revision_reason && (
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-700 font-medium">Reason:</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {revision.revision_reason}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {revision.revised_annotation && (
+                        <div className="mt-3 p-3 bg-white rounded border">
+                          <p className="text-sm text-gray-700 font-medium mb-2">Changes Made:</p>
+                          <div className="text-xs text-gray-600 space-y-1">
+                            {revision.revised_annotation.fluency_score && (
+                              <p>• Fluency Score: {revision.revised_annotation.fluency_score}</p>
+                            )}
+                            {revision.revised_annotation.adequacy_score && (
+                              <p>• Adequacy Score: {revision.revised_annotation.adequacy_score}</p>
+                            )}
+                            {revision.revised_annotation.overall_quality && (
+                              <p>• Overall Quality: {revision.revised_annotation.overall_quality}</p>
+                            )}
+                            {revision.revised_annotation.highlights && (
+                              <p>• Highlights: {revision.revised_annotation.highlights.length} items</p>
+                            )}
+                            {revision.revised_annotation.voice_recording_url && (
+                              <p>• Voice Recording: Added</p>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -690,7 +1001,7 @@ const AnnotationRevisionInterface: React.FC = () => {
                       disabled={isSubmitting || !revisionNotes.trim() || !revisionReason}
                       className="flex-1 flex items-center justify-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      <PencilIcon className="h-5 w-5 mr-2" />
+                      <Pencil className="h-5 w-5 mr-2" />
                       {isSubmitting ? 'Saving...' : 'Save Revision'}
                     </button>
                     <button
@@ -698,7 +1009,7 @@ const AnnotationRevisionInterface: React.FC = () => {
                       disabled={isSubmitting}
                       className="flex-1 flex items-center justify-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      <XMarkIcon className="h-5 w-5 mr-2" />
+                      <X className="h-5 w-5 mr-2" />
                       Cancel
                     </button>
                   </div>
@@ -708,6 +1019,77 @@ const AnnotationRevisionInterface: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Comment Modal for Text Selection */}
+      {showCommentModal && (
+        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isCommentModalClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
+          <div className={`bg-white rounded-lg p-6 max-w-md w-full mx-4 ${isCommentModalClosing ? 'animate-scaleOut' : 'animate-scaleIn'}`}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Highlight</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Selected Text</label>
+                <div className="p-2 bg-gray-100 rounded border text-sm">
+                  "{selectedText}"
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Error Type</label>
+                <select
+                  value={tempErrorType}
+                  onChange={(e) => setTempErrorType(e.target.value as 'MI_ST' | 'MI_SE' | 'MA_ST' | 'MA_SE')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="MI_ST">MI_ST - Minor Syntax Error</option>
+                  <option value="MI_SE">MI_SE - Minor Semantic Error</option>
+                  <option value="MA_ST">MA_ST - Major Syntax Error</option>
+                  <option value="MA_SE">MA_SE - Major Semantic Error</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+                <textarea
+                  value={tempComment}
+                  onChange={(e) => setTempComment(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Explain the error or correction..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={addHighlightFromSelection}
+                disabled={!tempComment.trim()}
+                className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Add Highlight
+              </button>
+              <button
+                onClick={closeCommentModal}
+                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={cancelDeleteHighlight}
+        onConfirm={confirmDeleteHighlight}
+        title="Delete Highlight"
+        message="Are you sure you want to delete this highlight? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
 };
