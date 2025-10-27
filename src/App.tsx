@@ -31,7 +31,7 @@ import AnnotationRevisionInterface from './components/pages/AnnotationRevisionIn
 import AnnotationReviewInterface from './components/pages/AnnotationReviewInterface';
 import OnboardingTest from './components/pages/OnboardingTest';
 import About from './components/pages/About';
-import { MTQualityAssessment, ModelPredictionReview, ModelPredictionImport, MyModelReviews } from './components/pages';
+import { ModelPredictionReview, ModelPredictionImport, MyModelReviews } from './components/pages';
 import { Analytics } from '@vercel/analytics/react';
 
 // Protected Route Component
@@ -424,14 +424,6 @@ const AppContent: React.FC = () => {
             } 
           />
           <Route 
-            path="/mt-quality-assessment" 
-            element={
-              <ProtectedRoute evaluatorOnly>
-                <MTQualityAssessment />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
             path="/model-prediction-review" 
             element={
               <ProtectedRoute evaluatorOnly>
@@ -440,11 +432,9 @@ const AppContent: React.FC = () => {
             } 
           />
           <Route 
-            path="/model-prediction-review/:predictionId" 
+            path="/mt-quality-assessment" 
             element={
-              <ProtectedRoute evaluatorOnly>
-                <ModelPredictionReview />
-              </ProtectedRoute>
+              <Navigate to="/model-prediction-review" replace />
             } 
           />
           <Route 

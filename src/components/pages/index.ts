@@ -18,7 +18,7 @@ export { default as AnnotationReviewInterface } from './AnnotationReviewInterfac
 export { default as AnnotationRevisionInterface } from './AnnotationRevisionInterface';
 export { default as EvaluationInterface } from './EvaluationInterface';
 export { default as MTQualityAssessment } from './MTQualityAssessment';
-export { default as ModelPredictionReview } from './ModelPredictionReview';
+export { default as ModelPredictionReview } from './MTQualityAssessment';
 export { default as ModelPredictionImport } from './ModelPredictionImport';
 export { default as MyModelReviews } from './MyModelReviews';
 export { default as SentencesForEvaluation } from './SentencesForEvaluation';

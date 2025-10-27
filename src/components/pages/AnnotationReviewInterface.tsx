@@ -4,8 +4,6 @@ import {
   CheckCircle, 
   Edit3, 
   ArrowLeft,
-  Clock,
-  User,
   AlertCircle,
   X,
   Eye,
@@ -680,49 +678,6 @@ const AnnotationReviewInterface: React.FC = () => {
 
           {/* Right Column - Metadata and Actions */}
           <div className="space-y-6">
-            {/* Annotation Metadata */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <User className="h-5 w-5 mr-2 text-gray-600" />
-                Annotation Details
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center text-sm">
-                  <User className="h-4 w-4 text-gray-400 mr-2" />
-                  <span className="text-gray-600">Annotator:</span>
-                  <span className="ml-2 font-medium">
-                    {annotation.annotator?.username || 
-                     annotation.annotator?.first_name || 
-                     (annotation.annotator_id ? `User #${annotation.annotator_id}` : 'Unknown')}
-                  </span>
-                </div>
-                <div className="flex items-center text-sm">
-                  <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                  <span className="text-gray-600">Time Spent:</span>
-                  <span className="ml-2 font-medium">
-                    {annotation.time_spent_seconds ? `${Math.round(annotation.time_spent_seconds / 60)} min` : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex items-center text-sm">
-                  <span className="text-gray-600">Status:</span>
-                  <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                    annotation.annotation_status === 'completed' 
-                      ? 'bg-green-100 text-green-800'
-                      : annotation.annotation_status === 'reviewed'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {annotation.annotation_status}
-                  </span>
-                </div>
-                <div className="flex items-center text-sm">
-                  <span className="text-gray-600">Created:</span>
-                  <span className="ml-2 font-medium">
-                    {new Date(annotation.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            </div>
 
             {/* Revision History */}
             {annotation.revisions && annotation.revisions.length > 0 && (

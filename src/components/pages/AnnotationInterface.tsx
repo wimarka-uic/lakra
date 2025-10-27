@@ -922,6 +922,24 @@ const AnnotationInterface: React.FC = () => {
                           <p className="text-sm text-gray-500 mt-2">Domain: {sentence.domain}</p>
                         )}
                       </div>
+
+                      {/* Back Translation */}
+                      {sentence.back_translation && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Back Translation ({sentence.source_language.toUpperCase()})
+                            <span className="ml-2 text-xs text-gray-500">- For quality assessment</span>
+                          </label>
+                          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                            <p className="text-gray-900 leading-relaxed">
+                              {sentence.back_translation}
+                            </p>
+                          </div>
+                          <p className="text-xs text-emerald-600 mt-2 italic">
+                            This back translation helps assess the quality and accuracy of the machine translation.
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Highlights Summary */}

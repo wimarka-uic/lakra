@@ -258,7 +258,7 @@ const EvaluatorDashboard: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
-              onClick={() => navigate('/mt-quality-assessment')}
+              onClick={() => navigate('/model-prediction-review')}
               className="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               <div className="flex-shrink-0">

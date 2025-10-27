@@ -1727,16 +1727,6 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-sm text-gray-500">Check system analytics</p>
                   </div>
                 </button>
-                <button
-                  onClick={() => navigate('/model-prediction-import')}
-                  className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Upload className="h-8 w-8 text-indigo-500 mr-3" />
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900">Import Model Predictions</p>
-                    <p className="text-sm text-gray-500">Upload AI model results for review</p>
-                  </div>
-                </button>
               </div>
             </div>
 
