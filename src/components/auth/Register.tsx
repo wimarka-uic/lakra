@@ -363,7 +363,7 @@ const Register: React.FC = () => {
           setTestSessionId('');
         }
       } else {
-        setError(`You scored ${result.score.toFixed(1)}% on the proficiency test. You need at least 70% to pass. Don't worry - you can retake the test after reviewing the materials. Please go back and try again when you're ready.`);
+        setError(`You scored ${result.score.toFixed(1)}% on the proficiency test. You need at least 70% to pass. Do not worry; you may retake the test after reviewing the materials. Please go back and try again when you are ready.`);
         setCurrentStep(3); // Go back to account creation step
         setTestStarted(false); // Reset test state
         setCurrentQuestionIndex(0); // Reset question index
@@ -916,7 +916,7 @@ const Register: React.FC = () => {
                   </div>
                   
                   <p className="mt-2 text-sm text-gray-500">
-                    Click to select languages you're proficient in. You must select at least one.
+                    Click to select the languages in which you are proficient. You must select at least one.
                     {formData.languages.length === 1 && " Your selection will be set as your primary language."}
                   </p>
                   {hasError('languages') && <p className="mt-1 text-sm text-red-600">{getFieldError('languages')}</p>}
@@ -1129,7 +1129,7 @@ const Register: React.FC = () => {
                       <FileText className="h-5 w-5 text-blue-400 mt-0.5" />
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-blue-900 mb-1">Almost there! 🎯</p>
+                      <p className="text-sm font-medium text-blue-900 mb-1">Almost there.</p>
                       <p className="text-sm text-blue-800">
                         Complete this language proficiency test to finish your registration. 
                         Your account will be created automatically once you pass with 70% or higher.

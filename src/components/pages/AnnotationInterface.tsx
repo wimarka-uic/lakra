@@ -31,6 +31,14 @@ interface SentenceAnnotation {
   updated_at?: string;
 }
 
+const ratingScale = [
+  { value: 1, title: 'Very Poor', helper: 'Unusable: wrong meaning or unreadable.' },
+  { value: 2, title: 'Poor', helper: 'Major fixes needed to understand meaning.' },
+  { value: 3, title: 'Fair', helper: 'Understandable but needs noticeable edits.' },
+  { value: 4, title: 'Good', helper: 'Minor touch-ups required for polish.' },
+  { value: 5, title: 'Excellent', helper: 'Natural and accurate as-is.' },
+];
+
 const AnnotationInterface: React.FC = () => {
   const { sentenceId } = useParams<{ sentenceId?: string }>();
   const navigate = useNavigate();
@@ -680,13 +688,15 @@ const AnnotationInterface: React.FC = () => {
         {!value && !showRequired && <span className="text-amber-500">*</span>}
       </label>
       <div className={`flex ${compact ? 'justify-center space-x-1' : 'space-x-2'}`}>
-        {[1, 2, 3, 4, 5].map((rating) => (
+        {ratingScale.map(({ value: ratingValue, title }) => (
           <button
-            key={rating}
+            key={ratingValue}
             type="button"
-            onClick={() => onChange(rating)}
+            onClick={() => onChange(ratingValue)}
+            title={`${ratingValue}: ${title}`}
+            aria-label={`${label} ${ratingValue} - ${title}`}
             className={`${compact ? 'w-6 h-6 text-xs' : 'w-8 h-8 text-sm'} rounded transition-all duration-200 ${
-              value === rating
+              value === ratingValue
                 ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
                 : `bg-white text-gray-700 ${
                     !value && showRequired 
@@ -697,7 +707,7 @@ const AnnotationInterface: React.FC = () => {
                   } hover:transform hover:scale-105`
             } border`}
           >
-            {rating}
+            {ratingValue}
           </button>
         ))}
       </div>
@@ -706,6 +716,28 @@ const AnnotationInterface: React.FC = () => {
       )}
       {!value && !showRequired && (
         <p className="text-xs text-amber-600 mt-1">Click a number to rate (1=poor, 5=excellent)</p>
+      )}
+      <div className={`mt-2 text-[11px] text-gray-600 ${compact ? 'text-center' : ''}`}>
+        {value ? (
+          <p>
+            {value}: {ratingScale.find((item) => item.value === value)?.helper}
+          </p>
+        ) : (
+          <p>Hover each number to see what it means.</p>
+        )}
+      </div>
+      {!compact && (
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-1 text-[11px] text-gray-500">
+          {ratingScale.map(({ value: scaleValue, title, helper }) => (
+            <div key={`${label}-${scaleValue}`} className="flex items-start space-x-2">
+              <span className="font-semibold text-gray-700">{scaleValue}</span>
+              <div>
+                <p className="font-medium text-gray-700">{title}</p>
+                <p>{helper}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -727,7 +759,7 @@ const AnnotationInterface: React.FC = () => {
           <div className="space-y-3 mb-6">
             {user.onboarding_status === 'pending' && (
               <p className="text-amber-600">
-                ⏳ You haven't started your qualification test yet.
+                ⏳ You have not started your qualification test yet.
               </p>
             )}
             {user.onboarding_status === 'in_progress' && (
@@ -737,7 +769,7 @@ const AnnotationInterface: React.FC = () => {
             )}
             {user.onboarding_status === 'failed' && (
               <p className="text-red-600">
-                ❌ You didn't pass the qualification test. Please retake it to start annotating.
+                ❌ You did not pass the qualification test. Please retake it to start annotating.
               </p>
             )}
           </div>
@@ -1007,7 +1039,7 @@ const AnnotationInterface: React.FC = () => {
                             <div>
                               <h4 className="text-sm font-medium text-emerald-800">Translation looks good!</h4>
                               <p className="text-xs text-emerald-700 mt-1">
-                                You haven't highlighted any issues. If you think this translation is accurate and well-written, just add your scores below and submit.
+                                You have not highlighted any issues. If you believe this translation is accurate and well written, simply add your scores below and submit.
                               </p>
                             </div>
                           </div>
@@ -1149,7 +1181,7 @@ const AnnotationInterface: React.FC = () => {
                                       <li key={index} className="text-xs">{warning}</li>
                                     ))}
                                   </ul>
-                                  <p className="text-xs mt-2 italic">We'll ask you to confirm before submitting.</p>
+                                  <p className="text-xs mt-2 italic">We will ask you to confirm before submitting.</p>
                                 </div>
                               </div>
                             )}
@@ -1231,7 +1263,7 @@ const AnnotationInterface: React.FC = () => {
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Error Type & Severity
+                Error Type and Severity
               </label>
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <div className="text-center">
@@ -1292,7 +1324,7 @@ const AnnotationInterface: React.FC = () => {
               <div className="text-xs text-gray-500 mt-2 space-y-1">
                 <p><strong>Syntactic:</strong> Grammar, word order, inflection errors</p>
                 <p><strong>Semantic:</strong> Meaning, context, word choice errors</p>
-                <p><strong>Minor:</strong> Small errors that don't affect overall understanding</p>
+                <p><strong>Minor:</strong> Small errors that do not affect overall understanding.</p>
                 <p><strong>Major:</strong> Significant errors that impact comprehension</p>
               </div>
             </div>
@@ -1358,7 +1390,7 @@ const AnnotationInterface: React.FC = () => {
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Quick reminder:</h4>
+              <h4 className="text-sm font-medium text-blue-800 mb-2">Quick reminder:</h4>
               <ul className="text-xs text-blue-700 space-y-1">
                 <li>• Click on a number (1-5) to rate the translation quality</li>
                 <li>• If you highlighted errors, write the corrected sentence</li>

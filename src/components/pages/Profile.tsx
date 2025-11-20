@@ -276,7 +276,7 @@ const Profile: React.FC = () => {
                 )}
                 
                 <p className="mt-2 text-sm text-gray-500">
-                  Click to select languages you're proficient in. You must select at least one.
+                  Click to select the languages in which you are proficient. You must select at least one.
                   {formData.languages.length === 1 && " Your selection will be set as your primary language."}
                 </p>
               </div>

@@ -411,7 +411,7 @@ const AnnotationReviewInterface: React.FC = () => {
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Annotation Not Found</h1>
-          <p className="text-gray-600 mb-8">The annotation you're looking for doesn't exist or you don't have permission to view it.</p>
+          <p className="text-gray-600 mb-8">The annotation you are looking for does not exist or you do not have permission to view it.</p>
           <button
             onClick={() => navigate('/evaluator')}
             className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"

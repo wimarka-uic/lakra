@@ -102,19 +102,19 @@ const About: React.FC = () => {
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start">
                 <span className="w-2 h-2 bg-primary-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                Develop a reference-free evaluation metric for Philippine language machine translation
+                Develop a reference-free evaluation metric for machine translation in Philippine languages.
               </li>
               <li className="flex items-start">
                 <span className="w-2 h-2 bg-primary-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                Create an annotation tool for collecting human evaluation data
+                Create an annotation tool that captures reliable human evaluation data.
               </li>
               <li className="flex items-start">
                 <span className="w-2 h-2 bg-primary-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                Establish quality assessment frameworks for low-resource languages
+                Establish quality assessment frameworks tailored to low-resource languages.
               </li>
               <li className="flex items-start">
                 <span className="w-2 h-2 bg-primary-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                Contribute to Filipino NLP research and development
+                Contribute to Filipino natural language processing research and development.
               </li>
             </ul>
           </div>
@@ -124,26 +124,26 @@ const About: React.FC = () => {
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start">
                 <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                Human annotation interface for translation quality assessment
+                Provide a human annotation interface dedicated to translation quality assessment.
               </li>
               <li className="flex items-start">
                 <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                Error classification system (syntactic/semantic, major/minor)
+                Deliver an error classification system that covers syntactic and semantic categories with major and minor levels.
               </li>
               <li className="flex items-start">
                 <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                Multi-user annotation and evaluation workflows
+                Support multi-user annotation and evaluation workflows for collaborative research.
               </li>
               <li className="flex items-start">
                 <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                Support for multiple Philippine languages
+                Maintain full support for multiple Philippine languages.
               </li>
             </ul>
           </div>
         </div>
       </div>
 
-      {/* Impact & Contribution */}
+      {/* Impact and Contribution */}
       <div className="bg-white rounded-lg shadow-sm border p-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Research Impact</h2>
         

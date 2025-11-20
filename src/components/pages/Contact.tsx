@@ -18,7 +18,7 @@ const Contact: React.FC = () => {
             Contact Us
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto">
-            Get in touch with the research team for questions, support, or to learn more about 
+            Contact the research team for questions, support, or to learn more about 
             participating in the WiMarka machine translation evaluation project.
           </p>
         </div>
@@ -88,7 +88,7 @@ const Contact: React.FC = () => {
                 <div>
                   <h4 className="font-semibold text-gray-800 mb-2">Is my data secure?</h4>
                   <p className="text-gray-600 text-sm">
-                    Yes, all data is handled according to academic research standards with appropriate privacy protections and ethical considerations.
+                    Yes. All data is handled according to academic research standards with appropriate privacy protections and ethical considerations.
                   </p>
                 </div>
               </div>
@@ -112,10 +112,10 @@ const Contact: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Documentation</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Access comprehensive guides and tutorials for using the platform effectively.
+                Access comprehensive guides and tutorials that explain how to use the platform effectively.
               </p>
               <Link to="/about" className="text-beauty-bush-600 hover:text-beauty-bush-700 text-sm font-medium">
-                Learn More →
+                Learn more →
               </Link>
             </div>
 
@@ -127,10 +127,10 @@ const Contact: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Help Center</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Find answers to common questions and troubleshooting guides.
+                Find answers to common questions along with concise troubleshooting guides.
               </p>
               <Link to="/process" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                Get Help →
+                Get help →
               </Link>
             </div>
 
@@ -142,10 +142,10 @@ const Contact: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Community</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Connect with other researchers and participants in the project.
+                Connect with other researchers and participants who support the project.
               </p>
               <Link to="/register" className="text-green-600 hover:text-green-700 text-sm font-medium">
-                Join Us →
+                Join us →
               </Link>
             </div>
           </div>

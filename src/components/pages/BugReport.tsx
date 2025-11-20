@@ -28,7 +28,7 @@ const BugReport: React.FC = () => {
             Report a Bug
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto">
-            Help us improve the WiMarka system by reporting any issues, bugs, or unexpected behavior you encounter.
+            Please help us improve the WiMarka system by reporting any issues, bugs, or unexpected behavior you encounter.
           </p>
         </div>
       </section>
@@ -40,9 +40,9 @@ const BugReport: React.FC = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">
               Submit Bug Report
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Please provide detailed information about the issue you encountered. 
-              This helps our development team understand and fix the problem quickly.
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Please provide detailed information about the issue you encountered. 
+                Complete details enable the development team to understand and resolve the problem quickly.
             </p>
           </div>
           
@@ -59,19 +59,19 @@ const BugReport: React.FC = () => {
                 <ul className="text-blue-700 space-y-2">
                   <li className="flex items-start">
                     <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                    <span>Describe what you were trying to do when the issue occurred</span>
+                    <span>Describe what you were trying to accomplish when the issue occurred.</span>
                   </li>
                   <li className="flex items-start">
                     <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                    <span>Explain what you expected to happen vs. what actually happened</span>
+                    <span>Explain what you expected to happen versus what actually occurred.</span>
                   </li>
                   <li className="flex items-start">
                     <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                    <span>Include steps to reproduce the issue (if possible)</span>
+                    <span>Include the steps required to reproduce the issue whenever possible.</span>
                   </li>
                   <li className="flex items-start">
                     <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                    <span>Mention your browser, device, and any error messages you saw</span>
+                    <span>Mention your browser, device, and any error messages you observed.</span>
                   </li>
                 </ul>
               </div>
@@ -89,7 +89,7 @@ const BugReport: React.FC = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Opening Form...
+                      Opening the form...
                     </>
                   ) : (
                     <>
@@ -101,7 +101,7 @@ const BugReport: React.FC = () => {
                   )}
                 </button>
                 <p className="text-sm text-gray-500 mt-4">
-                  This will open the bug report form in a new tab
+                  This action opens the bug report form in a new browser tab.
                 </p>
               </div>
             </div>
@@ -117,11 +117,11 @@ const BugReport: React.FC = () => {
                 What We Need
               </h3>
               <ul className="text-gray-600 space-y-2">
-                <li>• Clear description of the problem</li>
-                <li>• Steps to reproduce the issue</li>
-                <li>• Expected vs. actual behavior</li>
-                <li>• Browser and device information</li>
-                <li>• Screenshots (if applicable)</li>
+                <li>• Provide a clear description of the problem.</li>
+                <li>• Share the steps required to reproduce the issue.</li>
+                <li>• Detail the expected behavior versus the actual result.</li>
+                <li>• Include browser and device information.</li>
+                <li>• Attach screenshots whenever they are available.</li>
               </ul>
             </div>
 
@@ -133,8 +133,8 @@ const BugReport: React.FC = () => {
                 Response Time
               </h3>
               <p className="text-gray-600">
-                We typically respond to bug reports within 1-2 business days. 
-                For critical issues affecting system functionality, we aim to respond within 24 hours.
+                The research team typically responds to bug reports within one to two business days. 
+                For critical issues that affect system functionality, we aim to respond within twenty-four hours.
               </p>
             </div>
           </div>
@@ -145,7 +145,7 @@ const BugReport: React.FC = () => {
       <section className="relative z-10 py-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-8">
-            Need Help with Something Else?
+            Need assistance with something else?
           </h2>
           <p className="text-xl text-gray-600 mb-8">
             If you have general questions or need support, visit our contact page.

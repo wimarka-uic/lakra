@@ -108,19 +108,19 @@ const AboutLanding: React.FC = () => {
               <ul className="space-y-4 text-gray-600">
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-beauty-bush-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Develop a reference-free evaluation metric for Philippine language machine translation</span>
+                  <span>Develop a reference-free evaluation metric for machine translation in Philippine languages.</span>
                 </li>
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-beauty-bush-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Create an annotation tool for collecting human evaluation data</span>
+                  <span>Create an annotation tool that gathers high-quality human evaluation data.</span>
                 </li>
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-beauty-bush-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Establish quality assessment frameworks for low-resource languages</span>
+                  <span>Establish rigorous quality assessment frameworks for low-resource languages.</span>
                 </li>
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-beauty-bush-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Contribute to Filipino NLP research and development</span>
+                  <span>Contribute to Filipino natural language processing research and development.</span>
                 </li>
               </ul>
             </div>
@@ -130,23 +130,23 @@ const AboutLanding: React.FC = () => {
               <ul className="space-y-4 text-gray-600">
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-green-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Human annotation interface for translation quality assessment</span>
+                  <span>Offer a human annotation interface dedicated to translation quality assessment.</span>
                 </li>
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-green-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Error classification system (syntactic/semantic, major/minor)</span>
+                  <span>Provide an error classification system that covers syntactic and semantic categories with major and minor labels.</span>
                 </li>
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-green-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Multi-user annotation and evaluation workflows</span>
+                  <span>Support multi-user annotation and evaluation workflows for collaborative research.</span>
                 </li>
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-green-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>AI-powered quality assessment with confidence scoring</span>
+                  <span>Introduce AI-powered quality assessment with confidence scoring for each submission.</span>
                 </li>
                 <li className="flex items-start">
                   <span className="w-3 h-3 bg-green-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Comprehensive analytics and reporting tools</span>
+                  <span>Deliver comprehensive analytics and reporting tools that summarize research progress.</span>
                 </li>
               </ul>
             </div>

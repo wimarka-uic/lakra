@@ -519,7 +519,7 @@ const OnboardingTest: React.FC = () => {
               </div>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              🎉 Onboarding Complete!
+              Onboarding Complete
             </h1>
             <p className="text-lg text-gray-600 mb-6">
               You have already completed the language proficiency quiz and onboarding process.
@@ -582,8 +582,8 @@ const OnboardingTest: React.FC = () => {
                     About This Quiz
                   </h3>
                   <p className="text-blue-800 mb-3">
-                    This proficiency quiz tests your knowledge of the languages you've selected in your profile. 
-                    You'll answer questions about grammar, vocabulary, translation, and cultural understanding.
+                    This proficiency quiz tests your knowledge of the languages you have selected in your profile. 
+                    You will answer questions about grammar, vocabulary, translation, and cultural understanding.
                   </p>
                                      <p className="text-blue-700 text-sm mb-2">
                      Your selected languages: <strong>{user?.languages && user.languages.length > 0 
@@ -592,7 +592,7 @@ const OnboardingTest: React.FC = () => {
                        : 'None selected'}</strong>
                    </p>
                   <p className="text-blue-600 text-xs italic">
-                    💡 This quiz helps us understand your language proficiency for annotation tasks!
+                    Note: This quiz helps us understand your language proficiency for annotation tasks.
                   </p>
                 </div>
               </div>
@@ -602,7 +602,7 @@ const OnboardingTest: React.FC = () => {
               <div className="bg-green-50 rounded-lg p-6">
                 <div className="flex items-center mb-3">
                   <Clock className="h-5 w-5 text-green-600 mr-2" />
-                  <h4 className="font-semibold text-green-900">Time & Format</h4>
+                  <h4 className="font-semibold text-green-900">Time and Format</h4>
                 </div>
                 <ul className="text-green-800 space-y-1 text-sm">
                   <li>• 90 seconds per question</li>
@@ -618,7 +618,7 @@ const OnboardingTest: React.FC = () => {
                   <h4 className="font-semibold text-yellow-900">Question Types</h4>
                 </div>
                 <ul className="text-yellow-800 space-y-1 text-sm">
-                  <li>• 📝 Grammar & Syntax</li>
+                  <li>• 📝 Grammar and Syntax</li>
                   <li>• 📚 Vocabulary Knowledge</li>
                   <li>• 🔄 Translation Skills</li>
                   <li>• 🏛️ Cultural Understanding</li>
@@ -633,10 +633,10 @@ const OnboardingTest: React.FC = () => {
                   <p className="font-medium mb-1">Passing Score: 70%</p>
                   <p className="text-sm mb-2">
                     This quiz validates your language proficiency for annotation work. 
-                    If you don't pass initially, you can retake it after studying more.
+                    If you do not pass initially, you may retake it after studying more.
                   </p>
                   <p className="text-xs italic">
-                    Remember: This helps us ensure quality annotations and provide appropriate language tasks! 🎯
+                    Remember: This helps us ensure quality annotations and provide appropriate language tasks.
                   </p>
                 </div>
               </div>

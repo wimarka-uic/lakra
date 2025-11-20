@@ -1862,7 +1862,7 @@ const AdminDashboard: React.FC = () => {
               <div className="col-span-12 lg:col-span-8">
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-96">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-900">User Growth & Activity</h3>
+                    <h3 className="text-xl font-bold text-gray-900">User Growth and Activity</h3>
                     <div className="flex space-x-4 text-sm">
                       <div className="flex items-center">
                         <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
@@ -5199,7 +5199,7 @@ const AdminDashboard: React.FC = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    User Role & Settings
+                    User Role and Settings
                   </label>
                   <div className="space-y-3">
                     <div className="flex items-center">
@@ -5384,9 +5384,9 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Roles & Permissions */}
+                {/* Roles and Permissions */}
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Roles & Permissions</h4>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Roles and Permissions</h4>
                   <div className="flex flex-wrap gap-2">
                     {selectedUser.is_admin && (
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 border border-purple-200">

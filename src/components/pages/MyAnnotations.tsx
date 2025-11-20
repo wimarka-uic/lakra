@@ -136,7 +136,7 @@ const MyAnnotations: React.FC = () => {
           <div className="space-y-3 mb-6">
             {user.onboarding_status === 'pending' && (
               <p className="text-amber-600">
-                ⏳ You haven't started your qualification test yet.
+                ⏳ You have not started your qualification test yet.
               </p>
             )}
             {user.onboarding_status === 'in_progress' && (
@@ -146,7 +146,7 @@ const MyAnnotations: React.FC = () => {
             )}
             {user.onboarding_status === 'failed' && (
               <p className="text-red-600">
-                ❌ You didn't pass the qualification test. Please retake it to access your annotations.
+                ❌ You did not pass the qualification test. Please retake it to access your annotations.
               </p>
             )}
           </div>
@@ -828,7 +828,7 @@ const MyAnnotations: React.FC = () => {
             <h3 className="mt-4 text-lg font-medium text-gray-900">No annotations found</h3>
             <p className="mt-2 text-gray-500">
               {filter === 'all' 
-                ? "You haven't created any annotations yet."
+                ? "You have not created any annotations yet."
                 : `No annotations with status "${filter}".`}
             </p>
           </div>

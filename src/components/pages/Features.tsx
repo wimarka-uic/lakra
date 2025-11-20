@@ -45,9 +45,9 @@ const Features: React.FC = () => {
                 Interactive text highlighting and error classification system for evaluating machine translation quality with detailed error analysis.
               </p>
               <ul className="text-sm text-gray-500 space-y-2">
-                <li>• Text highlighting tools</li>
-                <li>• Error classification system</li>
-                <li>• Quality scoring metrics</li>
+                <li>• Provides precise text highlighting controls for each translation segment.</li>
+                <li>• Classifies errors consistently by severity and linguistic type.</li>
+                <li>• Records fluency, adequacy, and overall scores with guided metrics.</li>
               </ul>
             </div>
 
@@ -63,9 +63,9 @@ const Features: React.FC = () => {
                 Comprehensive evaluation system with detailed scoring metrics and human-in-the-loop validation for reliable results.
               </p>
               <ul className="text-sm text-gray-500 space-y-2">
-                <li>• Multi-dimensional scoring</li>
-                <li>• Human validation workflow</li>
-                <li>• Detailed analytics dashboard</li>
+                <li>• Applies multi-dimensional scoring scales tailored to research benchmarks.</li>
+                <li>• Coordinates human validation workflows with transparent approvals.</li>
+                <li>• Surfaces detailed analytics dashboards for reviewers and administrators.</li>
               </ul>
             </div>
 
@@ -81,9 +81,9 @@ const Features: React.FC = () => {
                 Built-in voice recording capabilities for audio annotation and pronunciation assessment of Philippine languages.
               </p>
               <ul className="text-sm text-gray-500 space-y-2">
-                <li>• Audio annotation support</li>
-                <li>• Pronunciation assessment</li>
-                <li>• Voice quality analysis</li>
+                <li>• Captures spoken annotations directly within the interface.</li>
+                <li>• Evaluates pronunciation and articulation for Philippine languages.</li>
+                <li>• Analyzes and stores voice quality metrics securely.</li>
               </ul>
             </div>
 
@@ -99,9 +99,9 @@ const Features: React.FC = () => {
                 Comprehensive administrative tools for managing users, monitoring progress, and analyzing research data.
               </p>
               <ul className="text-sm text-gray-500 space-y-2">
-                <li>• User management system</li>
-                <li>• Progress monitoring</li>
-                <li>• Data analytics</li>
+                <li>• Manages participant accounts and permissions centrally.</li>
+                <li>• Tracks progress and throughput across annotation cohorts.</li>
+                <li>• Reviews aggregated research data with filterable insights.</li>
               </ul>
             </div>
 
@@ -117,9 +117,9 @@ const Features: React.FC = () => {
                 Designed specifically for the WiMarka thesis research project, supporting academic research workflows and data collection.
               </p>
               <ul className="text-sm text-gray-500 space-y-2">
-                <li>• Academic research support</li>
-                <li>• Data export capabilities</li>
-                <li>• Research workflow integration</li>
+                <li>• Supports academic research requirements and protocols.</li>
+                <li>• Exports sanitized datasets for reproducible studies.</li>
+                <li>• Integrates seamlessly with WiMarka research workflows.</li>
               </ul>
             </div>
           </div>

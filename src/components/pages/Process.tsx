@@ -47,10 +47,10 @@ const Process: React.FC = () => {
                     Registration is free and open to participants interested in contributing to the research.
                   </p>
                   <ul className="text-sm text-gray-500 space-y-2">
-                    <li>• Simple registration process</li>
-                    <li>• Free access to all tools</li>
-                    <li>• Research participation agreement</li>
-                    <li>• Privacy and data protection</li>
+                    <li>• Follow a simple registration process with guided steps.</li>
+                    <li>• Receive free access to every research tool on the platform.</li>
+                    <li>• Review and accept the research participation agreement.</li>
+                    <li>• Benefit from strict privacy and data protection safeguards.</li>
                   </ul>
                 </div>
               </div>
@@ -72,17 +72,17 @@ const Process: React.FC = () => {
                     <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl mr-4">
                       2
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-800">Training & Guidelines</h3>
+                    <h3 className="text-2xl font-bold text-gray-800">Training and Guidelines</h3>
                   </div>
                   <p className="text-gray-600 mb-6">
                     Complete the training modules to learn about error classification, quality assessment criteria, 
                     and the annotation workflow for Philippine language machine translation.
                   </p>
                   <ul className="text-sm text-gray-500 space-y-2">
-                    <li>• Error classification training</li>
-                    <li>• Quality assessment guidelines</li>
-                    <li>• Annotation workflow tutorial</li>
-                    <li>• Practice exercises</li>
+                    <li>• Complete dedicated error classification training.</li>
+                    <li>• Study the quality assessment guidelines in detail.</li>
+                    <li>• Review the full annotation workflow tutorial.</li>
+                    <li>• Practice with curated exercises before going live.</li>
                   </ul>
                 </div>
               </div>
@@ -104,17 +104,17 @@ const Process: React.FC = () => {
                     <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xl mr-4">
                       3
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-800">Annotation & Evaluation</h3>
+                    <h3 className="text-2xl font-bold text-gray-800">Annotation and Evaluation</h3>
                   </div>
                   <p className="text-gray-600 mb-6">
                     Use the interactive annotation interface to evaluate machine translation outputs, 
                     classify errors, and provide quality assessments for Philippine language translations.
                   </p>
                   <ul className="text-sm text-gray-500 space-y-2">
-                    <li>• Interactive text highlighting</li>
-                    <li>• Error classification system</li>
-                    <li>• Quality scoring interface</li>
-                    <li>• Progress tracking</li>
+                    <li>• Use interactive text highlighting for every translation segment.</li>
+                    <li>• Apply the shared error classification system consistently.</li>
+                    <li>• Enter ratings through the guided quality scoring interface.</li>
+                    <li>• Monitor your individual progress throughout the study.</li>
                   </ul>
                 </div>
               </div>
@@ -142,10 +142,10 @@ const Process: React.FC = () => {
                     Your annotations and evaluations contribute directly to the WiMarka thesis research project, advancing machine translation evaluation for Philippine languages.
                   </p>
                   <ul className="text-sm text-gray-500 space-y-2">
-                    <li>• Data collection for research</li>
-                    <li>• Machine translation evaluation</li>
-                    <li>• Academic research contribution</li>
-                    <li>• Philippine language advancement</li>
+                    <li>• Supply high-quality data for the WiMarka research archive.</li>
+                    <li>• Strengthen machine translation evaluation for Philippine languages.</li>
+                    <li>• Contribute measurable outcomes to academic research outputs.</li>
+                    <li>• Advance linguistic resources for Filipino-speaking communities.</li>
                   </ul>
                 </div>
               </div>

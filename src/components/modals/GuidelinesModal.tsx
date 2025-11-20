@@ -8,6 +8,21 @@ interface GuidelinesModalProps {
   onAccept: () => void;
 }
 
+const toneGuidelines = [
+  {
+    title: 'Write complete sentences',
+    description: 'Communicate instructions with full sentences that include closing punctuation.',
+  },
+  {
+    title: 'Spell out every word',
+    description: 'Avoid abbreviations and contractions so the guidance reads as formally as possible.',
+  },
+  {
+    title: 'Match formatting',
+    description: 'Use consistent capitalization, typography, and spacing across instructions.',
+  },
+];
+
 const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAccept }) => {
   return (
     <Modal
@@ -24,7 +39,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
         <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <div className="flex items-center mb-2">
             <Info className="text-blue-600 mr-2" size={20} />
-            <h3 className="text-lg font-semibold text-blue-900">Welcome to Lakra Annotation Tool!</h3>
+            <h3 className="text-lg font-semibold text-blue-900">Welcome to the Lakra Annotation Tool.</h3>
           </div>
           <p className="text-blue-800">
             Thank you for participating in our machine translation evaluation project. Please read these guidelines carefully before starting your annotation work.
@@ -42,9 +57,21 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
               </p>
             </section>
 
+            <section>
+              <h4 className="text-lg font-semibold text-gray-800 mb-3">Communication Tone</h4>
+              <div className="grid md:grid-cols-3 gap-3">
+                {toneGuidelines.map((item) => (
+                  <div key={item.title} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-sm font-semibold text-gray-800">{item.title}</p>
+                    <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
             {/* Text Highlighting */}
             <section>
-              <h4 className="text-lg font-semibold text-gray-800 mb-3">Text Highlighting & Error Classification</h4>
+              <h4 className="text-lg font-semibold text-gray-800 mb-3">Text Highlighting and Error Classification</h4>
               <div className="space-y-4">
                 <p className="text-gray-600">
                   Select specific text portions to highlight and classify errors by type and severity:
@@ -60,7 +87,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                           <span className="text-sm font-medium text-orange-900">Minor Syntactic</span>
                         </div>
                         <p className="text-xs text-orange-800">
-                          Small grammar, word order, or inflection errors that don't affect overall understanding
+                          Small grammar, word order, or inflection errors that do not affect overall understanding.
                         </p>
                       </div>
                       
@@ -70,7 +97,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                           <span className="text-sm font-medium text-blue-900">Minor Semantic</span>
                         </div>
                         <p className="text-xs text-blue-800">
-                          Small meaning, context, or word choice errors that don't significantly impact comprehension
+                          Small meaning, context, or word choice errors that do not significantly impact comprehension.
                         </p>
                       </div>
                     </div>
@@ -129,7 +156,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                       This should be your improved version of what the translation should be.
                     </p>
                     <p className="text-green-700 text-sm">
-                      <strong>Note:</strong> If you don't highlight any errors, the final form is optional as you're indicating the translation is acceptable as-is.
+                      <strong>Note:</strong> If you do not highlight any errors, the final form is optional because you are indicating the translation is acceptable as is.
                     </p>
                   </div>
                 </div>
@@ -148,7 +175,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <h5 className="font-medium text-blue-900 mb-2">Fluency Score</h5>
                     <p className="text-sm text-blue-800 mb-2">
-                      How natural and readable is the translation?
+                      Evaluate how natural and readable the translation is.
                     </p>
                     <ul className="text-xs text-blue-700 space-y-1">
                       <li><strong>5:</strong> Perfect fluency</li>
@@ -162,7 +189,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                     <h5 className="font-medium text-green-900 mb-2">Adequacy Score</h5>
                     <p className="text-sm text-green-800 mb-2">
-                      How well does it convey the source meaning?
+                      Determine how well the translation conveys the source meaning.
                     </p>
                     <ul className="text-xs text-green-700 space-y-1">
                       <li><strong>5:</strong> Perfect meaning transfer</li>
@@ -176,7 +203,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                   <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                     <h5 className="font-medium text-purple-900 mb-2">Overall Quality</h5>
                     <p className="text-sm text-purple-800 mb-2">
-                      General assessment considering both aspects
+                      Provide a general assessment that considers fluency and adequacy.
                     </p>
                     <ul className="text-xs text-purple-700 space-y-1">
                       <li><strong>5:</strong> Excellent translation</li>
@@ -195,7 +222,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
               <h4 className="text-lg font-semibold text-gray-800 mb-3">Best Practices</h4>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <h5 className="font-medium text-gray-700 mb-2">✅ Do:</h5>
+                  <h5 className="font-medium text-gray-700 mb-2">Recommended Practices</h5>
                   <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
                     <li>Read both sentences completely before annotating</li>
                     <li>Consider context and domain-specific terminology</li>
@@ -209,7 +236,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                 </div>
                 
                 <div>
-                  <h5 className="font-medium text-gray-700 mb-2">❌ Don't:</h5>
+                  <h5 className="font-medium text-gray-700 mb-2">Practices to Avoid</h5>
                   <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
                     <li>Rush through annotations</li>
                     <li>Let personal preferences affect error classification</li>
@@ -217,8 +244,8 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                     <li>Give inconsistent ratings for similar issues</li>
                     <li>Leave vague or unhelpful comments</li>
                     <li>Mix up syntactic and semantic error types</li>
-                    <li>Forget to provide final form when highlighting errors</li>
-                    <li>Over-highlight (select meaningful error segments)</li>
+                    <li>Forget to provide a final form when highlighting errors</li>
+                    <li>Over-highlight; select meaningful error segments instead</li>
                   </ul>
                 </div>
               </div>
@@ -228,7 +255,7 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
                 <div className="text-sm text-yellow-800 space-y-1">
                   <p><strong>Syntactic errors:</strong> Grammar, word order, inflection, punctuation</p>
                   <p><strong>Semantic errors:</strong> Wrong meaning, incorrect word choice, missing context</p>
-                  <p><strong>Minor errors:</strong> Don't significantly affect understanding</p>
+                  <p><strong>Minor errors:</strong> Do not significantly affect understanding</p>
                   <p><strong>Major errors:</strong> Seriously impact comprehension or readability</p>
                 </div>
               </div>
@@ -290,13 +317,13 @@ const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClose, onAc
             onClick={onClose}
             className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 rounded-md hover:bg-gray-50"
           >
-            I'll read this later
+            I will review these guidelines later
           </button>
           <button
             onClick={onAccept}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium hover:scale-105 active:scale-95 hover:shadow-md"
           >
-            I understand, let's start annotating!
+            I understand. Begin annotation.
           </button>
         </div>
       </div>

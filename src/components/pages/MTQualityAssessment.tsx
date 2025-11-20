@@ -743,7 +743,7 @@ const MTQualityAssessment: React.FC = () => {
           <div className="space-y-3 mb-6">
             {user.onboarding_status === 'pending' && (
               <p className="text-amber-600">
-                ⏳ You haven't started your qualification test yet.
+                ⏳ You have not started your qualification test yet.
               </p>
             )}
             {user.onboarding_status === 'in_progress' && (
@@ -753,7 +753,7 @@ const MTQualityAssessment: React.FC = () => {
             )}
             {user.onboarding_status === 'failed' && (
               <p className="text-red-600">
-                ❌ You didn't pass the qualification test. Please retake it to start annotating.
+                ❌ You did not pass the qualification test. Please retake it to start annotating.
               </p>
             )}
           </div>
@@ -1023,7 +1023,7 @@ const MTQualityAssessment: React.FC = () => {
                             <div>
                               <h4 className="text-sm font-medium text-emerald-800">Translation looks good!</h4>
                               <p className="text-xs text-emerald-700 mt-1">
-                                You haven't highlighted any issues. If you think this translation is accurate and well-written, just add your scores below and submit.
+                                You have not highlighted any issues. If you believe this translation is accurate and well written, simply add your scores below and submit.
                               </p>
                             </div>
                           </div>
@@ -1165,7 +1165,7 @@ const MTQualityAssessment: React.FC = () => {
                                       <li key={index} className="text-xs">{warning}</li>
                                     ))}
                                   </ul>
-                                  <p className="text-xs mt-2 italic">We'll ask you to confirm before submitting.</p>
+                                  <p className="text-xs mt-2 italic">We will ask you to confirm before submitting.</p>
                                 </div>
                               </div>
                             )}
@@ -1247,7 +1247,7 @@ const MTQualityAssessment: React.FC = () => {
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Error Type & Severity
+                Error Type and Severity
               </label>
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <div className="text-center">
@@ -1308,7 +1308,7 @@ const MTQualityAssessment: React.FC = () => {
               <div className="text-xs text-gray-500 mt-2 space-y-1">
                 <p><strong>Syntactic:</strong> Grammar, word order, inflection errors</p>
                 <p><strong>Semantic:</strong> Meaning, context, word choice errors</p>
-                <p><strong>Minor:</strong> Small errors that don't affect overall understanding</p>
+                <p><strong>Minor:</strong> Small errors that do not affect overall understanding.</p>
                 <p><strong>Major:</strong> Significant errors that impact comprehension</p>
               </div>
             </div>
@@ -1374,7 +1374,7 @@ const MTQualityAssessment: React.FC = () => {
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Quick reminder:</h4>
+              <h4 className="text-sm font-medium text-blue-800 mb-2">Quick reminder:</h4>
               <ul className="text-xs text-blue-700 space-y-1">
                 <li>• Click on a percentage (20%-100%) to rate the translation quality</li>
                 <li>• If you highlighted errors, write the corrected sentence</li>

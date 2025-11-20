@@ -369,7 +369,7 @@ const Landing: React.FC = () => {
             <div>
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900">
                 <span className="hero-title-wrap block">
-                  <span className="hero-title">Automate & manage translation quality with ease</span>
+                  <span className="hero-title">Automate and manage translation quality with ease</span>
                 </span>
               </h1>
               <p className="mt-6 text-lg text-gray-600 max-w-xl">

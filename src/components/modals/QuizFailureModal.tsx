@@ -31,19 +31,19 @@ const QuizFailureModal: React.FC<QuizFailureModalProps> = ({
   if (!isOpen) return null;
 
   const getEncouragementMessage = (score: number) => {
-    if (score >= 60) return "You're almost there!";
-    if (score >= 50) return "Good effort! Keep improving!";
-    return "Every expert was once a beginner!";
+    if (score >= 60) return 'You are almost there.';
+    if (score >= 50) return 'Good effort. Please keep improving.';
+    return 'Every expert was once a beginner.';
   };
 
   const getMotivationalTip = (score: number) => {
     if (score >= 60) {
-      return "You're very close to passing! Review the areas you missed and try again.";
+      return 'You are very close to passing. Review the areas you missed and try again.';
     }
     if (score >= 50) {
-      return "Focus on grammar rules and vocabulary. Practice makes perfect!";
+      return 'Focus on grammar rules and vocabulary. Consistent practice delivers results.';
     }
-    return "Take time to study the language fundamentals. You've got this!";
+    return 'Take time to study the language fundamentals. You can accomplish this.';
   };
 
   return (
@@ -88,7 +88,7 @@ const QuizFailureModal: React.FC<QuizFailureModalProps> = ({
               animationPhase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                📚 Keep Learning!
+                Continue Learning
               </h2>
               <h3 className="text-lg font-semibold text-gray-700 mb-3">
                 {getEncouragementMessage(score)}
@@ -134,7 +134,7 @@ const QuizFailureModal: React.FC<QuizFailureModalProps> = ({
             }`}>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="text-blue-800 font-medium text-sm mb-2">
-                  💡 {getMotivationalTip(score)}
+                  Tip: {getMotivationalTip(score)}
                 </p>
               </div>
               
@@ -170,7 +170,7 @@ const QuizFailureModal: React.FC<QuizFailureModalProps> = ({
               </button>
               
               <p className="text-xs text-gray-500">
-                You can retake the quiz anytime! 💪
+                You may retake the quiz at any time.
               </p>
             </div>
           </div>

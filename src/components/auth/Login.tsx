@@ -172,7 +172,7 @@ const Login: React.FC = () => {
                   to="/forgot-password"
                   className="text-xs text-primary-600 hover:text-primary-500 transition-colors"
                 >
-                  Forgot password?
+                  Forgot your password?
                 </Link>
               </div>
             </div>
@@ -202,12 +202,12 @@ const Login: React.FC = () => {
         
         <div className="text-center mt-4">
           <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
+            Do not have an account yet?{' '}
             <Link
               to="/register"
               className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
             >
-              Sign up now
+              Create an account now
             </Link>
           </p>
         </div>

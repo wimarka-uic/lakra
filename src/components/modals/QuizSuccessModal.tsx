@@ -59,10 +59,10 @@ const QuizSuccessModal: React.FC<QuizSuccessModalProps> = ({
   };
 
   const getScoreMessage = (score: number) => {
-    if (score >= 95) return 'Outstanding Performance!';
-    if (score >= 90) return 'Excellent Work!';
-    if (score >= 80) return 'Great Job!';
-    return 'Well Done!';
+    if (score >= 95) return 'Outstanding performance';
+    if (score >= 90) return 'Excellent work';
+    if (score >= 80) return 'Great job';
+    return 'Well done';
   };
 
   const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
@@ -172,7 +172,7 @@ const QuizSuccessModal: React.FC<QuizSuccessModalProps> = ({
               animationPhase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}>
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                🎉 Congratulations!
+                Congratulations
               </h2>
               <h3 className="text-xl font-semibold text-gray-700 mb-3">
                 {getScoreMessage(score)}
@@ -188,7 +188,7 @@ const QuizSuccessModal: React.FC<QuizSuccessModalProps> = ({
                   {score.toFixed(1)}%
                 </div>
                 <div className="text-sm text-gray-600">
-                  Passed with flying colors!
+                  You passed with excellent proficiency.
                 </div>
               </div>
             </div>
@@ -198,7 +198,7 @@ const QuizSuccessModal: React.FC<QuizSuccessModalProps> = ({
               animationPhase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}>
               <p className="text-gray-600 mb-3">
-                You've demonstrated excellent proficiency in:
+                You have demonstrated excellent proficiency in:
               </p>
               <div className="flex flex-wrap justify-center gap-2 mb-4">
                 {languages.map((lang, index) => (
@@ -221,7 +221,7 @@ const QuizSuccessModal: React.FC<QuizSuccessModalProps> = ({
             }`}>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-green-800 font-medium text-sm">
-                  🌟 Your language skills are excellent! You now have full access to all annotation features and can start contributing to the Lakra project.
+                  Your language skills are excellent. You now have full access to all annotation features and can start contributing to the Lakra project.
                 </p>
               </div>
             </div>
@@ -239,7 +239,7 @@ const QuizSuccessModal: React.FC<QuizSuccessModalProps> = ({
               </button>
               
               <p className="text-xs text-gray-500">
-                Welcome to the Lakra annotation team! 🎯
+                Welcome to the Lakra annotation team.
               </p>
             </div>
           </div>
