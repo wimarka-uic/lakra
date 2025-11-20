@@ -1,0 +1,1614 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Components &mdash; Lakra 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+    <link rel="shortcut icon" href="../_static/favicon.svg"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Development Guide" href="development.html" />
+    <link rel="prev" title="API Reference" href="api-reference.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Lakra
+              <img src="../_static/lakra.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Manual</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user-manual/index.html">User Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/index.html#who-this-manual-is-for">Who This Manual Is For</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/index.html#contents">Contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html">Getting Started with Lakra</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/getting-started.html#what-is-lakra">What is Lakra?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/getting-started.html#overview-for-different-roles">Overview for Different Roles</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/getting-started.html#system-requirements">System Requirements</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/getting-started.html#quick-start">Quick Start</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/getting-started.html#first-steps-by-role">First Steps by Role</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/getting-started.html#navigation-overview">Navigation Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/getting-started.html#getting-help">Getting Help</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/getting-started.html#whats-next">What’s Next?</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html">Installation Guide</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#installation-steps">Installation Steps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#verification">Verification</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#production-deployment">Production Deployment</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html">Annotator Guide</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#getting-started">Getting Started</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#the-annotation-workflow">The Annotation Workflow</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#annotation-best-practices">Annotation Best Practices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#working-with-different-language-pairs">Working with Different Language Pairs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#using-the-annotation-interface">Using the Annotation Interface</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#quality-metrics-and-feedback">Quality Metrics and Feedback</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#tips-for-success">Tips for Success</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#faq-for-annotators">FAQ for Annotators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html">Evaluator Guide</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#getting-started">Getting Started</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#evaluation-types">Evaluation Types</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#annotation-evaluation-workflow">Annotation Evaluation Workflow</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#quality-assessment-workflow">Quality Assessment Workflow</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#evaluation-best-practices">Evaluation Best Practices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#working-with-ai-assistance">Working with AI Assistance</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#interface-guide">Interface Guide</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#metrics-and-performance">Metrics and Performance</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#handling-special-cases">Handling Special Cases</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#faq-for-evaluators">FAQ for Evaluators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#tips-for-success">Tips for Success</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html">Administrator Guide</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#getting-started">Getting Started</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#user-management">User Management</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#content-management">Content Management</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#system-monitoring">System Monitoring</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#quality-control">Quality Control</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#system-configuration">System Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#security-best-practices">Security Best Practices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#advanced-administration">Advanced Administration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#faq-for-administrators">FAQ for Administrators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#tips-for-effective-administration">Tips for Effective Administration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html">Features</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#core-annotation-features">Core Annotation Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#quality-assessment-features">Quality Assessment Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#user-management-features">User Management Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#progress-tracking-features">Progress Tracking Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#content-management-features">Content Management Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#real-time-features">Real-Time Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#interface-features">Interface Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#security-features">Security Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#integration-features">Integration Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#performance-features">Performance Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#reporting-features">Reporting Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#future-features">Future Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#feature-requests">Feature Requests</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html">Frequently Asked Questions (FAQ)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#general-questions">General Questions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#account-and-authentication">Account and Authentication</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#for-annotators">For Annotators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#for-evaluators">For Evaluators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#for-administrators">For Administrators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#technical-questions">Technical Questions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#error-messages">Error Messages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#best-practices">Best Practices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#getting-help">Getting Help</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/faq.html#still-have-questions">Still Have Questions?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/index.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user-manual/getting-started.html">Getting Started with Lakra</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/getting-started.html#what-is-lakra">What is Lakra?</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#key-capabilities">Key Capabilities</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/getting-started.html#overview-for-different-roles">Overview for Different Roles</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#annotators">Annotators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#evaluators">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#administrators">Administrators</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/getting-started.html#system-requirements">System Requirements</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#for-end-users">For End Users</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#display-requirements">Display Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/getting-started.html#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/getting-started.html#first-steps-by-role">First Steps by Role</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#for-annotators">For Annotators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#for-evaluators">For Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/getting-started.html#for-administrators">For Administrators</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/getting-started.html#navigation-overview">Navigation Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/getting-started.html#getting-help">Getting Help</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/getting-started.html#whats-next">What’s Next?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user-manual/installation.html">Installation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/installation.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/installation.html#installation-steps">Installation Steps</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#clone-the-repository">1. Clone the Repository</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#install-dependencies">2. Install Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#set-up-supabase">3. Set Up Supabase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#create-a-supabase-project">Create a Supabase Project</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#get-your-project-credentials">Get Your Project Credentials</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#configure-environment-variables">4. Configure Environment Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#set-up-the-database">5. Set Up the Database</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#run-sql-migrations">Run SQL Migrations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#configure-row-level-security-rls">Configure Row Level Security (RLS)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/installation.html#configure-authentication">Configure Authentication</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#configure-storage-for-voice-recordings">6. Configure Storage (for Voice Recordings)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#start-the-development-server">7. Start the Development Server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#create-your-first-admin-user">8. Create Your First Admin User</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#access-the-application">9. Access the Application</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/installation.html#verification">Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/installation.html#production-deployment">Production Deployment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#quick-production-checklist">Quick Production Checklist</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/installation.html#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#common-issues">Common Issues</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/installation.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/installation.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user-manual/annotator-guide.html">Annotator Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#getting-started">Getting Started</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#first-login">First Login</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#understanding-your-dashboard">Understanding Your Dashboard</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#the-annotation-workflow">The Annotation Workflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#step-1-select-a-sentence">Step 1: Select a Sentence</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#step-2-review-the-translation">Step 2: Review the Translation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#step-3-highlight-errors">Step 3: Highlight Errors</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#how-to-highlight-text">How to Highlight Text</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#error-type-guidelines">Error Type Guidelines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#managing-highlights">Managing Highlights</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#step-4-quality-ratings">Step 4: Quality Ratings</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#fluency-rating">Fluency Rating</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#adequacy-rating">Adequacy Rating</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/annotator-guide.html#overall-quality-rating">Overall Quality Rating</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#step-5-provide-comments">Step 5: Provide Comments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#step-6-voice-recording-optional">Step 6: Voice Recording (Optional)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#step-7-submit-annotation">Step 7: Submit Annotation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#annotation-best-practices">Annotation Best Practices</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#quality-guidelines">Quality Guidelines</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#common-mistakes-to-avoid">Common Mistakes to Avoid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#time-management">Time Management</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#working-with-different-language-pairs">Working with Different Language Pairs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#source-language-considerations">Source Language Considerations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#target-language-considerations">Target Language Considerations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#using-the-annotation-interface">Using the Annotation Interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#interface-components">Interface Components</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#keyboard-shortcuts">Keyboard Shortcuts</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#quality-metrics-and-feedback">Quality Metrics and Feedback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#your-performance-metrics">Your Performance Metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#receiving-feedback">Receiving Feedback</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#common-issues">Common Issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#tips-for-success">Tips for Success</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#becoming-a-better-annotator">Becoming a Better Annotator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/annotator-guide.html#maintaining-quality">Maintaining Quality</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#faq-for-annotators">FAQ for Annotators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/annotator-guide.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user-manual/evaluator-guide.html">Evaluator Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#getting-started">Getting Started</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#first-login">First Login</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#understanding-your-dashboard">Understanding Your Dashboard</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#evaluation-types">Evaluation Types</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#annotation-evaluation">1. Annotation Evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#quality-assessment">2. Quality Assessment</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#annotation-evaluation-workflow">Annotation Evaluation Workflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-1-select-an-annotation-to-review">Step 1: Select an Annotation to Review</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-2-review-the-annotation">Step 2: Review the Annotation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#error-highlights">Error Highlights</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#quality-ratings">Quality Ratings</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#comments-and-suggestions">Comments and Suggestions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#voice-recording-if-present">Voice Recording (if present)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-3-provide-evaluation-scores">Step 3: Provide Evaluation Scores</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#accuracy-score">Accuracy Score</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#completeness-score">Completeness Score</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#overall-annotation-quality">Overall Annotation Quality</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-4-provide-detailed-feedback">Step 4: Provide Detailed Feedback</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-5-submit-evaluation">Step 5: Submit Evaluation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#quality-assessment-workflow">Quality Assessment Workflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-1-access-quality-assessment">Step 1: Access Quality Assessment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-2-review-ai-assessment">Step 2: Review AI Assessment</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#ai-quality-scores">AI Quality Scores</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#ai-error-detection">AI Error Detection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#ai-explanations">AI Explanations</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-3-validate-ai-assessment">Step 3: Validate AI Assessment</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#feedback-options">Feedback Options</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-4-provide-your-assessment">Step 4: Provide Your Assessment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#step-5-submit-quality-assessment">Step 5: Submit Quality Assessment</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#evaluation-best-practices">Evaluation Best Practices</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#maintaining-consistency">Maintaining Consistency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#being-fair-and-objective">Being Fair and Objective</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#providing-valuable-feedback">Providing Valuable Feedback</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#working-with-ai-assistance">Working with AI Assistance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#understanding-ai-capabilities">Understanding AI Capabilities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#when-to-override-ai">When to Override AI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#improving-ai-performance">Improving AI Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#interface-guide">Interface Guide</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#annotation-review-interface">Annotation Review Interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#quality-assessment-interface">Quality Assessment Interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#keyboard-shortcuts">Keyboard Shortcuts</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#metrics-and-performance">Metrics and Performance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#your-performance-indicators">Your Performance Indicators</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#agreement-rates">Agreement Rates</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#productivity-metrics">Productivity Metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/evaluator-guide.html#quality-indicators">Quality Indicators</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#improving-your-performance">Improving Your Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#handling-special-cases">Handling Special Cases</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#difficult-evaluations">Difficult Evaluations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#disagreeing-with-annotators">Disagreeing with Annotators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#ai-errors-or-bugs">AI Errors or Bugs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#faq-for-evaluators">FAQ for Evaluators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#tips-for-success">Tips for Success</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#effective-evaluation-strategies">Effective Evaluation Strategies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#managing-workload">Managing Workload</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/evaluator-guide.html#continuous-improvement">Continuous Improvement</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/evaluator-guide.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user-manual/admin-guide.html">Administrator Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#getting-started">Getting Started</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#accessing-the-admin-panel">Accessing the Admin Panel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#admin-dashboard-overview">Admin Dashboard Overview</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#user-management">User Management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#viewing-users">Viewing Users</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#creating-new-users">Creating New Users</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#method-1-individual-user-creation">Method 1: Individual User Creation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#method-2-bulk-user-import">Method 2: Bulk User Import</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#editing-user-profiles">Editing User Profiles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#managing-user-roles">Managing User Roles</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#role-capabilities">Role Capabilities</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#deactivating-deleting-users">Deactivating/Deleting Users</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#content-management">Content Management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#managing-sentences">Managing Sentences</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#viewing-sentences">Viewing Sentences</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#adding-individual-sentences">Adding Individual Sentences</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#bulk-importing-sentences-via-csv">Bulk Importing Sentences via CSV</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#csv-format-requirements">CSV Format Requirements</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#import-process">Import Process</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#common-import-errors">Common Import Errors</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#managing-sentence-status">Managing Sentence Status</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#system-monitoring">System Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#analytics-dashboard">Analytics Dashboard</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#user-activity">User Activity</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#annotation-metrics">Annotation Metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#quality-metrics">Quality Metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#system-performance">System Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#generating-reports">Generating Reports</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#data-export">Data Export</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#quality-control">Quality Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#monitoring-annotation-quality">Monitoring Annotation Quality</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#review-patterns">Review Patterns</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#quality-assurance-checks">Quality Assurance Checks</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#managing-onboarding-tests">Managing Onboarding Tests</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#creating-onboarding-tests">Creating Onboarding Tests</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/admin-guide.html#reviewing-test-results">Reviewing Test Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#handling-quality-issues">Handling Quality Issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#system-configuration">System Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#general-settings">General Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#annotation-settings">Annotation Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#evaluation-settings">Evaluation Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#storage-and-backups">Storage and Backups</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#common-admin-issues">Common Admin Issues</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#accessing-system-logs">Accessing System Logs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#database-maintenance">Database Maintenance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#security-best-practices">Security Best Practices</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#user-security">User Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#data-security">Data Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#privacy-compliance">Privacy Compliance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#advanced-administration">Advanced Administration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#custom-workflows">Custom Workflows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#api-access">API Access</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#integration-management">Integration Management</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#faq-for-administrators">FAQ for Administrators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#tips-for-effective-administration">Tips for Effective Administration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#id1">User Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#id2">Content Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#quality-assurance">Quality Assurance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/admin-guide.html#system-health">System Health</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/admin-guide.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user-manual/features.html">Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#core-annotation-features">Core Annotation Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#interactive-text-highlighting">Interactive Text Highlighting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#quality-scoring">Quality Scoring</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#fluency-rating-1-5">Fluency Rating (1-5)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#adequacy-rating-1-5">Adequacy Rating (1-5)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#overall-quality-rating-1-5">Overall Quality Rating (1-5)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#error-classification-and-documentation">Error Classification and Documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#voice-recording">Voice Recording</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#comments-and-suggestions">Comments and Suggestions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#quality-assessment-features">Quality Assessment Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#ai-powered-evaluation">AI-Powered Evaluation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#ai-quality-scoring">AI Quality Scoring</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#ai-error-detection">AI Error Detection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#ai-explanations">AI Explanations</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#human-in-the-loop-validation">Human-in-the-Loop Validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#quality-assessment-workflow">Quality Assessment Workflow</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#user-management-features">User Management Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#multi-role-system">Multi-Role System</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#administrator-role">Administrator Role</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#annotator-role">Annotator Role</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#evaluator-role">Evaluator Role</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#multi-role-support">Multi-Role Support</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#authentication">Authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#user-profiles">User Profiles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#onboarding-system">Onboarding System</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#progress-tracking-features">Progress Tracking Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#personal-dashboard">Personal Dashboard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#system-wide-analytics">System-Wide Analytics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#historical-data">Historical Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#content-management-features">Content Management Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#sentence-management">Sentence Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#language-pair-support">Language Pair Support</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#domain-classification">Domain Classification</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#bulk-import-export">Bulk Import/Export</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#csv-import">CSV Import</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../user-manual/features.html#data-export">Data Export</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#real-time-features">Real-Time Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#live-updates">Live Updates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#notifications">Notifications</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#interface-features">Interface Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#responsive-design">Responsive Design</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#accessibility">Accessibility</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#user-experience">User Experience</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#customization">Customization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#security-features">Security Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#data-protection">Data Protection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#privacy">Privacy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#integration-features">Integration Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#supabase-integration">Supabase Integration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#api-access">API Access</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#third-party-integration">Third-Party Integration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#performance-features">Performance Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#optimization">Optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#scalability">Scalability</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#reporting-features">Reporting Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#built-in-reports">Built-in Reports</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/features.html#custom-reports">Custom Reports</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#future-features">Future Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/features.html#feature-requests">Feature Requests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user-manual/faq.html">Frequently Asked Questions (FAQ)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#general-questions">General Questions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#what-is-lakra">What is Lakra?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#who-can-use-lakra">Who can use Lakra?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#what-browsers-are-supported">What browsers are supported?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#is-lakra-open-source">Is Lakra open source?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#account-and-authentication">Account and Authentication</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-create-an-account">How do I create an account?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-use-both-email-and-username-to-log-in">Can I use both email and username to log in?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#i-forgot-my-password-what-do-i-do">I forgot my password. What do I do?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-change-my-password">Can I change my password?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#what-if-i-cant-log-in">What if I can’t log in?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#for-annotators">For Annotators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#do-i-need-to-complete-an-onboarding-test">Do I need to complete an onboarding test?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-retake-the-onboarding-test-if-i-fail">Can I retake the onboarding test if I fail?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-start-annotating">How do I start annotating?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-save-my-work-without-submitting">Can I save my work without submitting?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-edit-an-annotation-after-submitting">Can I edit an annotation after submitting?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-many-sentences-should-i-annotate">How many sentences should I annotate?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#what-if-i-dont-understand-the-source-language-well">What if I don’t understand the source language well?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-skip-a-difficult-sentence">Can I skip a difficult sentence?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#what-if-the-source-text-seems-wrong">What if the source text seems wrong?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-long-should-each-annotation-take">How long should each annotation take?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#what-makes-a-good-annotation">What makes a good annotation?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#for-evaluators">For Evaluators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-know-which-annotations-to-review">How do I know which annotations to review?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#should-i-always-agree-with-the-ai-assessment">Should I always agree with the AI assessment?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-should-i-handle-borderline-cases">How should I handle borderline cases?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-annotators-see-my-feedback">Can annotators see my feedback?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-should-i-write-constructive-feedback">How should I write constructive feedback?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#what-if-i-strongly-disagree-with-an-annotation">What if I strongly disagree with an annotation?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-long-should-evaluations-take">How long should evaluations take?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#for-administrators">For Administrators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-add-new-users">How do I add new users?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#whats-the-best-way-to-import-many-sentences">What’s the best way to import many sentences?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-recover-deleted-users-or-sentences">Can I recover deleted users or sentences?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-check-system-logs">How do I check system logs?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#whats-the-recommended-backup-strategy">What’s the recommended backup strategy?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-handle-quality-issues-with-an-annotator">How do I handle quality issues with an annotator?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#technical-questions">Technical Questions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#voice-recording-doesnt-work-why">Voice recording doesn’t work. Why?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#why-is-the-page-loading-slowly">Why is the page loading slowly?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-use-lakra-on-my-phone">Can I use Lakra on my phone?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#is-my-data-secure">Is my data secure?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#can-i-export-my-data">Can I export my data?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#what-happens-to-my-voice-recordings">What happens to my voice recordings?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#error-messages">Error Messages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#failed-to-fetch-or-network-error">“Failed to fetch” or “Network error”</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#unauthorized-or-authentication-failed">“Unauthorized” or “Authentication failed”</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#validation-error-on-submit">“Validation error” on submit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#database-error">“Database error”</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#best-practices">Best Practices</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-can-i-improve-my-annotation-quality">How can I improve my annotation quality?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#tips-for-efficient-evaluation">Tips for efficient evaluation?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-maintain-work-life-balance">How do I maintain work-life balance?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#getting-help">Getting Help</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#where-can-i-find-more-detailed-help">Where can I find more detailed help?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-report-a-bug">How do I report a bug?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#how-do-i-request-a-new-feature">How do I request a new feature?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-manual/faq.html#who-do-i-contact-for-support">Who do I contact for support?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../user-manual/faq.html#still-have-questions">Still Have Questions?</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Technical Manual</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Technical Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#who-this-manual-is-for">Who This Manual Is For</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#contents">Contents</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="architecture.html">Architecture</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#architecture-principles">Architecture Principles</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#frontend-architecture">Frontend Architecture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#backend-architecture">Backend Architecture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#authentication-flow">Authentication Flow</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#data-flow-patterns">Data Flow Patterns</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#performance-optimizations">Performance Optimizations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#security-architecture">Security Architecture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#scalability-considerations">Scalability Considerations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#monitoring-and-observability">Monitoring and Observability</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#deployment-architecture">Deployment Architecture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#future-architecture-enhancements">Future Architecture Enhancements</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html">Database Schema</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="database-schema.html#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="database-schema.html#core-tables">Core Tables</a></li>
+<li class="toctree-l4"><a class="reference internal" href="database-schema.html#relationships">Relationships</a></li>
+<li class="toctree-l4"><a class="reference internal" href="database-schema.html#database-functions-and-triggers">Database Functions and Triggers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="database-schema.html#indexes-for-performance">Indexes for Performance</a></li>
+<li class="toctree-l4"><a class="reference internal" href="database-schema.html#data-migrations">Data Migrations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="database-schema.html#backup-and-recovery">Backup and Recovery</a></li>
+<li class="toctree-l4"><a class="reference internal" href="database-schema.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference.html">API Reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#authentication">Authentication</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#sentences">Sentences</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#annotations">Annotations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#evaluations">Evaluations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#quality-assessments">Quality Assessments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#admin-functions">Admin Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#storage-voice-recordings">Storage (Voice Recordings)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#error-handling">Error Handling</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#real-time-subscriptions">Real-Time Subscriptions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#rate-limiting">Rate Limiting</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#best-practices">Best Practices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Components</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#component-organization">Component Organization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#authentication-components">Authentication Components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#layout-components">Layout Components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#modal-components">Modal Components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#page-components">Page Components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ui-components">UI Components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#component-patterns">Component Patterns</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#styling">Styling</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#component-best-practices">Component Best Practices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#testing-components">Testing Components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="development.html">Development Guide</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="development.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#initial-setup">Initial Setup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#project-structure">Project Structure</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#available-scripts">Available Scripts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#development-workflow">Development Workflow</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#code-style">Code Style</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#adding-new-features">Adding New Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#database-migrations">Database Migrations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#testing">Testing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#debugging">Debugging</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#performance-optimization">Performance Optimization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#documentation">Documentation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#contributing">Contributing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#resources">Resources</a></li>
+<li class="toctree-l4"><a class="reference internal" href="development.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html">Deployment Guide</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#deployment-overview">Deployment Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#recommended-architecture">Recommended Architecture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#frontend-deployment">Frontend Deployment</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#backend-deployment-supabase">Backend Deployment (Supabase)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#security-hardening">Security Hardening</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#performance-optimization">Performance Optimization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#monitoring">Monitoring</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#ci-cd-pipeline">CI/CD Pipeline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#deployment-checklist">Deployment Checklist</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#scaling-considerations">Scaling Considerations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#maintenance">Maintenance</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#resources">Resources</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deployment.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#quick-links">Quick Links</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#getting-started-for-developers">Getting Started for Developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#contributing">Contributing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#support">Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#architecture-principles">Architecture Principles</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#serverless-first">1. Serverless-First</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#client-side-rendering">2. Client-Side Rendering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#security-by-default">3. Security by Default</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#mobile-first-design">4. Mobile-First Design</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#frontend-architecture">Frontend Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#technology-stack">Technology Stack</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#project-structure">Project Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#component-architecture">Component Architecture</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#state-management">State Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#routing-strategy">Routing Strategy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#data-flow">Data Flow</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#backend-architecture">Backend Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#supabase-components">Supabase Components</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#postgresql-database">1. PostgreSQL Database</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#authentication-supabase-auth">2. Authentication (Supabase Auth)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#storage-supabase-storage">3. Storage (Supabase Storage)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#row-level-security-rls">4. Row Level Security (RLS)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="architecture.html#edge-functions-optional">5. Edge Functions (Optional)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#authentication-flow">Authentication Flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#login-process">Login Process</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#authorization-flow">Authorization Flow</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#data-flow-patterns">Data Flow Patterns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#annotation-creation">Annotation Creation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#quality-assessment">Quality Assessment</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#performance-optimizations">Performance Optimizations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#frontend">Frontend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#backend">Backend</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#security-architecture">Security Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#defense-in-depth">Defense in Depth</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#threat-mitigation">Threat Mitigation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#scalability-considerations">Scalability Considerations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#horizontal-scaling">Horizontal Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#performance-at-scale">Performance at Scale</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#data-growth">Data Growth</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#monitoring-and-observability">Monitoring and Observability</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#client-side">Client-Side</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#server-side">Server-Side</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#deployment-architecture">Deployment Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#development">Development</a></li>
+<li class="toctree-l3"><a class="reference internal" href="architecture.html#production">Production</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#future-architecture-enhancements">Future Architecture Enhancements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="database-schema.html">Database Schema</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="database-schema.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database-schema.html#core-tables">Core Tables</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#users">users</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#sentences">sentences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#annotations">annotations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#text-highlights">text_highlights</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#quality-assessments">quality_assessments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#evaluations">evaluations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#onboarding-tests">onboarding_tests</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="database-schema.html#relationships">Relationships</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database-schema.html#database-functions-and-triggers">Database Functions and Triggers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#auto-update-timestamp-trigger">Auto-update timestamp trigger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#update-annotation-count-on-sentences">Update annotation count on sentences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database-schema.html#username-based-login-rpc">Username-based login RPC</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="database-schema.html#indexes-for-performance">Indexes for Performance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database-schema.html#data-migrations">Data Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database-schema.html#backup-and-recovery">Backup and Recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database-schema.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api-reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#authentication">Authentication</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference.html#authapi">authAPI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#login-credentials">login(credentials)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#register-userdata">register(userData)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#logout">logout()</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getcurrentuser">getCurrentUser()</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#updatepassword-newpassword">updatePassword(newPassword)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#sentences">Sentences</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference.html#sentencesapi">sentencesAPI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getsentences-filters">getSentences(filters)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getsentencebyid-id">getSentenceById(id)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getnextsentence-userid">getNextSentence(userId)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#createsentence-sentencedata">createSentence(sentenceData)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#updatesentence-id-updates">updateSentence(id, updates)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#deletesentence-id">deleteSentence(id)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#importsentencesfromcsv-csvdata">importSentencesFromCSV(csvData)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#annotations">Annotations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference.html#annotationsapi">annotationsAPI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#createannotation-annotationdata">createAnnotation(annotationData)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getmyannotations-userid-options">getMyAnnotations(userId, options)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getannotationbyid-id">getAnnotationById(id)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#updateannotation-id-updates">updateAnnotation(id, updates)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#deleteannotation-id">deleteAnnotation(id)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getannotationsbysentence-sentenceid">getAnnotationsBysentence(sentenceId)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#evaluations">Evaluations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference.html#evaluationsapi">evaluationsAPI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#createevaluation-evaluationdata">createEvaluation(evaluationData)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getmyevaluations-evaluatorid-options">getMyEvaluations(evaluatorId, options)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getpendingevaluations-evaluatorid-options">getPendingEvaluations(evaluatorId, options)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getevaluationbyid-id">getEvaluationById(id)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getevaluationsforannotation-annotationid">getEvaluationsForAnnotation(annotationId)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#quality-assessments">Quality Assessments</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference.html#qualityassessmentsapi">qualityAssessmentsAPI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#createqualityassessment-assessmentdata">createQualityAssessment(assessmentData)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getqualityassessment-sentenceid">getQualityAssessment(sentenceId)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#validatequalityassessment-id-validation">validateQualityAssessment(id, validation)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#admin-functions">Admin Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference.html#adminapi">adminAPI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getstats">getStats()</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getallusers-options">getAllUsers(options)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#createuser-userdata">createUser(userData)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#updateuser-userid-updates">updateUser(userId, updates)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#deleteuser-userid">deleteUser(userId)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getannotationmetrics-options">getAnnotationMetrics(options)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#storage-voice-recordings">Storage (Voice Recordings)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference.html#storageapi">storageAPI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#uploadvoicerecording-file-annotationid">uploadVoiceRecording(file, annotationId)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#getvoicerecordingurl-path">getVoiceRecordingUrl(path)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api-reference.html#deletevoicerecording-path">deleteVoiceRecording(path)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#error-handling">Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#real-time-subscriptions">Real-Time Subscriptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#rate-limiting">Rate Limiting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api-reference.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Components</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#component-organization">Component Organization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#authentication-components">Authentication Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#login">Login</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#register">Register</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#forgotpassword">ForgotPassword</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#resetpassword">ResetPassword</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#layout-components">Layout Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#navbar">Navbar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#footer">Footer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#layout">Layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#animatedbackground">AnimatedBackground</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#modal-components">Modal Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#guidelinesmodal">GuidelinesModal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#confirmationmodal">ConfirmationModal</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#page-components">Page Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#landing">Landing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#annotatordashboard">AnnotatorDashboard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#annotationinterface">AnnotationInterface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#evaluatordashboard">EvaluatorDashboard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#evaluationinterface">EvaluationInterface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#admindashboard">AdminDashboard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#usermanagement">UserManagement</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sentencemanagement">SentenceManagement</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ui-components">UI Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#logo">Logo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#voicerecorder">VoiceRecorder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#seo">SEO</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#component-patterns">Component Patterns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#protected-component-pattern">Protected Component Pattern</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#role-based-rendering">Role-Based Rendering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#data-fetching-pattern">Data Fetching Pattern</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#styling">Styling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tailwindcss-usage">TailwindCSS Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#custom-styles">Custom Styles</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#component-best-practices">Component Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-components">Testing Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development.html">Development Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#initial-setup">Initial Setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#clone-repository">1. Clone Repository</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#install-dependencies">2. Install Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#environment-configuration">3. Environment Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#database-setup">4. Database Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#start-development-server">5. Start Development Server</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#project-structure">Project Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#available-scripts">Available Scripts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#development">Development</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#vite-configuration">Vite Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#development-workflow">Development Workflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#branching-strategy">Branching Strategy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#commit-message-convention">Commit Message Convention</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#code-style">Code Style</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#typescript">TypeScript</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#react-best-practices">React Best Practices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#eslint-configuration">ESLint Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#tailwind-css">Tailwind CSS</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#adding-new-features">Adding New Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#create-component">1. Create Component</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#add-route-if-needed">2. Add Route (if needed)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#add-api-function-if-needed">3. Add API Function (if needed)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#update-types">4. Update Types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#database-migrations">Database Migrations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#creating-migrations">Creating Migrations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#testing">Testing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#manual-testing-checklist">Manual Testing Checklist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#testing-user-flows">Testing User Flows</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#debugging">Debugging</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#browser-devtools">Browser DevTools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#supabase-dashboard">Supabase Dashboard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#common-issues">Common Issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#performance-optimization">Performance Optimization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="development.html#code-splitting">Code Splitting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#memoization">Memoization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="development.html#database-query-optimization">Database Query Optimization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#contributing">Contributing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#resources">Resources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#deployment-overview">Deployment Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#recommended-architecture">Recommended Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#frontend-deployment">Frontend Deployment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#option-1-vercel-recommended">Option 1: Vercel (Recommended)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#option-2-netlify">Option 2: Netlify</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#option-3-aws-s3-cloudfront">Option 3: AWS S3 + CloudFront</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#backend-deployment-supabase">Backend Deployment (Supabase)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#production-supabase-setup">Production Supabase Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#database-backups">Database Backups</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#security-hardening">Security Hardening</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#environment-variables">1. Environment Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#supabase-security">2. Supabase Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#frontend-security">3. Frontend Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#rate-limiting">4. Rate Limiting</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#performance-optimization">Performance Optimization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#frontend">Frontend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#backend">Backend</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#monitoring">Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#frontend-monitoring">Frontend Monitoring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#backend-monitoring">Backend Monitoring</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#ci-cd-pipeline">CI/CD Pipeline</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#github-actions-example">GitHub Actions Example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#deployment-checklist">Deployment Checklist</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#pre-deployment">Pre-Deployment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#deployment">Deployment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#post-deployment">Post-Deployment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#rollback-plan">Rollback Plan</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#scaling-considerations">Scaling Considerations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#horizontal-scaling">Horizontal Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#database-scaling">Database Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#storage-scaling">Storage Scaling</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#maintenance">Maintenance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#regular-tasks">Regular Tasks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#updates">Updates</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="deployment.html#common-production-issues">Common Production Issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#resources">Resources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Lakra</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Technical Manual</a></li>
+      <li class="breadcrumb-item active">Components</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/technical-manual/components.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="components">
+<h1>Components<a class="headerlink" href="#components" title="Link to this heading"></a></h1>
+<p>Documentation of key React components in the Lakra system.</p>
+<section id="component-organization">
+<h2>Component Organization<a class="headerlink" href="#component-organization" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>src/components/
+├── auth/              # Authentication components
+├── layout/            # Layout components
+├── modals/            # Modal dialogs
+├── pages/             # Page components
+├── ui/                # Reusable UI components  
+└── index.ts           # Barrel exports
+</pre></div>
+</div>
+</section>
+<section id="authentication-components">
+<h2>Authentication Components<a class="headerlink" href="#authentication-components" title="Link to this heading"></a></h2>
+<section id="login">
+<h3>Login<a class="headerlink" href="#login" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/auth/Login.tsx</span></code></p>
+<p>User login form with email/username support.</p>
+<p><strong>Props:</strong> None (uses AuthContext)</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Email or username login</p></li>
+<li><p>Password visibility toggle</p></li>
+<li><p>Form validation</p></li>
+<li><p>Error handling</p></li>
+<li><p>Redirect after login</p></li>
+</ul>
+</section>
+<section id="register">
+<h3>Register<a class="headerlink" href="#register" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/auth/Register.tsx</span></code></p>
+<p>User registration form.</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Email/username/password fields</p></li>
+<li><p>Role selection (annotator/evaluator)</p></li>
+<li><p>Password confirmation</p></li>
+<li><p>Validation</p></li>
+<li><p>Terms acceptance</p></li>
+</ul>
+</section>
+<section id="forgotpassword">
+<h3>ForgotPassword<a class="headerlink" href="#forgotpassword" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/auth/ForgotPassword.tsx</span></code></p>
+<p>Password reset request form.</p>
+</section>
+<section id="resetpassword">
+<h3>ResetPassword<a class="headerlink" href="#resetpassword" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/auth/ResetPassword.tsx</span></code></p>
+<p>New password entry after reset link.</p>
+</section>
+</section>
+<section id="layout-components">
+<h2>Layout Components<a class="headerlink" href="#layout-components" title="Link to this heading"></a></h2>
+<section id="navbar">
+<h3>Navbar<a class="headerlink" href="#navbar" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/layout/Navbar.tsx</span></code></p>
+<p>Top navigation bar.</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Logo and branding</p></li>
+<li><p>Navigation links (role-based)</p></li>
+<li><p>User menu dropdown</p></li>
+<li><p>Logout functionality</p></li>
+<li><p>Mobile responsive menu</p></li>
+</ul>
+</section>
+<section id="footer">
+<h3>Footer<a class="headerlink" href="#footer" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/layout/Footer.tsx</span></code></p>
+<p>Site footer with links and info.</p>
+</section>
+<section id="layout">
+<h3>Layout<a class="headerlink" href="#layout" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/layout/Layout.tsx</span></code></p>
+<p>Main layout wrapper.</p>
+<p><strong>Props:</strong></p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nx">children</span><span class="o">:</span><span class="w"> </span><span class="kt">ReactNode</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">showGuidelines</span><span class="o">?:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Structure:</strong></p>
+<div class="highlight-jsx notranslate"><div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">Layout</span><span class="p">&gt;</span>
+<span class="w">  </span><span class="p">&lt;</span><span class="nt">Navbar</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">  </span><span class="p">&lt;</span><span class="nt">AnimatedBackground</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">  </span><span class="p">&lt;</span><span class="nt">main</span><span class="p">&gt;{</span><span class="nx">children</span><span class="p">}&lt;/</span><span class="nt">main</span><span class="p">&gt;</span>
+<span class="w">  </span><span class="p">&lt;</span><span class="nt">Footer</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="p">&lt;/</span><span class="nt">Layout</span><span class="p">&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="animatedbackground">
+<h3>AnimatedBackground<a class="headerlink" href="#animatedbackground" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/layout/AnimatedBackground.tsx</span></code></p>
+<p>Animated background effects using GSAP.</p>
+</section>
+</section>
+<section id="modal-components">
+<h2>Modal Components<a class="headerlink" href="#modal-components" title="Link to this heading"></a></h2>
+<section id="guidelinesmodal">
+<h3>GuidelinesModal<a class="headerlink" href="#guidelinesmodal" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/modals/GuidelinesModal.tsx</span></code></p>
+<p>Annotation guidelines display.</p>
+<p><strong>Props:</strong></p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nx">isOpen</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">onClose</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">onAccept</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="confirmationmodal">
+<h3>ConfirmationModal<a class="headerlink" href="#confirmationmodal" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/modals/ConfirmationModal.tsx</span></code></p>
+<p>Generic confirmation dialog.</p>
+<p><strong>Props:</strong></p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nx">isOpen</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">message</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">onConfirm</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">onCancel</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">confirmText?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">cancelText?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Usage:</strong></p>
+<div class="highlight-jsx notranslate"><div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">ConfirmationModal</span>
+<span class="w">  </span><span class="na">isOpen</span><span class="o">=</span><span class="p">{</span><span class="nx">showConfirm</span><span class="p">}</span>
+<span class="w">  </span><span class="na">title</span><span class="o">=</span><span class="s">&quot;Delete Annotation&quot;</span>
+<span class="w">  </span><span class="na">message</span><span class="o">=</span><span class="s">&quot;Are you sure you want to delete this annotation?&quot;</span>
+<span class="w">  </span><span class="na">onConfirm</span><span class="o">=</span><span class="p">{</span><span class="nx">handleDelete</span><span class="p">}</span>
+<span class="w">  </span><span class="na">onCancel</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setShowConfirm</span><span class="p">(</span><span class="kc">false</span><span class="p">)}</span>
+<span class="p">/&gt;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="page-components">
+<h2>Page Components<a class="headerlink" href="#page-components" title="Link to this heading"></a></h2>
+<section id="landing">
+<h3>Landing<a class="headerlink" href="#landing" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/pages/Landing.tsx</span></code></p>
+<p>Landing page for unauthenticated users.</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Hero section</p></li>
+<li><p>Feature highlights</p></li>
+<li><p>Call-to-action buttons</p></li>
+<li><p>Responsive design</p></li>
+</ul>
+</section>
+<section id="annotatordashboard">
+<h3>AnnotatorDashboard<a class="headerlink" href="#annotatordashboard" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/pages/AnnotatorDashboard.tsx</span></code></p>
+<p>Main dashboard for annotators.</p>
+<p><strong>Displays:</strong></p>
+<ul class="simple">
+<li><p>Annotation statistics</p></li>
+<li><p>Recent annotations</p></li>
+<li><p>Available sentences count</p></li>
+<li><p>Quick start button</p></li>
+</ul>
+</section>
+<section id="annotationinterface">
+<h3>AnnotationInterface<a class="headerlink" href="#annotationinterface" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/pages/AnnotationInterface.tsx</span></code></p>
+<p>Main annotation interface.</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Source text display</p></li>
+<li><p>Machine translation display</p></li>
+<li><p>Text highlighting</p></li>
+<li><p>Error classification</p></li>
+<li><p>Quality rating sliders</p></li>
+<li><p>Comments input</p></li>
+<li><p>Voice recorder</p></li>
+<li><p>Submit button</p></li>
+</ul>
+<p><strong>State:</strong></p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nx">sentence</span><span class="o">:</span><span class="w"> </span><span class="kt">Sentence</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">highlights</span><span class="o">:</span><span class="w"> </span><span class="kt">Highlight</span><span class="p">[];</span>
+<span class="w">  </span><span class="nx">fluencyScore</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">adequacyScore</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">overallScore</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">comments</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">voiceRecording</span><span class="o">:</span><span class="w"> </span><span class="kt">Blob</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">loading</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="evaluatordashboard">
+<h3>EvaluatorDashboard<a class="headerlink" href="#evaluatordashboard" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/pages/EvaluatorDashboard.tsx</span></code></p>
+<p>Main dashboard for evaluators.</p>
+<p><strong>Displays:</strong></p>
+<ul class="simple">
+<li><p>Pending evaluations count</p></li>
+<li><p>Pending quality assessments</p></li>
+<li><p>Completed evaluations</p></li>
+<li><p>Performance metrics</p></li>
+</ul>
+</section>
+<section id="evaluationinterface">
+<h3>EvaluationInterface<a class="headerlink" href="#evaluationinterface" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/pages/EvaluationInterface.tsx</span></code></p>
+<p>Annotation evaluation interface.</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Annotation display</p></li>
+<li><p>Highlighted errors review</p></li>
+<li><p>Evaluation scoring</p></li>
+<li><p>Feedback text area</p></li>
+<li><p>Voice recording playback</p></li>
+</ul>
+</section>
+<section id="admindashboard">
+<h3>AdminDashboard<a class="headerlink" href="#admindashboard" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/pages/AdminDashboard.tsx</span></code></p>
+<p>Administrator dashboard.</p>
+<p><strong>Sections:</strong></p>
+<ul class="simple">
+<li><p>System statistics</p></li>
+<li><p>User management</p></li>
+<li><p>Sentence management</p></li>
+<li><p>Analytics charts</p></li>
+</ul>
+</section>
+<section id="usermanagement">
+<h3>UserManagement<a class="headerlink" href="#usermanagement" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/pages/UserManagement.tsx</span></code></p>
+<p>User administration interface.</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>User list with filtering</p></li>
+<li><p>Create/edit/delete users</p></li>
+<li><p>Role assignment</p></li>
+<li><p>Activity status</p></li>
+</ul>
+</section>
+<section id="sentencemanagement">
+<h3>SentenceManagement<a class="headerlink" href="#sentencemanagement" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/pages/SentenceManagement.tsx</span></code></p>
+<p>Sentence administration interface.</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Sentence list with filtering</p></li>
+<li><p>Add/edit/delete sentences</p></li>
+<li><p>CSV bulk import</p></li>
+<li><p>Activate/deactivate sentences</p></li>
+</ul>
+</section>
+</section>
+<section id="ui-components">
+<h2>UI Components<a class="headerlink" href="#ui-components" title="Link to this heading"></a></h2>
+<section id="logo">
+<h3>Logo<a class="headerlink" href="#logo" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/ui/Logo.tsx</span></code></p>
+<p>Lakra logo component.</p>
+<p><strong>Props:</strong></p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nx">size</span><span class="o">?:</span><span class="w"> </span><span class="s1">&#39;sm&#39;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">&#39;md&#39;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">&#39;lg&#39;</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">className?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="voicerecorder">
+<h3>VoiceRecorder<a class="headerlink" href="#voicerecorder" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/ui/VoiceRecorder.tsx</span></code></p>
+<p>Voice recording component.</p>
+<p><strong>Props:</strong></p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nx">onRecordingComplete</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">blob</span><span class="o">:</span><span class="w"> </span><span class="kt">Blob</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">maxDuration?</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span><span class="w"> </span><span class="c1">// seconds</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Record/pause/stop controls</p></li>
+<li><p>Waveform visualization (optional)</p></li>
+<li><p>Playback before save</p></li>
+<li><p>Duration display</p></li>
+</ul>
+<p><strong>Usage:</strong></p>
+<div class="highlight-jsx notranslate"><div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">VoiceRecorder</span>
+<span class="w">  </span><span class="na">onRecordingComplete</span><span class="o">=</span><span class="p">{(</span><span class="nx">blob</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">handleVoiceRecording</span><span class="p">(</span><span class="nx">blob</span><span class="p">)}</span>
+<span class="w">  </span><span class="na">maxDuration</span><span class="o">=</span><span class="p">{</span><span class="mf">120</span><span class="p">}</span>
+<span class="p">/&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="seo">
+<h3>SEO<a class="headerlink" href="#seo" title="Link to this heading"></a></h3>
+<p><strong>Path:</strong> <code class="docutils literal notranslate"><span class="pre">src/components/ui/SEO.tsx</span></code></p>
+<p>SEO meta tags component.</p>
+<p><strong>Props:</strong></p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">description</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">keywords?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">image?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="component-patterns">
+<h2>Component Patterns<a class="headerlink" href="#component-patterns" title="Link to this heading"></a></h2>
+<section id="protected-component-pattern">
+<h3>Protected Component Pattern<a class="headerlink" href="#protected-component-pattern" title="Link to this heading"></a></h3>
+<p>Components that require authentication:</p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useAuth</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;../../contexts/AuthContext&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Navigate</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;react-router-dom&#39;</span><span class="p">;</span>
+
+<span class="kd">function</span><span class="w"> </span><span class="nx">ProtectedComponent</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">user</span><span class="p">,</span><span class="w"> </span><span class="nx">loading</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useAuth</span><span class="p">();</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">loading</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span><span class="nx">Loading</span><span class="p">...</span><span class="o">&lt;</span><span class="err">/div&gt;;</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">user</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">Navigate</span><span class="w"> </span><span class="nx">to</span><span class="o">=</span><span class="s2">&quot;/login&quot;</span><span class="w"> </span><span class="o">/&gt;</span><span class="p">;</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span><span class="nx">Protected</span><span class="w"> </span><span class="nx">content</span><span class="o">&lt;</span><span class="err">/div&gt;;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="role-based-rendering">
+<h3>Role-Based Rendering<a class="headerlink" href="#role-based-rendering" title="Link to this heading"></a></h3>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="kd">function</span><span class="w"> </span><span class="nx">RoleComponent</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">user</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useAuth</span><span class="p">();</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span>
+<span class="w">      </span><span class="p">{</span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">role</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;admin&#39;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">AdminPanel</span><span class="w"> </span><span class="o">/&gt;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">{</span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">role</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;annotator&#39;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">AnnotatorPanel</span><span class="w"> </span><span class="o">/&gt;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">{</span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">role</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;evaluator&#39;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">EvaluatorPanel</span><span class="w"> </span><span class="o">/&gt;</span><span class="p">}</span>
+<span class="w">    </span><span class="o">&lt;</span><span class="err">/div&gt;</span>
+<span class="w">  </span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="data-fetching-pattern">
+<h3>Data Fetching Pattern<a class="headerlink" href="#data-fetching-pattern" title="Link to this heading"></a></h3>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="kd">function</span><span class="w"> </span><span class="nx">DataComponent</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">setData</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="kc">null</span><span class="p">);</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">loading</span><span class="p">,</span><span class="w"> </span><span class="nx">setLoading</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="kc">true</span><span class="p">);</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">error</span><span class="p">,</span><span class="w"> </span><span class="nx">setError</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="kc">null</span><span class="p">);</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="nx">useEffect</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">fetchData</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">const</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">getData</span><span class="p">();</span>
+<span class="w">        </span><span class="nx">setData</span><span class="p">(</span><span class="nx">result</span><span class="p">);</span>
+<span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">setError</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">message</span><span class="p">);</span>
+<span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="k">finally</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">setLoading</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">fetchData</span><span class="p">();</span>
+<span class="w">  </span><span class="p">},</span><span class="w"> </span><span class="p">[]);</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">loading</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span><span class="nx">Loading</span><span class="p">...</span><span class="o">&lt;</span><span class="err">/div&gt;;</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span><span class="ne">Error</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="nx">error</span><span class="p">}</span><span class="o">&lt;</span><span class="err">/div&gt;;</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span><span class="p">{</span><span class="cm">/* render data */</span><span class="p">}</span><span class="o">&lt;</span><span class="err">/div&gt;;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="styling">
+<h2>Styling<a class="headerlink" href="#styling" title="Link to this heading"></a></h2>
+<section id="tailwindcss-usage">
+<h3>TailwindCSS Usage<a class="headerlink" href="#tailwindcss-usage" title="Link to this heading"></a></h3>
+<p>Components use utility classes:</p>
+<div class="highlight-jsx notranslate"><div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">div</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;flex items-center justify-between p-4 bg-white rounded-lg shadow-md&quot;</span><span class="p">&gt;</span>
+<span class="w">  </span><span class="p">&lt;</span><span class="nt">h2</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;text-xl font-bold text-gray-900&quot;</span><span class="p">&gt;</span><span class="nx">Title</span><span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+<span class="w">  </span><span class="p">&lt;</span><span class="nt">button</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700&quot;</span><span class="p">&gt;</span>
+<span class="w">    </span><span class="nx">Action</span>
+<span class="w">  </span><span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-styles">
+<h3>Custom Styles<a class="headerlink" href="#custom-styles" title="Link to this heading"></a></h3>
+<p>Global styles in <code class="docutils literal notranslate"><span class="pre">src/index.css</span></code>:</p>
+<ul class="simple">
+<li><p>CSS custom properties for theming</p></li>
+<li><p>Base component styles</p></li>
+<li><p>Utility classes</p></li>
+<li><p>Animations</p></li>
+</ul>
+</section>
+</section>
+<section id="component-best-practices">
+<h2>Component Best Practices<a class="headerlink" href="#component-best-practices" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Functional Components</strong>: Use function components, not classes</p></li>
+<li><p><strong>TypeScript</strong>: Always type props and state</p></li>
+<li><p><strong>Hooks</strong>: Use React hooks for state and effects</p></li>
+<li><p><strong>Composition</strong>: Small, focused components</p></li>
+<li><p><strong>Props</strong>: Destructure props for clarity</p></li>
+<li><p><strong>Memoization</strong>: Use <code class="docutils literal notranslate"><span class="pre">useMemo</span></code>/<code class="docutils literal notranslate"><span class="pre">useCallback</span></code> for expensive operations</p></li>
+<li><p><strong>Error Boundaries</strong>: Wrap components in error boundaries</p></li>
+<li><p><strong>Accessibility</strong>: Use semantic HTML and ARIA labels</p></li>
+<li><p><strong>Loading States</strong>: Always show loading indicators</p></li>
+<li><p><strong>Error States</strong>: Handle and display errors gracefully</p></li>
+</ol>
+</section>
+<section id="testing-components">
+<h2>Testing Components<a class="headerlink" href="#testing-components" title="Link to this heading"></a></h2>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">render</span><span class="p">,</span><span class="w"> </span><span class="nx">screen</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@testing-library/react&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">BrowserRouter</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;react-router-dom&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="nx">Component</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;./Component&#39;</span><span class="p">;</span>
+
+<span class="nx">test</span><span class="p">(</span><span class="s1">&#39;renders component&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">render</span><span class="p">(</span>
+<span class="w">    </span><span class="o">&lt;</span><span class="nx">BrowserRouter</span><span class="o">&gt;</span>
+<span class="w">      </span><span class="o">&lt;</span><span class="nx">Component</span><span class="w"> </span><span class="o">/&gt;</span>
+<span class="w">    </span><span class="o">&lt;</span><span class="err">/BrowserRouter&gt;</span>
+<span class="w">  </span><span class="p">);</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="nx">expect</span><span class="p">(</span><span class="nx">screen</span><span class="p">.</span><span class="nx">getByText</span><span class="p">(</span><span class="s1">&#39;Expected Text&#39;</span><span class="p">)).</span><span class="nx">toBeInTheDocument</span><span class="p">();</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+</section>
+<section id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="architecture.html"><span class="std std-doc">Architecture</span></a> - System architecture</p></li>
+<li><p><a class="reference internal" href="development.html"><span class="std std-doc">Development</span></a> - Development workflow</p></li>
+<li><p><a class="reference internal" href="api-reference.html"><span class="std std-doc">API Reference</span></a> - API documentation</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="api-reference.html" class="btn btn-neutral float-left" title="API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="development.html" class="btn btn-neutral float-right" title="Development Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, WiMarka-UIC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
