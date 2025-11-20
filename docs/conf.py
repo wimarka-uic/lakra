@@ -7,9 +7,9 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Lakra'
-copyright = '2025, WiMarka-UIC'
-author = 'WiMarka-UIC'
-release = '1.0.0'
+copyright = '2025, University of the Immaculate Conception - College of Computer Studies'
+author = 'University of the Immaculate Conception - College of Computer Studies'
+release = '0.5.0'
 version = '1.0'
 
 # -- General configuration ---------------------------------------------------
