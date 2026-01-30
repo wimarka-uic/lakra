@@ -28,6 +28,24 @@ export const useAuth = () => {
   return context;
 };
 
+// Safe hook that doesn't throw error, useful for components that should work without auth
+export const useAuthSafe = () => {
+  const context = useContext(AuthContext);
+  return context || {
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    login: async () => { throw new Error('Auth not available'); },
+    register: async () => { throw new Error('Auth not available'); },
+    logout: () => {},
+    markGuidelinesSeen: async () => {},
+    refreshUser: async () => {},
+    forceRefreshUser: async () => {},
+    sendPasswordResetEmail: async () => {},
+    resetPassword: async () => {},
+  };
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -57,7 +75,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             userId: storedUser.id
           });
           
-          const currentUser = await authAPI.getCurrentUser();
+          // Add timeout to prevent hanging on Supabase connection issues
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Auth initialization timeout')), 5000);
+          });
+          
+          const currentUser = await Promise.race([
+            authAPI.getCurrentUser(),
+            timeoutPromise
+          ]) as User;
           
           logger.authEvent('tokenValidated', currentUser.id, {
             onboardingStatus: currentUser.onboarding_status
@@ -68,19 +94,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch (error: unknown) {
           logger.authEvent('tokenValidationFailed', storedUser.id);
           logger.apiError('getCurrentUser', error as Error, {
-            component: 'AuthContext'
+            component: 'AuthContext',
+            metadata: { errorMessage: (error as Error).message }
           });
           
-          // Token is invalid, clear storage and logout
-          authStorage.removeToken();
-          authStorage.removeUser();
-          setUser(null);
+          // If Supabase is down or timeout, keep stored user for graceful degradation
+          // Only clear if it's a 401 (unauthorized) error
+          if (error && typeof error === 'object' && 'response' in error) {
+            const axiosError = error as { response?: { status?: number } };
+            if (axiosError.response?.status === 401) {
+              authStorage.removeToken();
+              authStorage.removeUser();
+              setUser(null);
+            } else {
+              // Supabase connection issue - use cached user data
+              logger.warn('Using cached user data due to connection issue', {
+                component: 'AuthContext',
+                action: 'initialize',
+                userId: storedUser.id
+              });
+              setUser(storedUser);
+            }
+          } else {
+            // Network error or timeout - use cached user data
+            logger.warn('Using cached user data due to network/timeout issue', {
+              component: 'AuthContext',
+              action: 'initialize',
+              userId: storedUser.id
+            });
+            setUser(storedUser);
+          }
         }
       }
       setIsLoading(false);
     };
 
-    initializeAuth();
+    // Always stop loading after a maximum timeout to prevent blocking the app
+    const maxTimeout = setTimeout(() => {
+      logger.warn('Auth initialization max timeout reached', {
+        component: 'AuthContext',
+        action: 'initialize'
+      });
+      setIsLoading(false);
+    }, 6000);
+
+    initializeAuth().finally(() => clearTimeout(maxTimeout));
+    
+    return () => clearTimeout(maxTimeout);
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
@@ -91,7 +151,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         metadata: { isUsernameLogin: !credentials.email.includes('@') }
       });
       
-      const authData = await authAPI.login(credentials);
+      // Add timeout for login to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Login request timeout')), 10000);
+      });
+      
+      const authData = await Promise.race([
+        authAPI.login(credentials),
+        timeoutPromise
+      ]) as Awaited<ReturnType<typeof authAPI.login>>;
       
       logger.debug('Login API call successful', {
         component: 'AuthContext',

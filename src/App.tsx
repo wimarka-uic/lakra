@@ -47,8 +47,23 @@ const ProtectedRoute: React.FC<{
   evaluatorOnly = false
 }) => {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const [showLoading, setShowLoading] = useState(true);
 
-  if (isLoading) {
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setShowLoading(false);
+    }, 3000);
+
+    if (!isLoading) {
+      clearTimeout(timeout);
+      setShowLoading(false);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  if (isLoading && showLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -98,8 +113,23 @@ const SmartRedirect: React.FC = () => {
 // Landing page redirect component for authenticated users
 const LandingRedirect: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const [showLoading, setShowLoading] = useState(true);
 
-  if (isLoading) {
+  // Add a timeout to prevent infinite loading if auth hangs
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setShowLoading(false);
+    }, 3000); // Show landing page after 3 seconds if still loading
+
+    if (!isLoading) {
+      clearTimeout(timeout);
+      setShowLoading(false);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  if (isLoading && showLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -121,15 +151,30 @@ const LandingRedirect: React.FC = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // If not authenticated, show the landing page
+  // If not authenticated or loading timed out, show the landing page
   return <Landing />;
 };
 
 // 404 Not Found component
 const NotFound: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const [showLoading, setShowLoading] = useState(true);
 
-  if (isLoading) {
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setShowLoading(false);
+    }, 3000);
+
+    if (!isLoading) {
+      clearTimeout(timeout);
+      setShowLoading(false);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  if (isLoading && showLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -165,8 +210,23 @@ const NotFound: React.FC = () => {
 // This is used for login/register pages, not the landing page
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const [showLoading, setShowLoading] = useState(true);
 
-  if (isLoading) {
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setShowLoading(false);
+    }, 3000);
+
+    if (!isLoading) {
+      clearTimeout(timeout);
+      setShowLoading(false);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  if (isLoading && showLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -194,8 +254,23 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 // This is used for about, features, process, contact pages
 const AccessibleRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoading } = useAuth();
+  const [showLoading, setShowLoading] = useState(true);
 
-  if (isLoading) {
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setShowLoading(false);
+    }, 3000);
+
+    if (!isLoading) {
+      clearTimeout(timeout);
+      setShowLoading(false);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  if (isLoading && showLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
