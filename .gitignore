@@ -29,3 +29,4 @@ dist-ssr
 .vercel
 .cursor
 GEMINI.md
+.env*.local
