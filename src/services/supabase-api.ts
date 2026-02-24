@@ -708,54 +708,53 @@ export const sentencesAPI = {
 
     if (!userProfile?.preferred_language) return [];
 
-    try {
-      // Try to use the custom RPC function first
-      const { data, error } = await supabase
-        .rpc('get_prioritized_sentences', {
-          user_id: user.id,
-          target_language: getLanguageCode(userProfile.preferred_language),
-          skip_count: skip,
-          limit_count: limit
-        });
+    // Get all sentences for the user's language
+    const { data: allSentences, error: sentencesError } = await supabase
+      .from('sentences')
+      .select('*')
+      .eq('is_active', true)
+      .eq('target_language', getLanguageCode(userProfile.preferred_language))
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data || [];
-    } catch (rpcError) {
-      // Fallback to manual prioritization if RPC function doesn't exist
-      logger.warn('RPC function not available, using fallback method', {
-        component: 'sentencesAPI',
-        action: 'getPrioritizedSentences',
-        metadata: { error: (rpcError as Error).message }
-      });
+    if (sentencesError) throw sentencesError;
 
-      // Get all sentences for the user's language
-      const { data: allSentences, error: sentencesError } = await supabase
-        .from('sentences')
-        .select('*')
-        .eq('is_active', true)
-        .eq('target_language', getLanguageCode(userProfile.preferred_language))
-        .order('created_at', { ascending: false });
+    // Get user's annotated sentence IDs
+    const { data: annotatedIds } = await supabase
+      .from('annotations')
+      .select('sentence_id')
+      .eq('annotator_id', user.id);
 
-      if (sentencesError) throw sentencesError;
+    const annotatedSentenceIds = new Set(annotatedIds?.map(a => a.sentence_id) || []);
 
-      // Get user's annotated sentence IDs
-      const { data: annotatedIds } = await supabase
-        .from('annotations')
-        .select('sentence_id')
-        .eq('annotator_id', user.id);
+    // Separate unannotated and annotated sentences, prioritizing unannotated
+    const unannotated = (allSentences || []).filter(s => !annotatedSentenceIds.has(s.id));
+    const annotated = (allSentences || []).filter(s => annotatedSentenceIds.has(s.id));
 
-      const annotatedSentenceIds = new Set(annotatedIds?.map(a => a.sentence_id) || []);
+    const prioritized = [...unannotated, ...annotated];
 
-      // Separate unannotated and annotated sentences
-      const unannotated = (allSentences || []).filter(s => !annotatedSentenceIds.has(s.id));
-      const annotated = (allSentences || []).filter(s => annotatedSentenceIds.has(s.id));
+    return prioritized.slice(skip, skip + limit);
+  },
 
-      // Combine with unannotated first, then annotated
-      const prioritized = [...unannotated, ...annotated];
+  getPrioritizedSentencesCount: async (): Promise<number> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('No authenticated user');
 
-      // Apply pagination
-      return prioritized.slice(skip, skip + limit);
-    }
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('preferred_language')
+      .eq('id', user.id)
+      .single();
+
+    if (!userProfile?.preferred_language) return 0;
+
+    const { count, error } = await supabase
+      .from('sentences')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('target_language', getLanguageCode(userProfile.preferred_language));
+
+    if (error) throw error;
+    return count || 0;
   },
 
   createSentence: async (sentenceData: {

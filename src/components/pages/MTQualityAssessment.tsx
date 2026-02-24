@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { sentencesAPI, annotationsAPI } from '../../services/supabase-api';
 import type { Sentence, AnnotationCreate, AnnotationUpdate, TextHighlight } from '../../types';
 import { logger } from '../../utils/logger';
-import { ChevronRight, Check, AlertCircle, Clock, MessageCircle, Trash2, Plus, Highlighter, BookOpen } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, AlertCircle, Clock, MessageCircle, Trash2, Plus, Highlighter, BookOpen } from 'lucide-react';
 import VoiceRecorder from '../ui/VoiceRecorder';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -31,11 +31,15 @@ interface SentenceAnnotation {
   updated_at?: string;
 }
 
+const PAGE_SIZE = 50;
+
 const MTQualityAssessment: React.FC = () => {
   const { sentenceId } = useParams<{ sentenceId?: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [sentences, setSentences] = useState<Sentence[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [annotations, setAnnotations] = useState<Map<number, SentenceAnnotation>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -140,7 +144,12 @@ const MTQualityAssessment: React.FC = () => {
         } else {
           // Load prioritized sentences (unannotated first, then annotated)
           try {
-            loadedSentences = await sentencesAPI.getPrioritizedSentences(0, 50);
+            const [pageSentences, count] = await Promise.all([
+              sentencesAPI.getPrioritizedSentences((currentPage - 1) * PAGE_SIZE, PAGE_SIZE),
+              sentencesAPI.getPrioritizedSentencesCount(),
+            ]);
+            loadedSentences = pageSentences;
+            setTotalCount(count);
           } catch (error) {
             // Fallback to unannotated sentences if prioritized method fails
             logger.warn('Failed to load prioritized sentences, falling back to unannotated', {
@@ -148,7 +157,7 @@ const MTQualityAssessment: React.FC = () => {
               action: 'loadSentences',
               metadata: { error: (error as Error).message }
             });
-            loadedSentences = await sentencesAPI.getUnannotatedSentences(0, 50);
+            loadedSentences = await sentencesAPI.getUnannotatedSentences((currentPage - 1) * PAGE_SIZE, PAGE_SIZE);
           }
         }
         
@@ -189,7 +198,7 @@ const MTQualityAssessment: React.FC = () => {
     };
 
     loadSentences();
-  }, [sentenceId]); // Add sentenceId as dependency so it reloads when the parameter changes
+  }, [sentenceId, currentPage]); // Add sentenceId and currentPage as dependencies
 
   const handleTextSelection = (sentenceId: number) => {
     const selection = window.getSelection();
@@ -1224,6 +1233,38 @@ const MTQualityAssessment: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Pagination */}
+        {!sentenceId && totalCount > PAGE_SIZE && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 pt-4">
+            <div className="text-sm text-gray-500">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)} of {totalCount} sentences
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                disabled={currentPage === 1}
+                aria-label="Previous page"
+                className="flex items-center space-x-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Prev</span>
+              </button>
+              <span className="text-sm font-medium text-gray-700 px-2">
+                Page {currentPage} of {Math.ceil(totalCount / PAGE_SIZE)}
+              </span>
+              <button
+                onClick={() => { setCurrentPage(p => Math.min(Math.ceil(totalCount / PAGE_SIZE), p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                disabled={currentPage >= Math.ceil(totalCount / PAGE_SIZE)}
+                aria-label="Next page"
+                className="flex items-center space-x-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+              >
+                <span>Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Comment Modal */}
