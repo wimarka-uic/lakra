@@ -573,11 +573,13 @@ const getLanguageCode = (displayName: string): string => {
     'cebuano': 'ceb',
     'ilocano': 'ilo',
     'Ilocano': 'ilo',
+    'hiligaynon': 'hil',
     'english': 'en',
     // Direct language codes should match themselves
     'tgl': 'tgl',
     'ceb': 'ceb',
     'ilo': 'ilo',
+    'hil': 'hil',
     'en': 'en'
   };
   return languageMap[normalizedName] || displayName;
@@ -981,8 +983,8 @@ export const sentencesAPI = {
         }
 
         // Validate languages
-        const validSourceLanguages = ['en', 'tgl', 'ilo', 'ceb'];
-        const validTargetLanguages = ['tgl', 'ilo', 'ceb', 'en'];
+        const validSourceLanguages = ['en', 'tgl', 'ilo', 'ceb', 'hil'];
+        const validTargetLanguages = ['tgl', 'ilo', 'ceb', 'hil', 'en'];
         
         if (!validSourceLanguages.includes(sentence.source_language)) {
           errors.push(`Row ${i + 1}: Invalid source language '${sentence.source_language}'. Valid options: ${validSourceLanguages.join(', ')}`);

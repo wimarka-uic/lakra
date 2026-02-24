@@ -944,6 +944,7 @@ const AdminDashboard: React.FC = () => {
 "Good morning","Maayong buntag","en","ceb","greetings",""
 "Thank you very much","Agyamanak unay","en","ilo","polite",""
 "The food is delicious","Naimas ti kanen","en","ilo","food",""
+"Good morning","Maayong aga","en","hil","greetings",""
 "She said ""Hello, world!""","Sinabi niya ""Kumusta, mundo!""","en","tgl","conversational",""
 "Text with, comma inside quotes","Text na may, koma sa loob ng quotes","en","tgl","conversational",""`;
     
@@ -2604,8 +2605,8 @@ const AdminDashboard: React.FC = () => {
                     <div className="text-sm text-blue-800 space-y-2">
                       <p><strong>Required columns:</strong> source_text, machine_translation, source_language, target_language</p>
                       <p><strong>Optional columns:</strong> domain, back_translation</p>
-                      <p><strong>Supported source languages:</strong> en (English), tgl (Tagalog), ilo (Ilocano), ceb (Cebuano)</p>
-                      <p><strong>Supported target languages:</strong> tgl (Tagalog), ilo (Ilocano), ceb (Cebuano), en (English)</p>
+                      <p><strong>Supported source languages:</strong> en (English), tgl (Tagalog), ilo (Ilocano), ceb (Cebuano), hil (Hiligaynon)</p>
+                      <p><strong>Supported target languages:</strong> tgl (Tagalog), ilo (Ilocano), ceb (Cebuano), hil (Hiligaynon), en (English)</p>
                       <p><strong>Available domains:</strong> conversational, news, legal, medical, educational</p>
                     </div>
                     <button
@@ -2828,6 +2829,7 @@ const AdminDashboard: React.FC = () => {
                       <option value="tgl">Tagalog (Filipino)</option>
                       <option value="ceb">Cebuano</option>
                       <option value="ilo">Ilocano</option>
+                      <option value="hil">Hiligaynon</option>
                     </select>
                   </div>
 
@@ -2939,6 +2941,7 @@ const AdminDashboard: React.FC = () => {
                           <option value="tgl">Tagalog</option>
                           <option value="ilo">Ilocano</option>
                           <option value="ceb">Cebuano</option>
+                          <option value="hil">Hiligaynon</option>
                         </select>
                       </div>
                       
@@ -2955,6 +2958,7 @@ const AdminDashboard: React.FC = () => {
                           <option value="tgl">Tagalog</option>
                           <option value="ilo">Ilocano</option>
                           <option value="ceb">Cebuano</option>
+                          <option value="hil">Hiligaynon</option>
                           <option value="en">English</option>
                         </select>
                       </div>
@@ -3101,6 +3105,7 @@ const AdminDashboard: React.FC = () => {
                           <option value="tgl">Tagalog</option>
                           <option value="ilo">Ilocano</option>
                           <option value="ceb">Cebuano</option>
+                          <option value="hil">Hiligaynon</option>
                         </select>
                       </div>
                       
@@ -3117,6 +3122,7 @@ const AdminDashboard: React.FC = () => {
                           <option value="tgl">Tagalog</option>
                           <option value="ilo">Ilocano</option>
                           <option value="ceb">Cebuano</option>
+                          <option value="hil">Hiligaynon</option>
                           <option value="en">English</option>
                         </select>
                       </div>
